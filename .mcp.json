@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "todo-list": {
+      "command": "C:\\programming\\MCP\\TODO list\\MCP-SimpleTodoList\\McpTodoList\\bin\\Release\\net8.0\\McpTodoList.exe",
+      "args": []
+    }
+  }
+}
