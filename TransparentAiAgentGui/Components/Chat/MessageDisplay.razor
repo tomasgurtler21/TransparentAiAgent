@@ -1,0 +1,17 @@
+@using TransparentAiAgentGui.Models
+
+<div class="message @Message.CssClass" title="@Message.ContextStatusTooltip">
+    <div class="message-header">
+        <span class="message-role">@Message.Role</span>
+        <span class="message-context-status">@Message.ContextStatusIcon</span>
+        <span class="message-timestamp">@Message.Timestamp.ToString("HH:mm:ss")</span>
+    </div>
+    <div class="message-content">
+        @Message.Content
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public UIMessage Message { get; set; } = null!;
+}

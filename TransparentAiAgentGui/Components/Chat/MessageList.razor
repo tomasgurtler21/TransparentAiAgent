@@ -1,0 +1,33 @@
+@using TransparentAiAgentGui.Models
+
+<div class="message-list">
+    @if (Messages == null || !Messages.Any())
+    {
+        <div class="empty-state">
+            <p>No messages yet. Start a conversation!</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var message in Messages)
+        {
+            <MessageDisplay Message="message" />
+        }
+    }
+
+    @if (IsProcessing)
+    {
+        <div class="processing-indicator">
+            <span class="spinner"></span>
+            <span>Agent is thinking...</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<UIMessage>? Messages { get; set; }
+
+    [Parameter]
+    public bool IsProcessing { get; set; }
+}

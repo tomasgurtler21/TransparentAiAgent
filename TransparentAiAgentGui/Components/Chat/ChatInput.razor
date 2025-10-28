@@ -1,0 +1,47 @@
+@* Chat input component for sending messages *@
+
+<div class="chat-input">
+    <textarea
+        @bind="inputText"
+        @onkeydown="HandleKeyDown"
+        placeholder="Type your message..."
+        rows="3"
+        disabled="@IsDisabled"
+        class="input-field">
+    </textarea>
+    <button
+        @onclick="HandleSendClick"
+        disabled="@(IsDisabled || string.IsNullOrWhiteSpace(inputText))"
+        class="send-button">
+        Send
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<string> OnSend { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    private string inputText = string.Empty;
+
+    private async Task HandleSendClick()
+    {
+        if (!string.IsNullOrWhiteSpace(inputText))
+        {
+            var message = inputText;
+            inputText = string.Empty; // Clear input
+            await OnSend.InvokeAsync(message);
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Send on Ctrl+Enter or Cmd+Enter
+        if ((e.CtrlKey || e.MetaKey) && e.Key == "Enter")
+        {
+            await HandleSendClick();
+        }
+    }
+}

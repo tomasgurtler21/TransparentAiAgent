@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransparentAiAgentCore", "T
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransparentAiAgentCore_Tests", "TransparentAiAgentCore_Tests\TransparentAiAgentCore_Tests.csproj", "{1465FDAC-90C4-4195-B8EC-412A279119CF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransparentAiAgentGui_Tests", "TransparentAiAgentGui_Tests\TransparentAiAgentGui_Tests.csproj", "{8BCF106C-12A6-4673-BEE6-5A62663ECFE8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{1465FDAC-90C4-4195-B8EC-412A279119CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1465FDAC-90C4-4195-B8EC-412A279119CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1465FDAC-90C4-4195-B8EC-412A279119CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BCF106C-12A6-4673-BEE6-5A62663ECFE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BCF106C-12A6-4673-BEE6-5A62663ECFE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BCF106C-12A6-4673-BEE6-5A62663ECFE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BCF106C-12A6-4673-BEE6-5A62663ECFE8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

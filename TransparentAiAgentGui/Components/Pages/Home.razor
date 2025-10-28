@@ -1,7 +1,73 @@
 ﻿@page "/"
+@using TransparentAiAgentGui.Services
+@using TransparentAiAgentGui.Components.Chat
+@inject IConversationUIService ConversationService
+@implements IDisposable
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Transparent AI Agent</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="chat-container">
+    <div class="chat-header">
+        <h1>Transparent AI Agent</h1>
+        <button @onclick="HandleClearClick" class="clear-button">Clear Conversation</button>
+    </div>
 
-Welcome to your new app.
+    <MessageList Messages="ConversationService.Messages" IsProcessing="ConversationService.IsProcessing" />
+
+    <ChatInput OnSend="HandleSendMessage" IsDisabled="ConversationService.IsProcessing" />
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">
+            @errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to UI service events
+        ConversationService.MessagesChanged += OnMessagesChanged;
+        ConversationService.ProcessingStateChanged += OnProcessingStateChanged;
+    }
+
+    private async Task HandleSendMessage(string message)
+    {
+        errorMessage = null;
+
+        try
+        {
+            await ConversationService.SendMessageAsync(message);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task HandleClearClick()
+    {
+        await ConversationService.ClearConversationAsync();
+        errorMessage = null;
+    }
+
+    private void OnMessagesChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnProcessingStateChanged(object? sender, bool isProcessing)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ConversationService.MessagesChanged -= OnMessagesChanged;
+        ConversationService.ProcessingStateChanged -= OnProcessingStateChanged;
+    }
+}

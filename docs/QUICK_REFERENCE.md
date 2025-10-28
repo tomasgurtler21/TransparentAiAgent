@@ -7,7 +7,7 @@ Quick reference for key decisions and starting implementation.
 1. **Infrastructure Transparency First** - Context, tools, config visibility
 2. **LLM Agnostic** - Provider abstraction supports multiple LLMs
 3. **MCP-Only Tools** - No built-in functions, everything via MCP
-4. **TDD Approach** - Tests first, then implementation
+4. **Lean TDD Approach** - Test meaningful behavior, not compiler features
 5. **Clean Architecture** - Clear layer separation
 
 ## Technology Stack
@@ -139,41 +139,55 @@ Streaming Handler (buffer, format)
    - Event logger
    - In-memory event store
 
-### TDD Process
+### Lean TDD Process
 
 For each component:
-1. Write failing test
+1. Write test for **meaningful behavior** (validation, defaults, transformations)
 2. Implement minimum code to pass
 3. Refactor
 4. Repeat
 
-### Tests First!
+**What to Test** ✅:
+- Validation logic (throws exceptions)
+- Constructor initialization (ID generation, defaults)
+- Transformations (formatting, calculations)
+- Service behavior (add, retrieve, filter)
 
-Example:
+**What NOT to Test** ❌:
+- Enum values exist
+- Simple property getters/setters
+- Trivial parameter-to-property assignment
+
+### Tests First! (Lean Examples)
+
 ```csharp
 [TestClass]
 public class MessageTests
 {
     [TestMethod]
-    public void UserMessage_ShouldHaveCorrectRole()
+    public void UserMessage_NullContent_ThrowsException() // ✅ GOOD - validation
     {
-        // Arrange & Act
-        var message = new UserMessage("Hello");
-
-        // Assert
-        Assert.AreEqual(MessageRole.User, message.Role);
+        Assert.ThrowsException<ArgumentException>(() => new UserMessage(null));
     }
 
     [TestMethod]
-    public void Message_ShouldDefaultToInContext()
+    public void UserMessage_GeneratesUniqueId() // ✅ GOOD - initialization behavior
     {
-        // Arrange & Act
-        var message = new UserMessage("Hello");
-
-        // Assert
-        Assert.AreEqual(MessageContextStatus.InContext,
-                       message.ContextStatus);
+        var msg1 = new UserMessage("Hi");
+        var msg2 = new UserMessage("Hello");
+        Assert.AreNotEqual(msg1.Id, msg2.Id);
     }
+
+    [TestMethod]
+    public void UserMessage_DefaultsToInContext() // ✅ GOOD - business rule
+    {
+        var message = new UserMessage("Hello");
+        Assert.AreEqual(MessageContextStatus.InContext, message.ContextStatus);
+    }
+
+    // ❌ BAD - Don't test trivial property access:
+    // [TestMethod]
+    // public void UserMessage_Role_IsUser() { ... } // Waste of time
 }
 ```
 
