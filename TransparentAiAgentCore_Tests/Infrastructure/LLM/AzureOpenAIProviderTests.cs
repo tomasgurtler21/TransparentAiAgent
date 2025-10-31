@@ -141,6 +141,38 @@ public class AzureOpenAIProviderTests
         });
     }
 
+    [TestMethod]
+    public void Constructor_InteractiveBrowserCredential_CreatesProvider()
+    {
+        // Arrange
+        var config = CreateValidConfigurationWithInteractiveBrowser();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+
+        // Act
+        var provider = new AzureOpenAIProvider(authProvider, "gpt-4", transparencyService, config);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.AreEqual("AzureOpenAI", provider.ProviderName);
+    }
+
+    [TestMethod]
+    public void Constructor_InteractiveBrowserCredentialWithTenantId_CreatesProvider()
+    {
+        // Arrange
+        var config = CreateValidConfigurationWithInteractiveBrowser(tenantId: "test-tenant-id");
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+
+        // Act
+        var provider = new AzureOpenAIProvider(authProvider, "gpt-4", transparencyService, config);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.AreEqual("AzureOpenAI", provider.ProviderName);
+    }
+
     // Note: Full integration tests with actual Azure OpenAI API calls would require:
     // 1. Mocking the OpenAIClient (complex due to sealed classes)
     // 2. Using the internal constructor with a mocked client
@@ -150,6 +182,7 @@ public class AzureOpenAIProviderTests
     // - Constructor parameter validation
     // - ProviderName property
     // - Null request validation
+    // - Authentication mode variations (ApiKey, DefaultAzureCredential, InteractiveBrowserCredential)
     //
     // The conversion logic (ConvertToAzureMessage, ConvertResponse, etc.) is tested
     // indirectly through integration tests or can be tested by extracting to testable methods.
@@ -167,6 +200,24 @@ public class AzureOpenAIProviderTests
                     ApiKey = "test-azure-key",
                     Endpoint = "https://test.openai.azure.com",
                     DeploymentName = "gpt-4"
+                }
+            }
+        };
+    }
+
+    private AppConfiguration CreateValidConfigurationWithInteractiveBrowser(string? tenantId = null)
+    {
+        return new AppConfiguration
+        {
+            LLM = new LLMConfiguration
+            {
+                Provider = "AzureOpenAI",
+                AzureOpenAI = new AzureOpenAIConfiguration
+                {
+                    AuthenticationMode = AuthenticationMode.InteractiveBrowserCredential,
+                    Endpoint = "https://test.openai.azure.com",
+                    DeploymentName = "gpt-4",
+                    TenantId = tenantId
                 }
             }
         };

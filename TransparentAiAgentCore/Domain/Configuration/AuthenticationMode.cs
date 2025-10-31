@@ -7,7 +7,7 @@ public enum AuthenticationMode
 {
     /// <summary>
     /// Authentication mode not specified. This is an invalid state.
-    /// Configuration must explicitly specify ApiKey or DefaultAzureCredential.
+    /// Configuration must explicitly specify ApiKey, DefaultAzureCredential, or InteractiveBrowserCredential.
     /// </summary>
     Unspecified = 0,
 
@@ -20,7 +20,14 @@ public enum AuthenticationMode
     /// <summary>
     /// Use DefaultAzureCredential authentication (OAuth/Microsoft Entra ID).
     /// Automatically discovers credentials from environment, managed identity, az login, etc.
-    /// No API key needed in configuration.
+    /// No API key needed in configuration. Best for server/automated scenarios.
     /// </summary>
-    DefaultAzureCredential = 2
+    DefaultAzureCredential = 2,
+
+    /// <summary>
+    /// Use InteractiveBrowserCredential authentication (OAuth/Microsoft Entra ID).
+    /// Opens browser popup for interactive user login with Microsoft account.
+    /// No API key needed in configuration. Best for desktop GUI applications.
+    /// </summary>
+    InteractiveBrowserCredential = 3
 }

@@ -14,7 +14,7 @@ public class AzureOpenAIConfiguration
 
     /// <summary>
     /// API Key for authentication. Required only when AuthenticationMode is ApiKey.
-    /// Ignored when using DefaultAzureCredential.
+    /// Ignored when using DefaultAzureCredential or InteractiveBrowserCredential.
     /// </summary>
     public string? ApiKey { get; set; } = null;
 
@@ -22,8 +22,8 @@ public class AzureOpenAIConfiguration
     public string ApiVersion { get; set; } = "2024-02-15-preview";
 
     /// <summary>
-    /// Optional tenant ID for DefaultAzureCredential.
-    /// Only used when AuthenticationMode is DefaultAzureCredential.
+    /// Optional tenant ID for OAuth authentication.
+    /// Only used when AuthenticationMode is DefaultAzureCredential or InteractiveBrowserCredential.
     /// </summary>
     public string? TenantId { get; set; } = null;
 
@@ -40,7 +40,7 @@ public class AzureOpenAIConfiguration
         {
             throw new ConfigurationException(
                 "Azure OpenAI AuthenticationMode must be explicitly specified. " +
-                "Set AuthenticationMode to either 'ApiKey' or 'DefaultAzureCredential' in your configuration.");
+                "Set AuthenticationMode to 'ApiKey', 'DefaultAzureCredential', or 'InteractiveBrowserCredential' in your configuration.");
         }
 
         // Conditionally validate ApiKey only when using ApiKey authentication
@@ -49,7 +49,7 @@ public class AzureOpenAIConfiguration
             if (string.IsNullOrWhiteSpace(ApiKey))
                 throw new ConfigurationException(
                     "Azure OpenAI ApiKey is required when AuthenticationMode is ApiKey. " +
-                    "Either provide an ApiKey or set AuthenticationMode to DefaultAzureCredential.");
+                    "Either provide an ApiKey or set AuthenticationMode to 'DefaultAzureCredential' or 'InteractiveBrowserCredential'.");
         }
 
         if (string.IsNullOrWhiteSpace(DeploymentName))

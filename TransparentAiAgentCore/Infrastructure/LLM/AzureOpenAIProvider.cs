@@ -52,6 +52,7 @@ public class AzureOpenAIProvider : ILLMProvider
             case AuthenticationMode.DefaultAzureCredential:
             {
                 // Use DefaultAzureCredential (OAuth/Microsoft Entra ID)
+                // Automatically discovers credentials from environment, CLI, managed identity, etc.
                 TokenCredential credential;
 
                 if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
@@ -66,6 +67,29 @@ public class AzureOpenAIProvider : ILLMProvider
                 {
                     // Use default tenant discovery
                     credential = new DefaultAzureCredential();
+                }
+
+                _client = new OpenAIClient(endpoint, credential);
+                break;
+            }
+            case AuthenticationMode.InteractiveBrowserCredential:
+            {
+                // Use InteractiveBrowserCredential (OAuth/Microsoft Entra ID)
+                // Opens browser popup for interactive user login
+                TokenCredential credential;
+
+                if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
+                {
+                    // Use specific tenant if provided
+                    credential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
+                    {
+                        TenantId = azureConfig.TenantId
+                    });
+                }
+                else
+                {
+                    // Use default tenant discovery
+                    credential = new InteractiveBrowserCredential();
                 }
 
                 _client = new OpenAIClient(endpoint, credential);

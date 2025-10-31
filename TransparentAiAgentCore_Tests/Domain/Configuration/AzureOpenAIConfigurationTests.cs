@@ -249,4 +249,42 @@ public class AzureOpenAIConfigurationTests
     }
 
     #endregion
+
+    #region InteractiveBrowserCredential Tests
+
+    [TestMethod]
+    public void Validate_InteractiveBrowserCredentialWithoutApiKey_DoesNotThrow()
+    {
+        // Arrange - InteractiveBrowser mode doesn't require ApiKey
+        var config = new AzureOpenAIConfiguration
+        {
+            AuthenticationMode = AuthenticationMode.InteractiveBrowserCredential,
+            Endpoint = "https://test.openai.azure.com",
+            DeploymentName = "gpt-4",
+            ApiVersion = "2024-02-15-preview"
+            // ApiKey intentionally omitted
+        };
+
+        // Act & Assert - Should NOT throw because OAuth doesn't require ApiKey
+        config.Validate();
+    }
+
+    [TestMethod]
+    public void Validate_InteractiveBrowserCredentialWithTenantId_DoesNotThrow()
+    {
+        // Arrange
+        var config = new AzureOpenAIConfiguration
+        {
+            AuthenticationMode = AuthenticationMode.InteractiveBrowserCredential,
+            Endpoint = "https://test.openai.azure.com",
+            DeploymentName = "gpt-4",
+            ApiVersion = "2024-02-15-preview",
+            TenantId = "12345678-1234-1234-1234-123456789012"
+        };
+
+        // Act & Assert
+        config.Validate();
+    }
+
+    #endregion
 }
