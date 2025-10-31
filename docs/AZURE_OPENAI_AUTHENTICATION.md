@@ -307,6 +307,97 @@ For most use cases, **Cognitive Services OpenAI User** is sufficient.
 }
 ```
 
+## Reasoning Models Configuration
+
+### What are Reasoning Models?
+
+Reasoning models (GPT-5 series, o1, o3, o4-mini, etc.) are advanced models designed for complex problem-solving, code generation, and analytical tasks. They use a different API parameter structure than traditional models.
+
+### Model Identification
+
+**Reasoning Models** (require `IsReasoningModel: true`):
+- GPT-5 series: `gpt-5`, `gpt-5-mini`, `gpt-5-pro`, `gpt-5-nano`, `gpt-5-codex`
+- O-series: `o1`, `o1-mini`, `o3`, `o3-mini`, `o3-pro`, `o4-mini`, `codex-mini`
+
+**Traditional Models** (default `IsReasoningModel: false`):
+- GPT-4 series: `gpt-4`, `gpt-4-turbo`, `gpt-4o`, `gpt-4o-mini`
+- GPT-3.5 series: `gpt-3.5-turbo`
+
+### Configuration for Reasoning Models
+
+When using reasoning models, you must set `IsReasoningModel` to `true`:
+
+```json
+{
+  "TransparentAiAgent": {
+    "LLM": {
+      "Provider": "AzureOpenAI",
+      "AzureOpenAI": {
+        "AuthenticationMode": "InteractiveBrowserCredential",
+        "Endpoint": "https://my-openai.openai.azure.com/",
+        "DeploymentName": "gpt-5-2025-08-07",
+        "ApiVersion": "2025-01-01-preview",
+        "IsReasoningModel": true
+      }
+    }
+  }
+}
+```
+
+### API Version Requirements
+
+Reasoning models typically require newer API versions:
+- **Minimum for GPT-5/o-series**: `2024-10-21` or later
+- **Recommended**: `2025-01-01-preview` or later for full feature support
+
+### What Changes Internally?
+
+When `IsReasoningModel` is `true`, the SDK internally uses `max_completion_tokens` instead of `max_tokens` in the API request. This is transparent to your code - you still use the same `MaxTokens` configuration, and the SDK handles the mapping automatically.
+
+### Common Errors
+
+**Error: "Unsupported parameter: 'max_tokens' is not supported with this model"**
+- **Cause**: Using a reasoning model without setting `IsReasoningModel: true`
+- **Solution**: Add `"IsReasoningModel": true` to your AzureOpenAI configuration
+
+**Error: "DefaultAzureCredential failed to retrieve a token"**
+- **Cause**: Mistakenly used `DefaultAzureCredential` when you wanted interactive browser login
+- **Solution**: Switch to `InteractiveBrowserCredential` for GUI apps
+
+### Complete Example: GPT-5 with OAuth
+
+```json
+{
+  "TransparentAiAgent": {
+    "Agent": {
+      "SystemPrompt": "You are a helpful AI assistant.",
+      "ContextWindowSize": 20
+    },
+    "LLM": {
+      "Provider": "AzureOpenAI",
+      "Temperature": 0.7,
+      "TopP": 1.0,
+      "MaxTokens": 4096,
+      "AzureOpenAI": {
+        "AuthenticationMode": "InteractiveBrowserCredential",
+        "Endpoint": "https://my-resource.openai.azure.com/",
+        "DeploymentName": "gpt-5-2025-08-07",
+        "ApiVersion": "2025-01-01-preview",
+        "IsReasoningModel": true
+      }
+    }
+  }
+}
+```
+
+## SDK Information
+
+This project uses **Azure.AI.OpenAI SDK 2.5.0-beta.1**, which provides:
+- Support for reasoning models (GPT-5, o-series)
+- Interactive browser authentication
+- Automatic parameter mapping (max_tokens vs max_completion_tokens)
+- Latest Azure OpenAI API features
+
 ## References
 
 - [Azure OpenAI Authentication Documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/managed-identity)

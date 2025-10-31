@@ -1,13 +1,13 @@
 using System;
+using System.ClientModel;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure;
 using Azure.AI.OpenAI;
-using Azure.Core;
 using Azure.Identity;
+using OpenAI.Chat;
 using TransparentAiAgentCore.Domain.Authentication;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Exceptions;
@@ -21,9 +21,9 @@ namespace TransparentAiAgentCore.Infrastructure.LLM;
 /// </summary>
 public class AzureOpenAIProvider : ILLMProvider
 {
-    private readonly OpenAIClient _client;
-    private readonly string _deploymentName;
+    private readonly ChatClient _chatClient;
     private readonly ITransparencyService _transparencyService;
+    private readonly bool _isReasoningModel;
 
     public string ProviderName => "AzureOpenAI";
 
@@ -41,65 +41,61 @@ public class AzureOpenAIProvider : ILLMProvider
             throw new ArgumentNullException(nameof(appConfig));
 
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
-        _deploymentName = deploymentName;
+        _isReasoningModel = appConfig.LLM.AzureOpenAI?.IsReasoningModel ?? false;
 
         var endpoint = new Uri(authProvider.GetEndpoint("AzureOpenAI"));
         var azureConfig = appConfig.LLM.AzureOpenAI;
 
-        // Create client based on authentication mode
+        // Create AzureOpenAIClient based on authentication mode
+        AzureOpenAIClient azureClient;
+
         switch (azureConfig.AuthenticationMode)
         {
             case AuthenticationMode.DefaultAzureCredential:
             {
                 // Use DefaultAzureCredential (OAuth/Microsoft Entra ID)
                 // Automatically discovers credentials from environment, CLI, managed identity, etc.
-                TokenCredential credential;
-
                 if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
                 {
                     // Use specific tenant if provided
-                    credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                    var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
                     {
                         TenantId = azureConfig.TenantId
                     });
+                    azureClient = new AzureOpenAIClient(endpoint, credential);
                 }
                 else
                 {
                     // Use default tenant discovery
-                    credential = new DefaultAzureCredential();
+                    azureClient = new AzureOpenAIClient(endpoint, new DefaultAzureCredential());
                 }
-
-                _client = new OpenAIClient(endpoint, credential);
                 break;
             }
             case AuthenticationMode.InteractiveBrowserCredential:
             {
                 // Use InteractiveBrowserCredential (OAuth/Microsoft Entra ID)
                 // Opens browser popup for interactive user login
-                TokenCredential credential;
-
                 if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
                 {
                     // Use specific tenant if provided
-                    credential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
+                    var credential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
                     {
                         TenantId = azureConfig.TenantId
                     });
+                    azureClient = new AzureOpenAIClient(endpoint, credential);
                 }
                 else
                 {
                     // Use default tenant discovery
-                    credential = new InteractiveBrowserCredential();
+                    azureClient = new AzureOpenAIClient(endpoint, new InteractiveBrowserCredential());
                 }
-
-                _client = new OpenAIClient(endpoint, credential);
                 break;
             }
             case AuthenticationMode.ApiKey:
             {
                 // Use API Key authentication
                 var apiKey = authProvider.GetApiKey("AzureOpenAI");
-                _client = new OpenAIClient(endpoint, new AzureKeyCredential(apiKey));
+                azureClient = new AzureOpenAIClient(endpoint, new ApiKeyCredential(apiKey));
                 break;
             }
             case AuthenticationMode.Unspecified:
@@ -109,17 +105,20 @@ public class AzureOpenAIProvider : ILLMProvider
                     "Azure OpenAI AuthenticationMode is Unspecified or invalid. " +
                     "This should have been caught during configuration validation.");
         }
+
+        // Get ChatClient for the specific deployment
+        _chatClient = azureClient.GetChatClient(deploymentName);
     }
 
     // Constructor for testing with injected client
     internal AzureOpenAIProvider(
-        OpenAIClient client,
-        string deploymentName,
-        ITransparencyService transparencyService)
+        ChatClient chatClient,
+        ITransparencyService transparencyService,
+        bool isReasoningModel = false)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
-        _deploymentName = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName));
+        _chatClient = chatClient ?? throw new ArgumentNullException(nameof(chatClient));
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
+        _isReasoningModel = isReasoningModel;
     }
 
     public async Task<LLMResponse> SendRequestAsync(
@@ -134,13 +133,14 @@ public class AzureOpenAIProvider : ILLMProvider
             // Log request to transparency system
             LogRequest(request);
 
-            // Convert to Azure OpenAI format
-            var chatCompletionsOptions = BuildChatCompletionsOptions(request);
+            // Convert messages to Azure OpenAI format
+            var messages = ConvertToAzureMessages(request.Messages);
+
+            // Build options
+            var options = BuildChatCompletionOptions(request);
 
             // Send request
-            Response<ChatCompletions> response = await _client.GetChatCompletionsAsync(
-                chatCompletionsOptions,
-                cancellationToken);
+            ClientResult<ChatCompletion> response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
 
             // Convert response
             var llmResponse = ConvertResponse(response.Value);
@@ -150,7 +150,7 @@ public class AzureOpenAIProvider : ILLMProvider
 
             return llmResponse;
         }
-        catch (RequestFailedException ex)
+        catch (ClientResultException ex)
         {
             throw new LLMException($"Azure OpenAI request failed: {ex.Message}", ex);
         }
@@ -170,20 +170,21 @@ public class AzureOpenAIProvider : ILLMProvider
         // Log request to transparency system
         LogRequest(request);
 
-        StreamingResponse<StreamingChatCompletionsUpdate>? streamingResponse = null;
+        AsyncCollectionResult<StreamingChatCompletionUpdate>? streamingResponse = null;
 
         // Get streaming response outside of try-catch to allow yield
         try
         {
-            // Convert to Azure OpenAI format
-            var chatCompletionsOptions = BuildChatCompletionsOptions(request);
+            // Convert messages to Azure OpenAI format
+            var messages = ConvertToAzureMessages(request.Messages);
+
+            // Build options
+            var options = BuildChatCompletionOptions(request);
 
             // Get streaming response
-            streamingResponse = await _client.GetChatCompletionsStreamingAsync(
-                chatCompletionsOptions,
-                cancellationToken);
+            streamingResponse = _chatClient.CompleteChatStreamingAsync(messages, options, cancellationToken);
         }
-        catch (RequestFailedException ex)
+        catch (ClientResultException ex)
         {
             throw new LLMException($"Azure OpenAI streaming request failed: {ex.Message}", ex);
         }
@@ -195,31 +196,69 @@ public class AzureOpenAIProvider : ILLMProvider
         // Stream chunks (cannot be in try-catch due to yield)
         if (streamingResponse != null)
         {
-            await foreach (StreamingChatCompletionsUpdate update in streamingResponse.EnumerateValues().WithCancellation(cancellationToken))
+            await foreach (StreamingChatCompletionUpdate update in streamingResponse.WithCancellation(cancellationToken))
             {
                 var chunk = ConvertStreamingUpdate(update);
                 yield return chunk;
             }
-
-            streamingResponse.Dispose();
         }
     }
 
-    private ChatCompletionsOptions BuildChatCompletionsOptions(LLMRequest request)
+    private List<ChatMessage> ConvertToAzureMessages(List<LLMMessage> messages)
     {
-        var options = new ChatCompletionsOptions
+        var azureMessages = new List<ChatMessage>();
+
+        foreach (var message in messages)
         {
-            DeploymentName = _deploymentName,
+            azureMessages.Add(ConvertToAzureMessage(message));
+        }
+
+        return azureMessages;
+    }
+
+    private ChatMessage ConvertToAzureMessage(LLMMessage message)
+    {
+        return message.Role.ToLowerInvariant() switch
+        {
+            "user" => new UserChatMessage(message.Content),
+            "assistant" when message.ToolCalls != null && message.ToolCalls.Count > 0 =>
+                CreateAssistantMessageWithToolCalls(message),
+            "assistant" => new AssistantChatMessage(message.Content),
+            "system" => new SystemChatMessage(message.Content),
+            "tool" => new ToolChatMessage(message.ToolCallId!, message.Content),
+            _ => throw new LLMException($"Unknown message role: {message.Role}")
+        };
+    }
+
+    private AssistantChatMessage CreateAssistantMessageWithToolCalls(LLMMessage message)
+    {
+        var toolCalls = message.ToolCalls!
+            .Select(tc => ChatToolCall.CreateFunctionToolCall(tc.Id, tc.Name, BinaryData.FromString(tc.Arguments)))
+            .ToList();
+
+        var assistantMessage = new AssistantChatMessage(toolCalls);
+
+        // Add content if present
+        if (!string.IsNullOrEmpty(message.Content))
+        {
+            assistantMessage.Content.Add(ChatMessageContentPart.CreateTextPart(message.Content));
+        }
+
+        return assistantMessage;
+    }
+
+    private ChatCompletionOptions BuildChatCompletionOptions(LLMRequest request)
+    {
+        var options = new ChatCompletionOptions
+        {
             Temperature = (float)request.Temperature,
-            NucleusSamplingFactor = (float)request.TopP,
-            MaxTokens = request.MaxTokens
+            TopP = (float)request.TopP
         };
 
-        // Add messages
-        foreach (var message in request.Messages)
-        {
-            options.Messages.Add(ConvertToAzureMessage(message));
-        }
+        // Reasoning models (GPT-5 series, o1, o3, etc.) use MaxOutputTokenCount
+        // Traditional models (GPT-4, GPT-4o, etc.) use MaxOutputTokenCount as well in SDK 2.x
+        // The SDK internally maps this to max_tokens or max_completion_tokens based on the model
+        options.MaxOutputTokenCount = request.MaxTokens;
 
         // Add tools if present
         if (request.Tools != null && request.Tools.Count > 0)
@@ -233,80 +272,58 @@ public class AzureOpenAIProvider : ILLMProvider
         return options;
     }
 
-    private ChatRequestMessage ConvertToAzureMessage(LLMMessage message)
+    private ChatTool ConvertToAzureTool(LLMTool tool)
     {
-        return message.Role.ToLowerInvariant() switch
-        {
-            "user" => new ChatRequestUserMessage(message.Content),
-            "assistant" when message.ToolCalls != null && message.ToolCalls.Count > 0 =>
-                CreateAssistantMessageWithToolCalls(message),
-            "assistant" => new ChatRequestAssistantMessage(message.Content),
-            "system" => new ChatRequestSystemMessage(message.Content),
-            "tool" => new ChatRequestToolMessage(message.Content, message.ToolCallId!),
-            _ => throw new LLMException($"Unknown message role: {message.Role}")
-        };
+        return ChatTool.CreateFunctionTool(
+            functionName: tool.Name,
+            functionDescription: tool.Description,
+            functionParameters: BinaryData.FromString(tool.ParametersSchema));
     }
 
-    private ChatRequestAssistantMessage CreateAssistantMessageWithToolCalls(LLMMessage message)
+    private LLMResponse ConvertResponse(ChatCompletion response)
     {
-        var assistantMessage = new ChatRequestAssistantMessage(message.Content);
-        foreach (var tc in message.ToolCalls!)
-        {
-            var toolCall = new ChatCompletionsFunctionToolCall(tc.Id, tc.Name, tc.Arguments);
-            assistantMessage.ToolCalls.Add(toolCall);
-        }
-        return assistantMessage;
-    }
-
-    private ChatCompletionsFunctionToolDefinition ConvertToAzureTool(LLMTool tool)
-    {
-        return new ChatCompletionsFunctionToolDefinition
-        {
-            Name = tool.Name,
-            Description = tool.Description,
-            Parameters = BinaryData.FromString(tool.ParametersSchema)
-        };
-    }
-
-    private LLMResponse ConvertResponse(ChatCompletions response)
-    {
-        var choice = response.Choices[0];
-        var message = choice.Message;
+        var content = response.Content[0].Text ?? string.Empty;
 
         List<LLMToolCall>? toolCalls = null;
-        if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+        if (response.ToolCalls.Count > 0)
         {
-            toolCalls = message.ToolCalls
-                .OfType<ChatCompletionsFunctionToolCall>()
-                .Select(tc => new LLMToolCall(tc.Id, tc.Name, tc.Arguments))
+            toolCalls = response.ToolCalls
+                .Select(tc => new LLMToolCall(tc.Id, tc.FunctionName, tc.FunctionArguments.ToString()))
                 .ToList();
         }
 
         var usage = response.Usage != null
-            ? new LLMUsage(response.Usage.PromptTokens, response.Usage.CompletionTokens)
+            ? new LLMUsage(response.Usage.InputTokenCount, response.Usage.OutputTokenCount)
             : null;
 
         return new LLMResponse(
-            message.Content ?? string.Empty,
+            content,
             toolCalls,
-            choice.FinishReason?.ToString(),
+            response.FinishReason.ToString(),
             usage);
     }
 
-    private StreamingLLMChunk ConvertStreamingUpdate(StreamingChatCompletionsUpdate update)
+    private StreamingLLMChunk ConvertStreamingUpdate(StreamingChatCompletionUpdate update)
     {
-        var contentDelta = update.ContentUpdate ?? string.Empty;
+        // Get content delta
+        var contentDelta = string.Empty;
+        if (update.ContentUpdate.Count > 0)
+        {
+            contentDelta = update.ContentUpdate[0].Text ?? string.Empty;
+        }
+
         var isComplete = update.FinishReason != null;
         var finishReason = update.FinishReason?.ToString();
 
-        // Handle tool calls in streaming (more complex, simplified here)
+        // Handle tool calls in streaming
         LLMToolCall? toolCallDelta = null;
-        if (update.ToolCallUpdate != null && update.ToolCallUpdate is StreamingFunctionToolCallUpdate ftc)
+        if (update.ToolCallUpdates.Count > 0)
         {
+            var toolUpdate = update.ToolCallUpdates[0];
             toolCallDelta = new LLMToolCall(
-                ftc.Id ?? string.Empty,
-                ftc.Name ?? string.Empty,
-                ftc.ArgumentsUpdate ?? string.Empty);
+                toolUpdate.ToolCallId ?? string.Empty,
+                toolUpdate.FunctionName ?? string.Empty,
+                toolUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty);
         }
 
         return new StreamingLLMChunk(contentDelta, toolCallDelta, isComplete, finishReason);
@@ -322,7 +339,8 @@ public class AzureOpenAIProvider : ILLMProvider
             TopP = request.TopP,
             MaxTokens = request.MaxTokens,
             ToolCount = request.Tools?.Count ?? 0,
-            Stream = request.Stream
+            Stream = request.Stream,
+            IsReasoningModel = _isReasoningModel
         });
 
         _transparencyService.LogEvent(

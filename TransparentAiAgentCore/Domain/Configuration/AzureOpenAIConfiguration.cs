@@ -27,6 +27,14 @@ public class AzureOpenAIConfiguration
     /// </summary>
     public string? TenantId { get; set; } = null;
 
+    /// <summary>
+    /// Indicates whether the model is a reasoning model (GPT-5 series, o1, o3, o4-mini, etc.).
+    /// Reasoning models require max_completion_tokens instead of max_tokens.
+    /// Set to true for: gpt-5, gpt-5-mini, gpt-5-pro, gpt-5-nano, o1, o1-mini, o3, o3-mini, o3-pro, o4-mini.
+    /// Default is false (traditional models like GPT-4, GPT-4o).
+    /// </summary>
+    public bool IsReasoningModel { get; set; } = false;
+
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(Endpoint))
