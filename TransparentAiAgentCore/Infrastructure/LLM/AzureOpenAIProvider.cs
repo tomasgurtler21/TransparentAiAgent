@@ -1,8 +1,11 @@
 using System;
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.AI.OpenAI;
@@ -24,6 +27,11 @@ public class AzureOpenAIProvider : ILLMProvider
     private readonly ChatClient _chatClient;
     private readonly ITransparencyService _transparencyService;
     private readonly bool _isReasoningModel;
+    private readonly string? _endpoint;
+    private readonly string? _deploymentName;
+    private readonly string? _apiKey;
+    private readonly Azure.Core.TokenCredential? _tokenCredential;
+    private readonly string? _apiVersion;
 
     public string ProviderName => "AzureOpenAI";
 
@@ -46,6 +54,11 @@ public class AzureOpenAIProvider : ILLMProvider
         var endpoint = new Uri(authProvider.GetEndpoint("AzureOpenAI"));
         var azureConfig = appConfig.LLM.AzureOpenAI;
 
+        // Store configuration for reasoning model HTTP requests
+        _endpoint = endpoint.ToString().TrimEnd('/');
+        _deploymentName = deploymentName;
+        _apiVersion = azureConfig?.ApiVersion ?? "2024-02-15-preview";
+
         // Create AzureOpenAIClient based on authentication mode
         AzureOpenAIClient azureClient;
 
@@ -58,16 +71,17 @@ public class AzureOpenAIProvider : ILLMProvider
                 if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
                 {
                     // Use specific tenant if provided
-                    var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                    _tokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
                     {
                         TenantId = azureConfig.TenantId
                     });
-                    azureClient = new AzureOpenAIClient(endpoint, credential);
+                    azureClient = new AzureOpenAIClient(endpoint, _tokenCredential);
                 }
                 else
                 {
                     // Use default tenant discovery
-                    azureClient = new AzureOpenAIClient(endpoint, new DefaultAzureCredential());
+                    _tokenCredential = new DefaultAzureCredential();
+                    azureClient = new AzureOpenAIClient(endpoint, _tokenCredential);
                 }
                 break;
             }
@@ -78,24 +92,25 @@ public class AzureOpenAIProvider : ILLMProvider
                 if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
                 {
                     // Use specific tenant if provided
-                    var credential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
+                    _tokenCredential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
                     {
                         TenantId = azureConfig.TenantId
                     });
-                    azureClient = new AzureOpenAIClient(endpoint, credential);
+                    azureClient = new AzureOpenAIClient(endpoint, _tokenCredential);
                 }
                 else
                 {
                     // Use default tenant discovery
-                    azureClient = new AzureOpenAIClient(endpoint, new InteractiveBrowserCredential());
+                    _tokenCredential = new InteractiveBrowserCredential();
+                    azureClient = new AzureOpenAIClient(endpoint, _tokenCredential);
                 }
                 break;
             }
             case AuthenticationMode.ApiKey:
             {
                 // Use API Key authentication
-                var apiKey = authProvider.GetApiKey("AzureOpenAI");
-                azureClient = new AzureOpenAIClient(endpoint, new ApiKeyCredential(apiKey));
+                _apiKey = authProvider.GetApiKey("AzureOpenAI");
+                azureClient = new AzureOpenAIClient(endpoint, new ApiKeyCredential(_apiKey));
                 break;
             }
             case AuthenticationMode.Unspecified:
@@ -133,6 +148,13 @@ public class AzureOpenAIProvider : ILLMProvider
             // Log request to transparency system
             LogRequest(request);
 
+            // For reasoning models, use protocol method to send max_completion_tokens
+            if (_isReasoningModel)
+            {
+                return await SendRequestAsync_ReasoningModel(request, cancellationToken);
+            }
+
+            // Standard path for traditional models
             // Convert messages to Azure OpenAI format
             var messages = ConvertToAzureMessages(request.Messages);
 
@@ -158,6 +180,96 @@ public class AzureOpenAIProvider : ILLMProvider
         {
             throw new LLMException($"Unexpected error during LLM request: {ex.Message}", ex);
         }
+    }
+
+    private async Task<LLMResponse> SendRequestAsync_ReasoningModel(LLMRequest request, CancellationToken cancellationToken)
+    {
+        // Convert messages
+        var messages = ConvertToAzureMessages(request.Messages);
+
+        // Build options (without MaxOutputTokenCount for reasoning models)
+        var options = BuildChatCompletionOptions(request);
+
+        // Build request JSON with max_completion_tokens
+        var requestJson = BuildRequestJsonForReasoningModel(messages, options, request.MaxTokens);
+
+        // Make HTTP request directly to Azure OpenAI API
+        using var httpClient = new HttpClient();
+
+        // Build URL
+        var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version={_apiVersion}";
+
+        // Set authentication header
+        if (_apiKey != null)
+        {
+            httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
+        }
+        else if (_tokenCredential != null)
+        {
+            var tokenRequestContext = new Azure.Core.TokenRequestContext(new[] { "https://cognitiveservices.azure.com/.default" });
+            var token = await _tokenCredential.GetTokenAsync(tokenRequestContext, cancellationToken);
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.Token);
+        }
+
+        // Send request
+        var content = new StringContent(requestJson.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
+        var response = await httpClient.PostAsync(url, content, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new LLMException($"Azure OpenAI request failed: HTTP {(int)response.StatusCode} ({response.ReasonPhrase}) {errorContent}");
+        }
+
+        // Parse response
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        using JsonDocument jsonDoc = JsonDocument.Parse(responseJson);
+        var llmResponse = ParseLLMResponseFromJson(jsonDoc.RootElement);
+
+        // Log response to transparency system
+        LogResponse(llmResponse);
+
+        return llmResponse;
+    }
+
+    private LLMResponse ParseLLMResponseFromJson(JsonElement root)
+    {
+        // Extract the first choice
+        var choice = root.GetProperty("choices")[0];
+        var message = choice.GetProperty("message");
+
+        // Extract content
+        var content = message.TryGetProperty("content", out var contentProp) ? contentProp.GetString() ?? string.Empty : string.Empty;
+
+        // Extract tool calls if present
+        List<LLMToolCall>? toolCalls = null;
+        if (message.TryGetProperty("tool_calls", out var toolCallsProp))
+        {
+            toolCalls = new List<LLMToolCall>();
+            foreach (var tc in toolCallsProp.EnumerateArray())
+            {
+                var id = tc.GetProperty("id").GetString() ?? string.Empty;
+                var function = tc.GetProperty("function");
+                var name = function.GetProperty("name").GetString() ?? string.Empty;
+                var arguments = function.GetProperty("arguments").GetString() ?? string.Empty;
+
+                toolCalls.Add(new LLMToolCall(id, name, arguments));
+            }
+        }
+
+        // Extract finish reason
+        var finishReasonStr = choice.TryGetProperty("finish_reason", out var finishProp) ? finishProp.GetString() : null;
+
+        // Extract usage if present
+        LLMUsage? usage = null;
+        if (root.TryGetProperty("usage", out var usageProp))
+        {
+            var inputTokens = usageProp.GetProperty("prompt_tokens").GetInt32();
+            var outputTokens = usageProp.GetProperty("completion_tokens").GetInt32();
+            usage = new LLMUsage(inputTokens, outputTokens);
+        }
+
+        return new LLMResponse(content, toolCalls, finishReasonStr, usage);
     }
 
     public async IAsyncEnumerable<StreamingLLMChunk> StreamRequestAsync(
@@ -255,10 +367,12 @@ public class AzureOpenAIProvider : ILLMProvider
             TopP = (float)request.TopP
         };
 
-        // Reasoning models (GPT-5 series, o1, o3, etc.) use MaxOutputTokenCount
-        // Traditional models (GPT-4, GPT-4o, etc.) use MaxOutputTokenCount as well in SDK 2.x
-        // The SDK internally maps this to max_tokens or max_completion_tokens based on the model
-        options.MaxOutputTokenCount = request.MaxTokens;
+        // For reasoning models, we'll use protocol method with BinaryContent to avoid SDK bug
+        // So don't set MaxOutputTokenCount here for reasoning models
+        if (!_isReasoningModel)
+        {
+            options.MaxOutputTokenCount = request.MaxTokens;
+        }
 
         // Add tools if present
         if (request.Tools != null && request.Tools.Count > 0)
@@ -270,6 +384,95 @@ public class AzureOpenAIProvider : ILLMProvider
         }
 
         return options;
+    }
+
+    private JsonObject BuildRequestJsonForReasoningModel(List<ChatMessage> messages, ChatCompletionOptions options, int maxTokens)
+    {
+        var requestJson = new JsonObject();
+
+        // Add messages
+        var messagesArray = new JsonArray();
+        foreach (var message in messages)
+        {
+            var messageObj = new JsonObject();
+
+            if (message is UserChatMessage userMsg)
+            {
+                messageObj["role"] = "user";
+                messageObj["content"] = userMsg.Content[0].Text;
+            }
+            else if (message is AssistantChatMessage assistantMsg)
+            {
+                messageObj["role"] = "assistant";
+                if (assistantMsg.Content.Count > 0)
+                {
+                    messageObj["content"] = assistantMsg.Content[0].Text;
+                }
+                if (assistantMsg.ToolCalls.Count > 0)
+                {
+                    var toolCallsArray = new JsonArray();
+                    foreach (var tc in assistantMsg.ToolCalls)
+                    {
+                        var toolCallObj = new JsonObject
+                        {
+                            ["id"] = tc.Id,
+                            ["type"] = "function",
+                            ["function"] = new JsonObject
+                            {
+                                ["name"] = tc.FunctionName,
+                                ["arguments"] = tc.FunctionArguments.ToString()
+                            }
+                        };
+                        toolCallsArray.Add(toolCallObj);
+                    }
+                    messageObj["tool_calls"] = toolCallsArray;
+                }
+            }
+            else if (message is SystemChatMessage systemMsg)
+            {
+                messageObj["role"] = "system";
+                messageObj["content"] = systemMsg.Content[0].Text;
+            }
+            else if (message is ToolChatMessage toolMsg)
+            {
+                messageObj["role"] = "tool";
+                messageObj["content"] = toolMsg.Content[0].Text;
+                messageObj["tool_call_id"] = toolMsg.ToolCallId;
+            }
+
+            messagesArray.Add(messageObj);
+        }
+        requestJson["messages"] = messagesArray;
+
+        // Add parameters
+        requestJson["temperature"] = options.Temperature;
+        requestJson["top_p"] = options.TopP;
+
+        // CRITICAL: Use max_completion_tokens for reasoning models
+        requestJson["max_completion_tokens"] = maxTokens;
+
+        // Add tools if present
+        if (options.Tools.Count > 0)
+        {
+            var toolsArray = new JsonArray();
+            foreach (var tool in options.Tools)
+            {
+                var toolObj = new JsonObject
+                {
+                    ["type"] = "function",
+                    ["function"] = new JsonObject
+                    {
+                        ["name"] = tool.FunctionName,
+                        ["description"] = tool.FunctionDescription,
+                        ["parameters"] = JsonNode.Parse(tool.FunctionParameters.ToString())
+                    }
+                };
+                toolsArray.Add(toolObj);
+            }
+            requestJson["tools"] = toolsArray;
+        }
+
+        return requestJson;
     }
 
     private ChatTool ConvertToAzureTool(LLMTool tool)
