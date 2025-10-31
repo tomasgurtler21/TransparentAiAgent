@@ -47,32 +47,43 @@ public class AzureOpenAIProvider : ILLMProvider
         var azureConfig = appConfig.LLM.AzureOpenAI;
 
         // Create client based on authentication mode
-        if (azureConfig.AuthenticationMode == AuthenticationMode.DefaultAzureCredential)
+        switch (azureConfig.AuthenticationMode)
         {
-            // Use DefaultAzureCredential (OAuth/Microsoft Entra ID)
-            TokenCredential credential;
-
-            if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
+            case AuthenticationMode.DefaultAzureCredential:
             {
-                // Use specific tenant if provided
-                credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                // Use DefaultAzureCredential (OAuth/Microsoft Entra ID)
+                TokenCredential credential;
+
+                if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
                 {
-                    TenantId = azureConfig.TenantId
-                });
-            }
-            else
-            {
-                // Use default tenant discovery
-                credential = new DefaultAzureCredential();
-            }
+                    // Use specific tenant if provided
+                    credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                    {
+                        TenantId = azureConfig.TenantId
+                    });
+                }
+                else
+                {
+                    // Use default tenant discovery
+                    credential = new DefaultAzureCredential();
+                }
 
-            _client = new OpenAIClient(endpoint, credential);
-        }
-        else // AuthenticationMode.ApiKey
-        {
-            // Use API Key authentication
-            var apiKey = authProvider.GetApiKey("AzureOpenAI");
-            _client = new OpenAIClient(endpoint, new AzureKeyCredential(apiKey));
+                _client = new OpenAIClient(endpoint, credential);
+                break;
+            }
+            case AuthenticationMode.ApiKey:
+            {
+                // Use API Key authentication
+                var apiKey = authProvider.GetApiKey("AzureOpenAI");
+                _client = new OpenAIClient(endpoint, new AzureKeyCredential(apiKey));
+                break;
+            }
+            case AuthenticationMode.Unspecified:
+            default:
+                // Should never reach here due to validation, but fail defensively
+                throw new ConfigurationException(
+                    "Azure OpenAI AuthenticationMode is Unspecified or invalid. " +
+                    "This should have been caught during configuration validation.");
         }
     }
 

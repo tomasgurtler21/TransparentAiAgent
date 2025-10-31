@@ -109,6 +109,7 @@ public class LLMConfigurationTests
             Provider = "AzureOpenAI",
             AzureOpenAI = new AzureOpenAIConfiguration
             {
+                AuthenticationMode = AuthenticationMode.ApiKey,
                 Endpoint = "", // Invalid
                 ApiKey = "test-key",
                 DeploymentName = "gpt-4"
@@ -128,6 +129,7 @@ public class LLMConfigurationTests
             Provider = "AzureOpenAI",
             AzureOpenAI = new AzureOpenAIConfiguration
             {
+                AuthenticationMode = AuthenticationMode.ApiKey,
                 Endpoint = "https://test.openai.azure.com",
                 ApiKey = "test-key",
                 DeploymentName = "gpt-4",

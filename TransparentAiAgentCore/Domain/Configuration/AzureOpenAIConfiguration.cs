@@ -7,9 +7,10 @@ public class AzureOpenAIConfiguration
     public string Endpoint { get; set; } = string.Empty;
 
     /// <summary>
-    /// Authentication method to use. Defaults to ApiKey for backward compatibility.
+    /// Authentication method to use. Must be explicitly specified.
+    /// Default is Unspecified, which will fail validation.
     /// </summary>
-    public AuthenticationMode AuthenticationMode { get; set; } = AuthenticationMode.ApiKey;
+    public AuthenticationMode AuthenticationMode { get; set; } = AuthenticationMode.Unspecified;
 
     /// <summary>
     /// API Key for authentication. Required only when AuthenticationMode is ApiKey.
@@ -33,6 +34,14 @@ public class AzureOpenAIConfiguration
 
         if (!Uri.TryCreate(Endpoint, UriKind.Absolute, out _))
             throw new ConfigurationException("Azure OpenAI Endpoint must be a valid URI");
+
+        // Validate AuthenticationMode is explicitly set
+        if (AuthenticationMode == AuthenticationMode.Unspecified)
+        {
+            throw new ConfigurationException(
+                "Azure OpenAI AuthenticationMode must be explicitly specified. " +
+                "Set AuthenticationMode to either 'ApiKey' or 'DefaultAzureCredential' in your configuration.");
+        }
 
         // Conditionally validate ApiKey only when using ApiKey authentication
         if (AuthenticationMode == AuthenticationMode.ApiKey)

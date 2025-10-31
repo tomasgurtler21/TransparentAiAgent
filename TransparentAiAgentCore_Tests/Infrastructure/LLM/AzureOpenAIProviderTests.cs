@@ -163,6 +163,7 @@ public class AzureOpenAIProviderTests
                 Provider = "AzureOpenAI",
                 AzureOpenAI = new AzureOpenAIConfiguration
                 {
+                    AuthenticationMode = AuthenticationMode.ApiKey,
                     ApiKey = "test-azure-key",
                     Endpoint = "https://test.openai.azure.com",
                     DeploymentName = "gpt-4"

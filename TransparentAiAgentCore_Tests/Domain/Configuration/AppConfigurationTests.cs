@@ -22,6 +22,7 @@ public class AppConfigurationTests
                 Provider = "AzureOpenAI",
                 AzureOpenAI = new AzureOpenAIConfiguration
                 {
+                    AuthenticationMode = AuthenticationMode.ApiKey,
                     Endpoint = "https://test.openai.azure.com",
                     ApiKey = "test-key",
                     DeploymentName = "gpt-4",
@@ -90,6 +91,7 @@ public class AppConfigurationTests
                 Provider = "AzureOpenAI",
                 AzureOpenAI = new AzureOpenAIConfiguration
                 {
+                    AuthenticationMode = AuthenticationMode.ApiKey,
                     Endpoint = "https://test.openai.azure.com",
                     ApiKey = "test-key",
                     DeploymentName = "gpt-4",

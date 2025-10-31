@@ -47,6 +47,7 @@ builder.Services.AddSingleton(appConfig);
 
 // Check if LLM configuration is valid
 bool isLLMConfigured = false;
+string? llmConfigurationError = null;
 try
 {
     appConfig.LLM.Validate();
@@ -54,9 +55,11 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Warning: LLM configuration is invalid: {ex.Message}");
+    llmConfigurationError = ex.Message;
+    Console.WriteLine($"⚠ LLM configuration is invalid: {ex.Message}");
     Console.WriteLine("The app will start but LLM features will not be available.");
     Console.WriteLine("Please configure LLM settings in appsettings.json to use agent features.");
+    Console.WriteLine("See docs/CONFIGURATION_SETUP.md for detailed instructions.");
 }
 
 // Register Authentication
@@ -89,8 +92,12 @@ if (isLLMConfigured)
 }
 else
 {
-    // Register stub implementation that throws helpful errors
-    builder.Services.AddSingleton<IAgentOrchestrator, NotConfiguredAgentOrchestrator>();
+    // Register stub implementation that throws helpful errors with details
+    builder.Services.AddSingleton<IAgentOrchestrator>(sp =>
+    {
+        var conversationManager = sp.GetRequiredService<IConversationManager>();
+        return new NotConfiguredAgentOrchestrator(conversationManager, llmConfigurationError);
+    });
 
     Console.WriteLine("⚠ LLM not configured. Agent will show configuration error when used.");
     Console.WriteLine("  Configure LLM settings in appsettings.json to enable agent features.");
