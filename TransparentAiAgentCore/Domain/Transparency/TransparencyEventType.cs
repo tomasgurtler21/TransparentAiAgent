@@ -9,5 +9,23 @@ public enum TransparencyEventType
     ContextChange,
     ConfigurationChange,
     SystemState,
-    Error
+    Error,
+
+    // Tool discovery events (Phase 5)
+    ToolDiscoveryStarted,
+    ToolDiscoveryCompleted,
+    ToolDiscoveryFailed,
+    ToolRegistered,
+
+    // Tool execution events (Phase 5)
+    ToolCallStarted,
+    ToolCallCompleted,
+    ToolCallFailed,
+    ToolCallTimeout,
+
+    // MCP server lifecycle events (Phase 5)
+    MCPServerConnecting,
+    MCPServerConnected,
+    MCPServerDisconnected,
+    MCPServerConnectionFailed
 }

@@ -11,6 +11,10 @@ using TransparentAiAgentCore.Infrastructure.LLM;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Authentication;
 using TransparentAiAgentCore.Domain.LLM;
+using TransparentAiAgentCore.Domain.Tools;
+using TransparentAiAgentCore.Application.Tools;
+using TransparentAiAgentCore.Infrastructure.Tools;
+using TransparentAiAgentCore.Infrastructure.Tools.MCP;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -76,6 +80,66 @@ builder.Services.AddSingleton<IConversationManager>(sp =>
     return new ConversationManager(config.Agent.ContextWindowSize, transparencyService);
 });
 
+// Register Tool services (if tools are enabled)
+if (appConfig.Agent.EnableTools && appConfig.MCP.Servers.Count > 0)
+{
+    builder.Services.AddSingleton<IToolManager>(sp =>
+    {
+        try
+        {
+            var transparencyService = sp.GetRequiredService<ITransparencyService>();
+
+            // Create MCP Tool Discovery
+            var mcpDiscovery = new MCPToolDiscovery(appConfig.MCP);
+
+            // Create MCP Tool Registry
+            var mcpRegistry = new MCPToolRegistry(appConfig.MCP);
+
+            // Create Tool Registry Composite (for now just MCP, can add built-in tools later)
+            var compositeRegistry = new ToolRegistryComposite(new[] { mcpRegistry });
+
+            // Create MCP Tool Executor
+            var mcpExecutor = new MCPToolExecutor(mcpDiscovery);
+
+            // Create Tool Manager
+            var toolManager = new ToolManager(
+                compositeRegistry,
+                new IToolExecutor[] { mcpExecutor },
+                transparencyService);
+
+            // Discover tools on startup if configured
+            if (appConfig.MCP.AutoDiscoverTools)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await compositeRegistry.RefreshAsync();
+                        var tools = compositeRegistry.GetAllTools();
+                        Console.WriteLine($"✓ Discovered {tools.Count} tools from {appConfig.MCP.Servers.Count} MCP server(s)");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠ Tool discovery failed: {ex.Message}");
+                    }
+                });
+            }
+
+            Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s)");
+            return toolManager;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠ Failed to initialize tool system: {ex.Message}");
+            throw;
+        }
+    });
+}
+else if (appConfig.Agent.EnableTools && appConfig.MCP.Servers.Count == 0)
+{
+    Console.WriteLine("⚠ Tools enabled but no MCP servers configured");
+}
+
 // Conditionally register LLM services based on configuration validity
 if (isLLMConfigured)
 {
@@ -86,7 +150,23 @@ if (isLLMConfigured)
         var factory = sp.GetRequiredService<LLMProviderFactory>();
         return factory.CreateProvider();
     });
-    builder.Services.AddSingleton<IAgentOrchestrator, AgentOrchestrator>();
+    builder.Services.AddSingleton<IAgentOrchestrator>(sp =>
+    {
+        var llmProvider = sp.GetRequiredService<ILLMProvider>();
+        var conversationManager = sp.GetRequiredService<IConversationManager>();
+        var messagePipeline = sp.GetRequiredService<IMessagePipeline>();
+        var transparencyService = sp.GetRequiredService<ITransparencyService>();
+        var config = sp.GetRequiredService<AppConfiguration>();
+        var toolMgr = sp.GetService<IToolManager>(); // Optional
+
+        return new AgentOrchestrator(
+            llmProvider,
+            conversationManager,
+            messagePipeline,
+            transparencyService,
+            config,
+            toolMgr);
+    });
 
     Console.WriteLine($"✓ LLM Provider configured: {appConfig.LLM.Provider}");
 }

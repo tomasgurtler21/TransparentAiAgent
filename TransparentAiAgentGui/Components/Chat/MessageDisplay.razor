@@ -2,16 +2,61 @@
 
 <div class="message @Message.CssClass" title="@Message.ContextStatusTooltip">
     <div class="message-header">
-        <span class="message-role">@Message.Role</span>
+        <span class="message-role">@GetRoleDisplayName()</span>
+        @if (Message.IsToolCall)
+        {
+            <span class="tool-indicator">🔧</span>
+        }
+        @if (Message.IsToolResult)
+        {
+            <span class="tool-result-indicator">@(Message.ToolResultSuccess ? "✅" : "❌")</span>
+        }
         <span class="message-context-status">@Message.ContextStatusIcon</span>
         <span class="message-timestamp">@Message.Timestamp.ToString("HH:mm:ss")</span>
     </div>
     <div class="message-content">
-        @Message.Content
+        @if (Message.IsToolCall)
+        {
+            <div class="tool-call">
+                <div class="tool-name">Tool: <strong>@Message.ToolName</strong></div>
+                @if (!string.IsNullOrWhiteSpace(Message.ToolArguments))
+                {
+                    <details class="tool-arguments">
+                        <summary>Arguments</summary>
+                        <pre>@Message.ToolArguments</pre>
+                    </details>
+                }
+            </div>
+        }
+        else if (Message.IsToolResult)
+        {
+            <div class="tool-result">
+                <div class="tool-name">Result from: <strong>@Message.ToolName</strong></div>
+                @if (!string.IsNullOrWhiteSpace(Message.ToolErrorMessage))
+                {
+                    <div class="tool-error">Error: @Message.ToolErrorMessage</div>
+                }
+                <details class="tool-result-content" open="@Message.ToolResultSuccess">
+                    <summary>@(Message.ToolResultSuccess ? "Success" : "Failed")</summary>
+                    <pre>@Message.Content</pre>
+                </details>
+            </div>
+        }
+        else
+        {
+            @Message.Content
+        }
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired]
     public UIMessage Message { get; set; } = null!;
+
+    private string GetRoleDisplayName()
+    {
+        if (Message.IsToolCall) return "Tool Call";
+        if (Message.IsToolResult) return "Tool Result";
+        return Message.Role.ToString();
+    }
 }

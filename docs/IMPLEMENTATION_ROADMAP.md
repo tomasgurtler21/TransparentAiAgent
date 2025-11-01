@@ -166,45 +166,77 @@ This document outlines the proposed implementation order for the TransparentAiAg
 
 ---
 
-### Phase 5: MCP Integration
+### Phase 5: Tool Integration
 
-**Goal**: Integrate MCP client and enable tool calling (MOVED FROM PHASE 4).
+**Goal**: Implement source-agnostic tool system with MCP integration (MOVED FROM PHASE 4).
 
 **Note**: Now that basic UI works, we can add tools as an enhancement.
 
+**Architecture**: Tool Abstraction Layer (supports MCP, built-in, future protocols)
+
 **Components**:
-1. **MCP Client** (Using C# MCP SDK)
-   - Integrate C# MCP SDK library
-   - Connect to MCP servers from config
-   - Server lifecycle management
-   - Handle stdio transport (primary)
 
-2. **Tool Registry**
-   - Discover tools from MCP servers
-   - Register tools with metadata
-   - Tool lookup
+1. **Domain Abstractions** (Tool System)
+   - `ITool` - Source-agnostic tool definition
+   - `IToolExecutor` - Execution abstraction
+   - `IToolRegistry` - Discovery and management
+   - `IToolManager` - High-level orchestration
+   - `ToolExecutionResult` - Standardized result format
+   - `ToolSourceType` enum (MCP, BuiltIn, etc.)
 
-3. **Tool Executor**
-   - Parse tool calls from LLM
-   - Execute via MCP client
-   - Format tool results
-   - Log to Transparency System
+2. **Application Layer**
+   - `ToolManager` - Routes tool calls by source type
+   - Orchestrates tool execution
+   - Integrates with Transparency System
+   - Error handling and timeout management
+
+3. **MCP Implementation** (Infrastructure)
+   - `MCPClientWrapper` - Wraps C# MCP SDK
+   - `MCPToolDiscovery` - Discovers tools from MCP servers
+   - `MCPToolExecutor` - Executes MCP tool calls (implements IToolExecutor)
+   - `MCPToolRegistry` - Manages MCP tool catalog (implements IToolRegistry)
+   - `ToolRegistryComposite` - Aggregates all tool sources
 
 4. **Agent Orchestrator Updates**
    - Detect tool calls from LLM
-   - Execute tools via Tool Executor
+   - Execute tools via ToolManager (sequential in Phase 5)
    - Continue conversation with tool results
+   - Track tool call depth (max 10)
+
+5. **Configuration Updates**
+   - `MCPConfiguration`: AutoDiscoverTools, ToolExecutionTimeoutSeconds (180s), MaxToolCallDepth (10)
+   - `AgentConfiguration`: EnableTools, ToolExecutionMode (Sequential/Parallel)
+
+6. **Transparency Integration**
+   - New event types: Tool discovery, execution, timeout, MCP lifecycle
+   - Log all tool operations
+
+**Key Design Decisions**:
+- **Tool Routing**: By `SourceType` (metadata-driven, not hardcoded)
+- **Execution Mode**: Sequential (Phase 5), designed for parallel (future)
+- **Timeout**: 180 seconds default
+- **Depth Limit**: 10 levels max
+- **Built-In Tools**: Deferred to post-Phase 5 (architecture ready)
 
 **Deliverables**:
+- Tool abstraction layer implemented
 - MCP servers connect successfully
-- Tools discovered and registered
-- LLM can call tools
+- Tools discovered from MCP servers
+- LLM can call MCP tools
 - Tool results returned to LLM
 - Full tool-calling loop works
+- Tool execution visible in Transparency System
+- Tool calls displayed in UI (basic)
+- Easy to add new tool sources in future
 
-**Tests**: Integration tests with real MCP servers (todo-list, context7)
+**Tests**:
+- Unit tests (TDD approach) for all components
+- Integration tests with real MCP servers (todo-list, context7)
+- End-to-end functional tests
 
-**Note**: Using existing C# MCP SDK library (user has server-side experience)
+**Time Estimate**: ~40-50 hours (1-1.5 weeks)
+
+**Note**: Using C# MCP SDK library (user has server-side experience, client-side is new)
 
 ---
 
@@ -368,4 +400,4 @@ All questions resolved:
 ---
 
 **Status**: Planning complete - Ready for implementation
-**Last Updated**: 2025-10-28
+**Last Updated**: 2025-11-01 (Phase 5 updated with approved tool architecture)

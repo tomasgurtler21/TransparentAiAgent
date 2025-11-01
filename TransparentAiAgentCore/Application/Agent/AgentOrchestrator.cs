@@ -2,6 +2,7 @@ using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Domain.LLM;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Exceptions;
+using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Application.Conversation;
 using TransparentAiAgentCore.Application.Pipeline;
 using TransparentAiAgentCore.Infrastructure.Transparency;
@@ -20,8 +21,10 @@ public class AgentOrchestrator : IAgentOrchestrator
     private readonly IConversationManager _conversationManager;
     private readonly IMessagePipeline _messagePipeline;
     private readonly ITransparencyService _transparencyService;
+    private readonly IToolManager? _toolManager;
     private readonly AgentConfiguration _agentConfig;
     private readonly LLMConfiguration _llmConfig;
+    private const int MaxToolCallDepth = 10;
 
     public IConversationManager ConversationManager => _conversationManager;
 
@@ -30,12 +33,14 @@ public class AgentOrchestrator : IAgentOrchestrator
         IConversationManager conversationManager,
         IMessagePipeline messagePipeline,
         ITransparencyService transparencyService,
-        AppConfiguration configuration)
+        AppConfiguration configuration,
+        IToolManager? toolManager = null)
     {
         _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _messagePipeline = messagePipeline ?? throw new ArgumentNullException(nameof(messagePipeline));
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
+        _toolManager = toolManager; // Optional - null if tools not configured
 
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
@@ -64,26 +69,77 @@ public class AgentOrchestrator : IAgentOrchestrator
             _conversationManager.AddMessage(userMessage);
             LogEvent("UserInput", $"User input: {userInput}");
 
-            // 2. Build LLM request from in-context messages
-            var llmRequest = BuildLLMRequest();
+            // 2. Tool calling loop (with max depth protection)
+            IMessage finalMessage = await ProcessWithToolLoopAsync(0, cancellationToken);
 
-            // 3. Send to LLM
-            LogEvent("LLMRequestSent", "Sending request to LLM");
-            var llmResponse = await _llmProvider.SendRequestAsync(llmRequest, cancellationToken);
-            LogEvent("LLMResponseReceived", $"Received response from LLM. Content length: {llmResponse.Content?.Length ?? 0}");
-
-            // 4. Convert LLM response to domain message
-            var assistantMessage = _messagePipeline.ConvertToDomainMessage(llmResponse);
-
-            // 5. Add assistant message to conversation
-            _conversationManager.AddMessage(assistantMessage);
-
-            return assistantMessage;
+            return finalMessage;
         }
         catch (Exception ex) when (ex is not AgentException and not LLMException)
         {
             LogEvent("Error", $"Unexpected error: {ex.Message}");
             throw new AgentException($"Error processing user input: {ex.Message}", ex);
+        }
+    }
+
+    private async Task<IMessage> ProcessWithToolLoopAsync(int depth, CancellationToken cancellationToken)
+    {
+        // Prevent infinite tool loops
+        if (depth >= MaxToolCallDepth)
+        {
+            LogEvent("ToolLoopMaxDepthReached", $"Maximum tool call depth ({MaxToolCallDepth}) reached");
+            var errorMessage = new AssistantMessage(
+                $"I've reached the maximum number of tool calls ({MaxToolCallDepth}). Please try rephrasing your request.");
+            _conversationManager.AddMessage(errorMessage);
+            return errorMessage;
+        }
+
+        // Build LLM request from in-context messages
+        var llmRequest = BuildLLMRequest();
+
+        // Send to LLM
+        LogEvent("LLMRequestSent", $"Sending request to LLM (depth: {depth})");
+        var llmResponse = await _llmProvider.SendRequestAsync(llmRequest, cancellationToken);
+        LogEvent("LLMResponseReceived", $"Received response. Content length: {llmResponse.Content?.Length ?? 0}, Tool calls: {llmResponse.ToolCalls?.Count ?? 0}");
+
+        // Check if LLM wants to call tools
+        if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0 && _toolManager != null)
+        {
+            // Add assistant message with text (if any) before tool calls
+            if (!string.IsNullOrWhiteSpace(llmResponse.Content))
+            {
+                var assistantMessage = new AssistantMessage(llmResponse.Content);
+                _conversationManager.AddMessage(assistantMessage);
+            }
+
+            // Execute each tool call
+            foreach (var toolCall in llmResponse.ToolCalls)
+            {
+                // Add tool call message to conversation
+                var toolCallMessage = new ToolCallMessage(toolCall.Name, toolCall.Arguments, toolCall.Id);
+                _conversationManager.AddMessage(toolCallMessage);
+
+                // Execute tool
+                var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
+
+                // Add tool result message to conversation
+                var toolResultMessage = new ToolResultMessage(
+                    toolCall.Id,
+                    toolCall.Name,
+                    toolResult.Content,
+                    toolResult.IsSuccess,
+                    toolResult.ErrorMessage);
+                _conversationManager.AddMessage(toolResultMessage);
+            }
+
+            // Continue loop with tool results
+            return await ProcessWithToolLoopAsync(depth + 1, cancellationToken);
+        }
+        else
+        {
+            // No tool calls - convert response to message and return
+            var assistantMessage = _messagePipeline.ConvertToDomainMessage(llmResponse);
+            _conversationManager.AddMessage(assistantMessage);
+            return assistantMessage;
         }
     }
 
@@ -153,6 +209,24 @@ public class AgentOrchestrator : IAgentOrchestrator
         // Convert to LLM messages
         var llmMessages = _messagePipeline.ConvertToLLMMessages(inContextMessages);
 
+        // Get tool definitions from tool manager (if available)
+        List<LLMTool>? tools = null;
+        if (_toolManager != null)
+        {
+            try
+            {
+                tools = _toolManager.GetLLMToolDefinitions();
+                if (tools.Count > 0)
+                {
+                    LogEvent("ToolsIncluded", $"Including {tools.Count} tools in LLM request");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogEvent("ToolsError", $"Failed to get tool definitions: {ex.Message}");
+            }
+        }
+
         // Build request
         return new LLMRequest(
             llmMessages,
@@ -160,7 +234,7 @@ public class AgentOrchestrator : IAgentOrchestrator
             _llmConfig.TopP,
             _llmConfig.MaxTokens,
             stream: false,
-            tools: null); // Tools will be added in Phase 5
+            tools: tools);
     }
 
     private void LogEvent(string eventType, string details)

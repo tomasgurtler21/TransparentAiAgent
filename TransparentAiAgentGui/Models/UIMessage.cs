@@ -14,6 +14,14 @@ public class UIMessage
     public DateTime Timestamp { get; set; }
     public MessageContextStatus ContextStatus { get; set; }
 
+    // Tool-specific properties
+    public bool IsToolCall { get; set; }
+    public bool IsToolResult { get; set; }
+    public string? ToolName { get; set; }
+    public string? ToolArguments { get; set; }
+    public bool ToolResultSuccess { get; set; }
+    public string? ToolErrorMessage { get; set; }
+
     /// <summary>
     /// CSS class for styling based on role
     /// </summary>
@@ -54,7 +62,7 @@ public class UIMessage
         if (message == null)
             throw new ArgumentNullException(nameof(message));
 
-        return new UIMessage
+        var uiMessage = new UIMessage
         {
             Id = message.Id,
             Role = message.Role,
@@ -62,5 +70,22 @@ public class UIMessage
             Timestamp = message.Timestamp,
             ContextStatus = message.ContextStatus
         };
+
+        // Handle tool-specific messages
+        if (message is ToolCallMessage toolCall)
+        {
+            uiMessage.IsToolCall = true;
+            uiMessage.ToolName = toolCall.ToolName;
+            uiMessage.ToolArguments = toolCall.ToolParameters;
+        }
+        else if (message is ToolResultMessage toolResult)
+        {
+            uiMessage.IsToolResult = true;
+            uiMessage.ToolName = toolResult.ToolName;
+            uiMessage.ToolResultSuccess = toolResult.IsSuccess;
+            uiMessage.ToolErrorMessage = toolResult.ErrorMessage;
+        }
+
+        return uiMessage;
     }
 }

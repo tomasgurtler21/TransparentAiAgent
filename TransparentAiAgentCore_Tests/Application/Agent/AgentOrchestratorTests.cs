@@ -193,7 +193,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
 
             var events = _transparencyService.GetEvents();
             Assert.IsTrue(events.Any(e => e.AdditionalInfo != null && e.AdditionalInfo.Contains("request to LLM")));
-            Assert.IsTrue(events.Any(e => e.AdditionalInfo != null && e.AdditionalInfo.Contains("response from LLM")));
+            Assert.IsTrue(events.Any(e => e.AdditionalInfo != null && e.AdditionalInfo.Contains("Received response")));
         }
 
         [TestMethod]

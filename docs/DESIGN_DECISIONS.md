@@ -538,11 +538,223 @@ AgentException (base)
 
 ---
 
+### DD-019: Tool Abstraction Layer Design
+
+**Date**: 2025-11-01
+
+**Context**: Phase 5 implementation requires tool integration. Need to support multiple tool sources (MCP, built-in, future protocols) with clean architecture.
+
+**Decision**: Implement **Tool Abstraction Layer** with source-agnostic interfaces
+
+**Architecture**:
+```
+Agent Orchestrator
+    ↓
+Tool Manager (routes by SourceType)
+    ↓
+├─ MCP Executor (IToolExecutor)
+├─ Built-In Executor (IToolExecutor)
+└─ Future Protocol Executors (IToolExecutor)
+```
+
+**Key Abstractions**:
+- `ITool` - Source-agnostic tool definition
+- `IToolExecutor` - Executes tools for specific source type
+- `IToolRegistry` - Discovers and manages tools
+- `IToolManager` - High-level orchestration and routing
+
+**Rationale**:
+- LLM sees unified tool format (simplifies prompting)
+- Clean separation: routing vs execution
+- Easy to add new tool sources without changing core logic
+- Aligns with Clean Architecture (domain abstractions, infrastructure implementations)
+- Better testability (mock different sources)
+
+**Consequences**:
+- More interfaces and abstraction layers
+- Router logic in `ToolManager` (routes by `SourceType` + tool name)
+- Each tool source needs: discovery, registry, executor implementations
+- Easier to extend in future (new protocols, built-in tools, etc.)
+
+---
+
+### DD-020: Tool Routing by Source Type
+
+**Date**: 2025-11-01
+
+**Context**: Need to route tool calls to appropriate executor (MCP, built-in, etc.)
+
+**Decision**: Route based on `ToolSourceType` enum in tool metadata
+
+**Routing Strategy**:
+1. Tool call received from LLM
+2. Lookup tool in registry by name
+3. Check tool's `SourceType` property
+4. Find executor matching that `SourceType`
+5. Delegate execution to that executor
+
+**Source Types** (initial):
+- `MCP` - Tools from MCP servers
+- `BuiltIn` - Native .NET tools (future)
+
+**Rationale**:
+- Simple, explicit routing logic
+- Type-safe with enum
+- Easy to add new source types
+- Clear separation of concerns
+- Metadata-driven (no hardcoded logic)
+
+**Consequences**:
+- Tool metadata must include `SourceType`
+- Executors register themselves with their `SourceType`
+- `ToolManager` maintains executor registry
+- Transparent to LLM (LLM only sees tool names)
+
+---
+
+### DD-021: Sequential vs Parallel Tool Execution
+
+**Date**: 2025-11-01
+
+**Context**: LLM may request multiple tool calls in single response
+
+**Decision**: **Start with sequential execution** in Phase 5, design for parallel execution in future
+
+**Rationale**:
+- Sequential is simpler to implement and debug
+- Easier error handling (fail fast)
+- Refactor to parallel is minimal (~20-30 lines in Agent Orchestrator)
+- Interface design supports both modes without changes
+- Configuration option (`ToolExecutionMode` enum) prepared for future
+
+**Sequential Flow** (Phase 5):
+```csharp
+foreach (var toolCall in toolCalls)
+{
+    var result = await _toolManager.ExecuteToolCallAsync(toolCall);
+    results.Add(result);
+}
+```
+
+**Parallel Flow** (future):
+```csharp
+var tasks = toolCalls.Select(tc => _toolManager.ExecuteToolCallAsync(tc));
+var results = await Task.WhenAll(tasks);
+```
+
+**Consequences**:
+- Multiple tool calls execute one at a time (Phase 5)
+- Longer total execution time for multiple tools
+- Easier to trace execution flow
+- Future: Switch to parallel via configuration setting
+- Refactor scope: Only Agent Orchestrator's loop logic
+
+---
+
+### DD-022: Tool Execution Timeout
+
+**Date**: 2025-11-01
+
+**Context**: Tool execution may hang or take too long
+
+**Decision**: **180 seconds default timeout** for tool execution
+
+**Rationale**:
+- Generous timeout for complex operations (e.g., web searches, large file operations)
+- Prevents indefinite hangs
+- User can configure per deployment
+- Transparency System logs timeout events
+
+**Configuration**:
+```csharp
+public class MCPConfiguration
+{
+    public int ToolExecutionTimeoutSeconds { get; set; } = 180;
+}
+```
+
+**Consequences**:
+- Tool execution canceled after 180 seconds
+- Timeout logged to Transparency System
+- Error result returned to LLM
+- User can adjust in configuration
+
+---
+
+### DD-023: Tool Call Depth Limit
+
+**Date**: 2025-11-01
+
+**Context**: Prevent infinite tool call loops (LLM calls tools repeatedly)
+
+**Decision**: **Maximum tool call depth of 10 levels**
+
+**Rationale**:
+- Prevents infinite loops (e.g., tool calls itself, or circular tool calls)
+- Allows legitimate multi-step operations (10 is generous)
+- Easy to configure if needed
+- Clear error message when limit exceeded
+
+**Configuration**:
+```csharp
+public class MCPConfiguration
+{
+    public int MaxToolCallDepth { get; set; } = 10;
+}
+```
+
+**Implementation**:
+- Agent Orchestrator tracks current depth
+- Increment on each tool call iteration
+- Return error when depth > limit
+- Log to Transparency System
+
+**Consequences**:
+- Complex tool chains limited to 10 steps
+- User receives clear error if limit hit
+- Easily adjustable in configuration
+- Protects system from runaway tool calls
+
+---
+
+### DD-024: Built-In Tools Deferred to Post-Phase 5
+
+**Date**: 2025-11-01
+
+**Context**: Whether to implement built-in tools in Phase 5
+
+**Decision**: **Defer built-in tools to post-Phase 5**, focus on MCP tools only
+
+**Rationale**:
+- Phase 5 scope already substantial (~40-50 hours)
+- MCP tools are sufficient for initial functionality
+- Architecture supports built-in tools (abstraction layer ready)
+- Can add built-in tools incrementally later
+- Integration points documented for future implementation
+
+**Action Items**:
+- Document integration points in `TOOL_INTEGRATION_POINTS.md`
+- Architecture includes `IToolExecutor` abstraction (ready for built-in)
+- `ToolRegistryComposite` aggregates all sources (ready for built-in registry)
+
+**Future Built-In Tools** (examples):
+- `reset_conversation` - Clear conversation history
+- `export_conversation` - Export chat to JSON/Markdown
+- `get_system_info` - Transparency system statistics
+
+**Consequences**:
+- Phase 5 focuses on MCP implementation
+- Built-in tools added in future phase (post-Phase 5, pre-Phase 6)
+- Architecture ready for easy integration
+- Documentation serves as implementation guide
+
+---
+
 ## Pending Decisions
 
 The following decisions will be made during implementation:
 
-- [ ] Specific C# MCP SDK library name and version
+- [ ] Specific C# MCP SDK library name and version (Phase 5)
 - [ ] Specific JSON libraries for serialization
 - [ ] Logging framework details (though using Microsoft.Extensions.Logging)
 - [ ] State persistence format (when implemented)
@@ -554,4 +766,4 @@ The following decisions will be made during implementation:
 
 ---
 
-**Last Updated**: 2025-10-28
+**Last Updated**: 2025-11-01
