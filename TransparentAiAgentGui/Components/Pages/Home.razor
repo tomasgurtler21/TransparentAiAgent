@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using TransparentAiAgentGui.Services
+@using TransparentAiAgentGui.Models
 @using TransparentAiAgentGui.Components.Chat
 @inject IConversationUIService ConversationService
 @implements IDisposable
@@ -33,6 +34,7 @@
         // Subscribe to UI service events
         ConversationService.MessagesChanged += OnMessagesChanged;
         ConversationService.ProcessingStateChanged += OnProcessingStateChanged;
+        ConversationService.StreamingMessageUpdated += OnStreamingMessageUpdated;
     }
 
     private async Task HandleSendMessage(string message)
@@ -41,12 +43,19 @@
 
         try
         {
-            await ConversationService.SendMessageAsync(message);
+            // Use streaming API for real-time response display
+            await ConversationService.SendMessageStreamingAsync(message);
         }
         catch (Exception ex)
         {
             errorMessage = $"Error: {ex.Message}";
         }
+    }
+
+    private void OnStreamingMessageUpdated(object? sender, StreamingMessageUpdate update)
+    {
+        // Trigger UI update when streaming message is updated
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleClearClick()
@@ -69,5 +78,6 @@
     {
         ConversationService.MessagesChanged -= OnMessagesChanged;
         ConversationService.ProcessingStateChanged -= OnProcessingStateChanged;
+        ConversationService.StreamingMessageUpdated -= OnStreamingMessageUpdated;
     }
 }

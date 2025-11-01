@@ -25,6 +25,11 @@ public interface IConversationUIService
     Task ClearConversationAsync();
 
     /// <summary>
+    /// Send user message to agent with streaming response
+    /// </summary>
+    Task SendMessageStreamingAsync(string content);
+
+    /// <summary>
     /// Raised when messages change
     /// </summary>
     event EventHandler? MessagesChanged;
@@ -33,4 +38,9 @@ public interface IConversationUIService
     /// Raised when processing state changes
     /// </summary>
     event EventHandler<bool>? ProcessingStateChanged;
+
+    /// <summary>
+    /// Raised when a streaming message is updated
+    /// </summary>
+    event EventHandler<StreamingMessageUpdate>? StreamingMessageUpdated;
 }
