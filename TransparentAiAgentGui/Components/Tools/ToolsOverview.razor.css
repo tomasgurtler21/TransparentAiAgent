@@ -1,0 +1,50 @@
+.tools-overview {
+    padding: 16px;
+}
+
+.overview-header {
+    margin-bottom: 16px;
+}
+
+.overview-header h3 {
+    margin: 0 0 12px 0;
+}
+
+.overview-controls {
+    display: flex;
+    gap: 12px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.source-filter {
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.overview-stats {
+    padding: 8px 0;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+}
+
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.no-tools {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 48px;
+    color: #6c757d;
+}

@@ -1,0 +1,67 @@
+@using TransparentAiAgentCore.Domain.Transparency
+
+<div class="transparency-event @GetEventClass()">
+    <div class="event-header" @onclick="ToggleExpanded">
+        <span class="event-icon">@GetEventIcon()</span>
+        <span class="event-type">@Event.EventType</span>
+        <span class="event-timestamp">@Event.Timestamp.ToString("HH:mm:ss.fff")</span>
+        @if (!string.IsNullOrEmpty(Event.AdditionalInfo))
+        {
+            <span class="event-context">@Event.AdditionalInfo</span>
+        }
+        <span class="expand-icon">@(IsExpanded ? "▼" : "▶")</span>
+    </div>
+
+    @if (IsExpanded && !string.IsNullOrEmpty(Event.Data))
+    {
+        <div class="event-details">
+            <pre><code>@Event.Data</code></pre>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TransparencyEvent Event { get; set; } = null!;
+
+    private bool IsExpanded { get; set; }
+
+    private void ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+    }
+
+    private string GetEventClass()
+    {
+        return Event.EventType switch
+        {
+            TransparencyEventType.Error => "event-error",
+            TransparencyEventType.ToolCall => "event-tool",
+            TransparencyEventType.ToolResult => "event-tool",
+            TransparencyEventType.AssistantResponse => "event-assistant",
+            TransparencyEventType.UserInput => "event-user",
+            _ => "event-system"
+        };
+    }
+
+    private string GetEventIcon()
+    {
+        return Event.EventType switch
+        {
+            TransparencyEventType.Error => "❌",
+            TransparencyEventType.ToolCall => "🔧",
+            TransparencyEventType.ToolResult => "✅",
+            TransparencyEventType.ToolCallStarted => "🔧",
+            TransparencyEventType.ToolCallCompleted => "✅",
+            TransparencyEventType.ToolCallFailed => "❌",
+            TransparencyEventType.AssistantResponse => "🤖",
+            TransparencyEventType.UserInput => "👤",
+            TransparencyEventType.MCPServerConnected => "🔌",
+            TransparencyEventType.MCPServerDisconnected => "🔌",
+            TransparencyEventType.MCPServerConnecting => "🔌",
+            TransparencyEventType.ToolDiscoveryStarted => "🔍",
+            TransparencyEventType.ToolDiscoveryCompleted => "✅",
+            _ => "ℹ️"
+        };
+    }
+}

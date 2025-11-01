@@ -71,6 +71,18 @@ public class ConversationUIService : IConversationUIService
 
         try
         {
+            // Add user message to UI immediately for instant feedback
+            var userMessage = new UIMessage
+            {
+                Id = Guid.NewGuid(),
+                Role = TransparentAiAgentCore.Domain.Enums.MessageRole.User,
+                Content = content,
+                Timestamp = DateTime.UtcNow,
+                ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext
+            };
+            _messages.Add(userMessage);
+            OnMessagesChanged();
+
             // Create streaming assistant message placeholder
             var streamingMessage = new UIMessage
             {

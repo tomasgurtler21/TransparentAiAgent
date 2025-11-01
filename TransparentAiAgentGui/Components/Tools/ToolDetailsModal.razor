@@ -1,0 +1,103 @@
+@using TransparentAiAgentCore.Domain.Tools
+@using TransparentAiAgentCore.Infrastructure.Tools
+@using System.Text.Json
+
+<div class="modal-backdrop" @onclick="OnClose">
+    <div class="modal-content" @onclick:stopPropagation>
+        <div class="modal-header">
+            <h3>@Tool.Name</h3>
+            <button class="close-button" @onclick="OnClose">×</button>
+        </div>
+
+        <div class="modal-body">
+            @if (!string.IsNullOrEmpty(Tool.Description))
+            {
+                <section>
+                    <h4>Description</h4>
+                    <p>@Tool.Description</p>
+                </section>
+            }
+
+            <section>
+                <h4>Source Type</h4>
+                <p>@Tool.SourceType</p>
+            </section>
+
+            @if (Tool.Metadata != null && Tool.Metadata.Any())
+            {
+                <section>
+                    <h4>Metadata</h4>
+                    <div class="metadata-grid">
+                        @foreach (var item in Tool.Metadata)
+                        {
+                            <div class="metadata-item">
+                                <strong>@item.Key:</strong> @item.Value
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            <section>
+                <h4>Parameters Schema</h4>
+                <pre><code>@FormatJson(Tool.ParametersSchema)</code></pre>
+            </section>
+
+            @if (Stats != null && Stats.CallCount > 0)
+            {
+                <section>
+                    <h4>Usage Statistics</h4>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <strong>Total Calls</strong>
+                            <span class="stat-value">@Stats.CallCount</span>
+                        </div>
+                        <div class="stat-box">
+                            <strong>Success Rate</strong>
+                            <span class="stat-value">@Stats.SuccessRate.ToString("P1")</span>
+                        </div>
+                        <div class="stat-box">
+                            <strong>Avg Duration</strong>
+                            <span class="stat-value">@Stats.AverageDuration.TotalMilliseconds.ToString("F0")ms</span>
+                        </div>
+                        <div class="stat-box">
+                            <strong>Last Used</strong>
+                            <span class="stat-value">@(Stats.LastUsed?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</span>
+                        </div>
+                    </div>
+                </section>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ITool Tool { get; set; } = null!;
+
+    [Parameter]
+    public ToolStats? Stats { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private string FormatJson(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return "{}";
+
+        try
+        {
+            // Try to parse and pretty-print the JSON
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
+            return JsonSerializer.Serialize(jsonElement, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+        catch
+        {
+            // If parsing fails, return as-is
+            return json;
+        }
+    }
+}

@@ -1,0 +1,59 @@
+@using System.Text.Json
+
+<div class="json-display">
+    <div class="json-header" @onclick="ToggleExpanded">
+        <span class="expand-icon">@(IsExpanded ? "▼" : "▶")</span>
+        <span class="json-title">@Title</span>
+    </div>
+
+    @if (IsExpanded)
+    {
+        <div class="json-content">
+            <pre><code>@GetFormattedJson()</code></pre>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Content { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Title { get; set; } = "JSON";
+
+    [Parameter]
+    public bool InitiallyExpanded { get; set; } = false;
+
+    private bool IsExpanded { get; set; }
+
+    protected override void OnInitialized()
+    {
+        IsExpanded = InitiallyExpanded;
+    }
+
+    private void ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+    }
+
+    private string GetFormattedJson()
+    {
+        if (string.IsNullOrEmpty(Content))
+            return "{}";
+
+        try
+        {
+            // Try to parse and pretty-print the JSON
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(Content);
+            return JsonSerializer.Serialize(jsonElement, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+        catch
+        {
+            // If parsing fails, return as-is
+            return Content;
+        }
+    }
+}

@@ -1,0 +1,66 @@
+@using TransparentAiAgentCore.Domain.Tools
+@using TransparentAiAgentCore.Infrastructure.Tools
+
+<div class="tool-card" @onclick="OnClick">
+    <div class="tool-header">
+        <h4 class="tool-name">@Tool.Name</h4>
+        <span class="tool-source">@GetSourceBadge()</span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Tool.Description))
+    {
+        <p class="tool-description">@Tool.Description</p>
+    }
+
+    @if (Stats != null && Stats.CallCount > 0)
+    {
+        <div class="tool-stats">
+            <span class="stat-item">
+                <strong>Calls:</strong> @Stats.CallCount
+            </span>
+            <span class="stat-item">
+                <strong>Success:</strong> @Stats.SuccessRate.ToString("P0")
+            </span>
+            @if (Stats.LastUsed.HasValue)
+            {
+                <span class="stat-item">
+                    <strong>Last used:</strong> @FormatTimeAgo(Stats.LastUsed.Value)
+                </span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ITool Tool { get; set; } = null!;
+
+    [Parameter]
+    public ToolStats? Stats { get; set; }
+
+    [Parameter]
+    public EventCallback<ITool> OnToolClick { get; set; }
+
+    private async Task OnClick()
+    {
+        await OnToolClick.InvokeAsync(Tool);
+    }
+
+    private string GetSourceBadge()
+    {
+        return Tool.SourceType switch
+        {
+            ToolSourceType.MCP => "MCP",
+            _ => "Built-in"
+        };
+    }
+
+    private string FormatTimeAgo(DateTime timestamp)
+    {
+        var diff = DateTime.UtcNow - timestamp;
+        if (diff.TotalSeconds < 60) return $"{(int)diff.TotalSeconds}s ago";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+}

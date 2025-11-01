@@ -39,7 +39,6 @@
 }
 
 .message-content {
-    white-space: pre-wrap;
     word-wrap: break-word;
 }
 
@@ -55,28 +54,6 @@
 .tool-name {
     margin-bottom: 8px;
     font-size: 0.95rem;
-}
-
-.tool-arguments, .tool-result-content {
-    margin-top: 6px;
-}
-
-.tool-arguments summary, .tool-result-content summary {
-    cursor: pointer;
-    font-weight: 600;
-    padding: 4px 8px;
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-    margin-bottom: 6px;
-}
-
-.tool-arguments pre, .tool-result-content pre {
-    background-color: #f5f5f5;
-    padding: 8px;
-    border-radius: 4px;
-    overflow-x: auto;
-    font-size: 0.85rem;
-    margin: 6px 0 0 0;
 }
 
 .tool-error {

@@ -1,0 +1,84 @@
+.transparency-event {
+    border-left: 4px solid #6c757d;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.transparency-event:hover {
+    background-color: #e9ecef;
+}
+
+.event-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.event-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+
+.event-type {
+    font-weight: 600;
+    flex: 1;
+}
+
+.event-timestamp {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.event-context {
+    font-size: 12px;
+    color: #495057;
+    font-style: italic;
+}
+
+.expand-icon {
+    color: #6c757d;
+    font-size: 12px;
+}
+
+.event-details {
+    margin-top: 12px;
+    padding: 12px;
+    background-color: #ffffff;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.event-details pre {
+    margin: 0;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Event type colors */
+.event-error {
+    border-left-color: #dc3545;
+}
+
+.event-tool {
+    border-left-color: #007bff;
+}
+
+.event-assistant {
+    border-left-color: #28a745;
+}
+
+.event-user {
+    border-left-color: #17a2b8;
+}
+
+.event-system {
+    border-left-color: #6c757d;
+}

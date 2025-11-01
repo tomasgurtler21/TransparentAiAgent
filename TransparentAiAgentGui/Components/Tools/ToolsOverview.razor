@@ -1,0 +1,95 @@
+@using TransparentAiAgentCore.Domain.Tools
+@using TransparentAiAgentCore.Infrastructure.Tools
+@inject IToolRegistry ToolRegistry
+@inject IToolUsageStatistics ToolUsageStatistics
+
+<div class="tools-overview">
+    <div class="overview-header">
+        <h3>Available Tools</h3>
+        <div class="overview-controls">
+            <input type="text"
+                   class="search-input"
+                   placeholder="Search tools..."
+                   @bind="SearchQuery"
+                   @bind:event="oninput" />
+
+            <select class="source-filter" @bind="SourceFilter">
+                <option value="">All Sources</option>
+                <option value="MCP">MCP Tools</option>
+                <option value="Built-in">Built-in Tools</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="overview-stats">
+        <span>Total Tools: @AllTools.Count</span>
+        <span>Filtered: @FilteredTools.Count</span>
+    </div>
+
+    <div class="tools-grid">
+        @if (!FilteredTools.Any())
+        {
+            <div class="no-tools">
+                <p>No tools found</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var tool in FilteredTools)
+            {
+                var stats = ToolUsageStatistics.GetToolStats(tool.Name);
+                <ToolCard Tool="tool"
+                         Stats="stats"
+                         OnToolClick="OnToolCardClick" />
+            }
+        }
+    </div>
+</div>
+
+@if (SelectedTool != null)
+{
+    <ToolDetailsModal Tool="SelectedTool"
+                     Stats="ToolUsageStatistics.GetToolStats(SelectedTool.Name)"
+                     OnClose="CloseDetailsModal" />
+}
+
+@code {
+    private List<ITool> AllTools { get; set; } = new();
+    private string SearchQuery { get; set; } = string.Empty;
+    private string SourceFilter { get; set; } = string.Empty;
+    private ITool? SelectedTool { get; set; }
+
+    private List<ITool> FilteredTools =>
+        AllTools
+            .Where(t =>
+                (string.IsNullOrEmpty(SearchQuery) ||
+                 t.Name.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                 t.Description?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true) &&
+                (string.IsNullOrEmpty(SourceFilter) || GetToolSource(t) == SourceFilter))
+            .OrderBy(t => t.Name)
+            .ToList();
+
+    protected override void OnInitialized()
+    {
+        AllTools = ToolRegistry.GetAllTools().ToList();
+    }
+
+    private void OnToolCardClick(ITool tool)
+    {
+        SelectedTool = tool;
+    }
+
+    private void CloseDetailsModal()
+    {
+        SelectedTool = null;
+    }
+
+    private string GetToolSource(ITool tool)
+    {
+        return tool.SourceType switch
+        {
+            ToolSourceType.MCP => "MCP",
+            _ => "Built-in"
+        };
+    }
+}

@@ -1,0 +1,129 @@
+@using TransparentAiAgentCore.Domain.Transparency
+@using TransparentAiAgentCore.Infrastructure.Transparency
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject ITransparencyService TransparencyService
+@inject IJSRuntime JSRuntime
+
+<div class="transparency-viewer">
+    <div class="viewer-header">
+        <h3>Transparency Events</h3>
+        <div class="viewer-controls">
+            <input type="text"
+                   class="search-input"
+                   placeholder="Search events..."
+                   @bind="SearchQuery"
+                   @bind:event="oninput" />
+
+            <select class="filter-select" @bind="SelectedEventType">
+                <option value="">All Events</option>
+                @foreach (var eventType in Enum.GetValues<TransparencyEventType>())
+                {
+                    <option value="@eventType">@eventType</option>
+                }
+            </select>
+
+            <label class="auto-scroll-label">
+                <input type="checkbox" @bind="AutoScroll" />
+                Auto-scroll
+            </label>
+
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ClearEvents">
+                Clear
+            </button>
+        </div>
+    </div>
+
+    <div class="viewer-stats">
+        <span>Total: @Events.Count</span>
+        <span>Filtered: @FilteredEvents.Count</span>
+    </div>
+
+    <div class="viewer-content" @ref="ViewerContentRef">
+        @if (!FilteredEvents.Any())
+        {
+            <div class="no-events">
+                <p>No events to display</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var ev in FilteredEvents)
+            {
+                <TransparencyEventDisplay Event="ev" />
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<TransparencyEvent> Events { get; set; } = new();
+    private string SearchQuery { get; set; } = string.Empty;
+    private string SelectedEventType { get; set; } = string.Empty;
+    private bool AutoScroll { get; set; } = true;
+    private ElementReference ViewerContentRef;
+
+    private List<TransparencyEvent> FilteredEvents =>
+        Events
+            .Where(e =>
+                (string.IsNullOrEmpty(SelectedEventType) || e.EventType.ToString() == SelectedEventType) &&
+                (string.IsNullOrEmpty(SearchQuery) ||
+                 e.EventType.ToString().Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                 e.AdditionalInfo?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true ||
+                 e.Data?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true))
+            .ToList();
+
+    protected override void OnInitialized()
+    {
+        // Load existing events
+        Events = TransparencyService.GetRecentEvents(1000).ToList();
+
+        // Subscribe to new events
+        TransparencyService.EventLogged += OnEventLogged;
+    }
+
+    private async void OnEventLogged(object? sender, TransparencyEvent e)
+    {
+        Events.Add(e);
+
+        // Limit to 1000 events to prevent memory issues
+        if (Events.Count > 1000)
+        {
+            Events.RemoveAt(0);
+        }
+
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+
+            if (AutoScroll)
+            {
+                await ScrollToBottom();
+            }
+        });
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            // Use JS interop to scroll to bottom
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", ViewerContentRef);
+        }
+        catch (Exception)
+        {
+            // Ignore JS errors (e.g., if element not found)
+        }
+    }
+
+    private void ClearEvents()
+    {
+        Events.Clear();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        TransparencyService.EventLogged -= OnEventLogged;
+    }
+}

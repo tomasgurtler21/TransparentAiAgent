@@ -4,6 +4,7 @@ using TransparentAiAgentCore.Domain.LLM;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.Transparency;
 using TransparentAiAgentCore.Infrastructure.Transparency;
+using TransparentAiAgentCore.Infrastructure.Tools;
 
 namespace TransparentAiAgentCore.Application.Tools;
 
@@ -16,15 +17,18 @@ public class ToolManager : IToolManager
     private readonly IToolRegistry _registry;
     private readonly IEnumerable<IToolExecutor> _executors;
     private readonly ITransparencyService _transparencyService;
+    private readonly IToolUsageStatistics _statistics;
 
     public ToolManager(
         IToolRegistry registry,
         IEnumerable<IToolExecutor> executors,
-        ITransparencyService transparencyService)
+        ITransparencyService transparencyService,
+        IToolUsageStatistics statistics)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _executors = executors ?? throw new ArgumentNullException(nameof(executors));
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
+        _statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
     }
 
     /// <summary>
@@ -83,7 +87,10 @@ public class ToolManager : IToolManager
 
             stopwatch.Stop();
 
-            // 5. Log result to Transparency System
+            // 5. Record statistics
+            _statistics.RecordToolCall(tool.Name, result.IsSuccess, stopwatch.Elapsed);
+
+            // 6. Log result to Transparency System
             var eventType = result.IsSuccess
                 ? TransparencyEventType.ToolResult
                 : TransparencyEventType.Error;
@@ -105,6 +112,9 @@ public class ToolManager : IToolManager
         catch (Exception ex)
         {
             stopwatch.Stop();
+
+            // Record statistics for failed call
+            _statistics.RecordToolCall(toolCall.Name, false, stopwatch.Elapsed);
 
             // Log error to Transparency System
             _transparencyService.LogEvent(new TransparencyEvent(

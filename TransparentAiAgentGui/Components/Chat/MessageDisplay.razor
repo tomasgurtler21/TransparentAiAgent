@@ -1,4 +1,5 @@
 @using TransparentAiAgentGui.Models
+@using TransparentAiAgentGui.Components.Chat
 
 <div class="message @Message.CssClass" title="@Message.ContextStatusTooltip">
     <div class="message-header">
@@ -21,10 +22,7 @@
                 <div class="tool-name">Tool: <strong>@Message.ToolName</strong></div>
                 @if (!string.IsNullOrWhiteSpace(Message.ToolArguments))
                 {
-                    <details class="tool-arguments">
-                        <summary>Arguments</summary>
-                        <pre>@Message.ToolArguments</pre>
-                    </details>
+                    <JsonDisplay Content="@Message.ToolArguments" Title="Arguments" InitiallyExpanded="false" />
                 }
             </div>
         }
@@ -36,11 +34,17 @@
                 {
                     <div class="tool-error">Error: @Message.ToolErrorMessage</div>
                 }
-                <details class="tool-result-content" open="@Message.ToolResultSuccess">
-                    <summary>@(Message.ToolResultSuccess ? "Success" : "Failed")</summary>
-                    <pre>@Message.Content</pre>
-                </details>
+                @if (!string.IsNullOrWhiteSpace(Message.Content))
+                {
+                    <JsonDisplay Content="@Message.Content"
+                                Title="@(Message.ToolResultSuccess ? "Success" : "Failed")"
+                                InitiallyExpanded="@Message.ToolResultSuccess" />
+                }
             </div>
+        }
+        else if (Message.Role == TransparentAiAgentCore.Domain.Enums.MessageRole.Assistant)
+        {
+            <MarkdownDisplay Content="@Message.Content" />
         }
         else
         {

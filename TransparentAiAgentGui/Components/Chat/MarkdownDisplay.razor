@@ -1,0 +1,31 @@
+@using Markdig
+
+<div class="markdown-content">
+    @((MarkupString)GetHtml())
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Content { get; set; } = string.Empty;
+
+    private string GetHtml()
+    {
+        if (string.IsNullOrEmpty(Content))
+            return string.Empty;
+
+        try
+        {
+            // Use Markdig pipeline with advanced extensions
+            var pipeline = new MarkdownPipelineBuilder()
+                .UseAdvancedExtensions()
+                .Build();
+
+            return Markdown.ToHtml(Content, pipeline);
+        }
+        catch
+        {
+            // If markdown parsing fails, return escaped content
+            return System.Net.WebUtility.HtmlEncode(Content);
+        }
+    }
+}

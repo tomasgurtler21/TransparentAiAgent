@@ -26,6 +26,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 builder.Services.AddSingleton<ITransparencyService, TransparencyService>();
 builder.Services.AddSingleton<ISerializationService, SerializationService>();
+builder.Services.AddSingleton<IToolUsageStatistics, ToolUsageStatistics>();
 
 // Load configuration
 var configService = new ConfigurationService();
@@ -101,11 +102,15 @@ if (appConfig.Agent.EnableTools && appConfig.MCP.Servers.Count > 0)
             // Create MCP Tool Executor
             var mcpExecutor = new MCPToolExecutor(mcpDiscovery);
 
+            // Get tool usage statistics service
+            var statistics = sp.GetRequiredService<IToolUsageStatistics>();
+
             // Create Tool Manager
             var toolManager = new ToolManager(
                 compositeRegistry,
                 new IToolExecutor[] { mcpExecutor },
-                transparencyService);
+                transparencyService,
+                statistics);
 
             // Discover tools on startup if configured
             if (appConfig.MCP.AutoDiscoverTools)

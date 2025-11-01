@@ -31,6 +31,14 @@ public class TransparencyService : ITransparencyService
         }
     }
 
+    public IEnumerable<TransparencyEvent> GetRecentEvents(int count = 100)
+    {
+        lock (_lock)
+        {
+            return _events.TakeLast(count).ToList();
+        }
+    }
+
     public IEnumerable<TransparencyEvent> GetEventsByType(TransparencyEventType eventType)
     {
         lock (_lock)

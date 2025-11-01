@@ -15,6 +15,11 @@ public interface ITransparencyService
     IEnumerable<TransparencyEvent> GetEvents();
 
     /// <summary>
+    /// Get recent transparency events (limited count)
+    /// </summary>
+    IEnumerable<TransparencyEvent> GetRecentEvents(int count = 100);
+
+    /// <summary>
     /// Get transparency events by type
     /// </summary>
     IEnumerable<TransparencyEvent> GetEventsByType(TransparencyEventType eventType);
