@@ -49,6 +49,17 @@ Abstractions and implementations for LLM providers.
 ### 3. Tool Management Layer (NEW - Phase 5)
 Source-agnostic tool system with routing and execution.
 
+**Domain Models** (Phase 5 Refactoring - Steps 15-22):
+- **ToolCall** → Value object representing a single tool call request
+  - Contains: Id, Name, Arguments
+  - Immutable after creation
+  - Used by AssistantToolCallMessage
+- **AssistantToolCallMessage** → Derived from AssistantMessage
+  - Represents assistant message that requests one or more tool calls
+  - Replaces obsolete ToolCallMessage
+  - Supports multiple parallel tool calls in single message
+  - Follows Azure/OpenAI message structure requirements
+
 **Domain Abstractions**:
 - **ITool Interface** → Tool definition abstraction (name, description, schema, source type)
 - **IToolExecutor Interface** → Tool execution abstraction (executes tools for specific source type)

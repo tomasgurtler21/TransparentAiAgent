@@ -12,8 +12,9 @@ public class AssistantMessage : IMessage
 
     public AssistantMessage(string content)
     {
-        if (string.IsNullOrWhiteSpace(content))
-            throw new ArgumentException("Content cannot be null or whitespace", nameof(content));
+        // Allow empty content (for tool call messages), but not null
+        if (content == null)
+            throw new ArgumentException("Content cannot be null", nameof(content));
 
         Id = Guid.NewGuid();
         Content = content;

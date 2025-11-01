@@ -750,6 +750,66 @@ public class MCPConfiguration
 
 ---
 
+### DD-025: Tool Call Message Architecture Refactoring
+
+**Date**: 2025-11-01
+
+**Context**: Azure OpenAI validation error revealed incorrect tool call message structure
+
+**Problem Discovered**:
+During Phase 5 manual testing with real MCP servers, discovered Azure OpenAI returned HTTP 400 error:
+```
+"Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'."
+```
+
+**Root Cause**:
+- Implementation created **separate messages** for assistant content and tool calls
+- Azure/OpenAI require **single assistant message** containing both content and tool_calls array
+- Original `ToolCallMessage` had wrong role (`Tool` instead of `Assistant`)
+- Design didn't support multiple tool calls in single LLM response
+
+**Decision**: Refactor to use AssistantToolCallMessage derived class
+
+**New Architecture**:
+1. **ToolCall** value object - represents single tool call request (Id, Name, Arguments)
+2. **AssistantToolCallMessage** - derived from AssistantMessage
+   - Contains list of ToolCall objects
+   - Supports multiple parallel tool calls
+   - Follows provider-correct format (single message with tool_calls array)
+3. **Removed**: Old `ToolCallMessage` class (incorrect role, single tool only)
+
+**Implementation Changes** (Steps 15-22):
+- Step 15: Created ToolCall value object
+- Step 16: Created AssistantToolCallMessage derived class
+- Step 17: Updated AgentOrchestrator to create single message with all tool calls
+- Step 18: Updated MessagePipeline pattern matching (derived class before base!)
+- Step 19: Removed obsolete ToolCallMessage
+- Step 20: Updated UIMessage mapping
+- Step 21-22: Updated tests, verified with real MCP server
+
+**Key Design Points**:
+- **Pattern Matching Order Critical**: Must check `AssistantToolCallMessage` BEFORE `AssistantMessage` in switch expressions
+- **Immutability**: ToolCall and tool call list are immutable after creation
+- **Empty Content Allowed**: LLM can request tools without explanation text
+- **Provider Agnostic**: Works with Azure OpenAI, Anthropic, and other providers
+
+**Consequences**:
+- ✅ Fixes Azure OpenAI validation error
+- ✅ Supports multiple parallel tool calls (as per LLM provider specs)
+- ✅ Cleaner architecture (derived class, not separate role)
+- ✅ Type-safe design
+- ✅ All 332 tests passing
+- ⚠️ Breaking change (removed ToolCallMessage)
+- ⚠️ Pattern matching order must be carefully maintained
+
+**Test Coverage**:
+- 20 tests for ToolCall value object
+- 16 tests for AssistantToolCallMessage
+- All AgentOrchestrator and MessagePipeline tests updated
+- Integration ready for real MCP server testing
+
+---
+
 ## Pending Decisions
 
 The following decisions will be made during implementation:
@@ -766,4 +826,4 @@ The following decisions will be made during implementation:
 
 ---
 
-**Last Updated**: 2025-11-01
+**Last Updated**: 2025-11-01 (Added DD-025: Tool Call Message Architecture Refactoring)

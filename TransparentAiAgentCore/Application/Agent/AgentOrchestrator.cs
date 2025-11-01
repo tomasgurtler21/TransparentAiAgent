@@ -104,20 +104,20 @@ public class AgentOrchestrator : IAgentOrchestrator
         // Check if LLM wants to call tools
         if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0 && _toolManager != null)
         {
-            // Add assistant message with text (if any) before tool calls
-            if (!string.IsNullOrWhiteSpace(llmResponse.Content))
-            {
-                var assistantMessage = new AssistantMessage(llmResponse.Content);
-                _conversationManager.AddMessage(assistantMessage);
-            }
+            // Convert LLMToolCall list to ToolCall list
+            var toolCalls = llmResponse.ToolCalls
+                .Select(tc => new ToolCall(tc.Id, tc.Name, tc.Arguments))
+                .ToList();
 
-            // Execute each tool call
+            // Create ONE assistant message with ALL tool calls
+            var assistantToolCallMessage = new AssistantToolCallMessage(
+                llmResponse.Content ?? string.Empty,
+                toolCalls);
+            _conversationManager.AddMessage(assistantToolCallMessage);
+
+            // Execute each tool and add result messages
             foreach (var toolCall in llmResponse.ToolCalls)
             {
-                // Add tool call message to conversation
-                var toolCallMessage = new ToolCallMessage(toolCall.Name, toolCall.Arguments, toolCall.Id);
-                _conversationManager.AddMessage(toolCallMessage);
-
                 // Execute tool
                 var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
 

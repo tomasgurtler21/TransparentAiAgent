@@ -112,8 +112,11 @@ Streaming Handler (buffer, format)
    interface IMessage { }
    class UserMessage : IMessage { }
    class AssistantMessage : IMessage { }
-   class ToolCallMessage : IMessage { }
+   class AssistantToolCallMessage : AssistantMessage { }  // Phase 5 Refactoring: Derived class for tool calls
    class ToolResultMessage : IMessage { }
+
+   // Phase 5: Supporting classes for tool calls
+   class ToolCall { }  // Value object for single tool call (Id, Name, Arguments)
 
    enum MessageContextStatus {
        InContext,

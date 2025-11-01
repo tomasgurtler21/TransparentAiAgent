@@ -18,17 +18,17 @@ public class MessagePipeline : IMessagePipeline
         {
             UserMessage userMsg => new LLMMessage("user", userMsg.Content),
 
+            // CRITICAL: Check derived class BEFORE base class!
+            AssistantToolCallMessage toolCallMsg => new LLMMessage(
+                "assistant",
+                toolCallMsg.Content,
+                toolCallMsg.ToolCalls
+                    .Select(tc => new LLMToolCall(tc.Id, tc.Name, tc.Arguments))
+                    .ToList()),
+
             AssistantMessage assistantMsg => new LLMMessage("assistant", assistantMsg.Content),
 
             SystemMessage systemMsg => new LLMMessage("system", systemMsg.Content),
-
-            ToolCallMessage toolCallMsg => new LLMMessage(
-                "assistant",
-                toolCallMsg.Content,
-                new List<LLMToolCall>
-                {
-                    new LLMToolCall(toolCallMsg.ToolCallId, toolCallMsg.ToolName, toolCallMsg.ToolParameters)
-                }),
 
             ToolResultMessage toolResultMsg => new LLMMessage(
                 "tool",
@@ -52,19 +52,8 @@ public class MessagePipeline : IMessagePipeline
         if (response == null)
             throw new ArgumentNullException(nameof(response));
 
-        // If response has tool calls, create ToolCallMessage
-        if (response.ToolCalls != null && response.ToolCalls.Count > 0)
-        {
-            // For simplicity, handle single tool call
-            // Multi-tool call support can be added later
-            var toolCall = response.ToolCalls[0];
-            return new ToolCallMessage(
-                toolCall.Name,
-                toolCall.Arguments,
-                toolCall.Id);
-        }
-
-        // Otherwise, create AssistantMessage
+        // Note: Tool call messages are now handled directly in AgentOrchestrator
+        // This method is only used for responses without tool calls
         return new AssistantMessage(response.Content);
     }
 }

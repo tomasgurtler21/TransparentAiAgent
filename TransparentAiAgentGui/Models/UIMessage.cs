@@ -72,11 +72,23 @@ public class UIMessage
         };
 
         // Handle tool-specific messages
-        if (message is ToolCallMessage toolCall)
+        if (message is AssistantToolCallMessage toolCallMsg)
         {
             uiMessage.IsToolCall = true;
-            uiMessage.ToolName = toolCall.ToolName;
-            uiMessage.ToolArguments = toolCall.ToolParameters;
+
+            // For UI simplicity, show first tool call details
+            var firstToolCall = toolCallMsg.ToolCalls[0];
+            uiMessage.ToolName = firstToolCall.Name;
+            uiMessage.ToolArguments = firstToolCall.Arguments;
+
+            // If multiple tool calls, indicate in content
+            if (toolCallMsg.ToolCalls.Count > 1)
+            {
+                var contentPrefix = string.IsNullOrEmpty(toolCallMsg.Content)
+                    ? $"[Calling {toolCallMsg.ToolCalls.Count} tools]"
+                    : $"{toolCallMsg.Content}\n[Calling {toolCallMsg.ToolCalls.Count} tools]";
+                uiMessage.Content = contentPrefix;
+            }
         }
         else if (message is ToolResultMessage toolResult)
         {

@@ -1317,3 +1317,503 @@ Before implementation, update these documents with Phase 5 design:
 - Examples: MCP implementation as reference
 
 This document will serve as a guide when implementing built-in tools later.
+
+---
+
+## Phase 5 Refactoring: Tool Call Message Architecture Fix
+
+**Date Added**: 2025-11-01 (Post-Implementation)
+**Status**: Required - Bug Fix
+**Priority**: Critical (blocks real MCP server testing)
+
+### Problem Identified
+
+During manual testing with real MCP servers, discovered Azure OpenAI validation error:
+
+```
+Error: Azure OpenAI request failed: HTTP 400 (Bad Request)
+{
+  "error": {
+    "message": "Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'.",
+    "type": "invalid_request_error",
+    "param": "messages.[1].role",
+    "code": null
+  }
+}
+```
+
+**Root Cause**:
+- Current implementation creates **separate messages** for assistant content and tool calls
+- Azure/OpenAI require **single assistant message** containing both content and tool_calls array
+- Current `ToolCallMessage` has wrong role (`Tool` instead of `Assistant`)
+- Design doesn't support multiple tool calls in single LLM response
+
+**Provider Requirements** (Azure OpenAI, Anthropic Claude):
+1. Assistant message can contain **both content AND multiple tool_calls**
+2. Tool_calls is a **list** (parallel tool calling supported)
+3. Sequence must be: `[AssistantMessage with tool_calls] → [ToolResultMessage 1] → [ToolResultMessage 2] → ...`
+4. No unrelated messages between assistant message and tool results
+
+---
+
+### Refactoring Plan - Step by Step
+
+#### Step 15: Create ToolCall Value Object
+
+**Goal**: Create value object to represent a single tool call request
+
+**File**: `TransparentAiAgentCore/Domain/Models/ToolCall.cs` (new)
+
+**Implementation**:
+```csharp
+namespace TransparentAiAgentCore.Domain.Models;
+
+/// <summary>
+/// Represents a single tool call request from the LLM
+/// This is a value object, NOT an IMessage
+/// </summary>
+public class ToolCall
+{
+    public string Id { get; }
+    public string Name { get; }
+    public string Arguments { get; }
+
+    public ToolCall(string id, string name, string arguments)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            throw new ArgumentException("Tool call ID cannot be null or whitespace", nameof(id));
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Tool name cannot be null or whitespace", nameof(name));
+
+        Id = id;
+        Name = name;
+        Arguments = arguments ?? "{}";
+    }
+}
+```
+
+**Tests**:
+- Constructor validation
+- Properties correctly set
+- Null/empty argument handling
+
+**Time**: ~1 hour
+
+---
+
+#### Step 16: Create AssistantToolCallMessage Derived Class
+
+**Goal**: Create derived message class for assistant messages that include tool call requests
+
+**File**: `TransparentAiAgentCore/Domain/Models/AssistantToolCallMessage.cs` (new)
+
+**Implementation**:
+```csharp
+namespace TransparentAiAgentCore.Domain.Models;
+
+/// <summary>
+/// Represents an assistant message that requests one or more tool calls
+/// Derived from AssistantMessage to support polymorphism
+/// </summary>
+public class AssistantToolCallMessage : AssistantMessage
+{
+    /// <summary>
+    /// Tool calls requested by the assistant
+    /// Always contains at least one tool call
+    /// </summary>
+    public IReadOnlyList<ToolCall> ToolCalls { get; }
+
+    public AssistantToolCallMessage(string content, List<ToolCall> toolCalls)
+        : base(content ?? string.Empty)
+    {
+        if (toolCalls == null || toolCalls.Count == 0)
+            throw new ArgumentException("Must have at least one tool call", nameof(toolCalls));
+
+        ToolCalls = toolCalls.AsReadOnly();
+    }
+}
+```
+
+**Key Design Points**:
+- **Inherits from `AssistantMessage`**: Can be used anywhere AssistantMessage is expected
+- **Non-nullable list**: Can't create with zero tool calls (use base class instead)
+- **ReadOnly list**: Immutable after creation
+- **Supports empty content**: LLM can request tools without explanation text
+
+**Tests**:
+- Constructor validation (requires at least 1 tool call)
+- Inheritance relationship (is-a AssistantMessage)
+- ReadOnly list enforcement
+- Empty content with tool calls allowed
+
+**Time**: ~1-2 hours
+
+---
+
+#### Step 17: Update AgentOrchestrator Tool Handling Logic
+
+**Goal**: Fix tool call message creation to use new architecture
+
+**File**: `TransparentAiAgentCore/Application/Agent/AgentOrchestrator.cs`
+
+**Current (Broken)**:
+```csharp
+if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0 && _toolManager != null)
+{
+    // ❌ Creates separate assistant message
+    if (!string.IsNullOrWhiteSpace(llmResponse.Content))
+    {
+        var assistantMessage = new AssistantMessage(llmResponse.Content);
+        _conversationManager.AddMessage(assistantMessage);
+    }
+
+    // ❌ Creates one ToolCallMessage per tool call (wrong role!)
+    foreach (var toolCall in llmResponse.ToolCalls)
+    {
+        var toolCallMessage = new ToolCallMessage(toolCall.Name, toolCall.Arguments, toolCall.Id);
+        _conversationManager.AddMessage(toolCallMessage);
+
+        var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
+
+        var toolResultMessage = new ToolResultMessage(
+            toolCall.Id,
+            toolCall.Name,
+            toolResult.Content,
+            toolResult.IsSuccess,
+            toolResult.ErrorMessage);
+        _conversationManager.AddMessage(toolResultMessage);
+    }
+
+    return await ProcessWithToolLoopAsync(depth + 1, cancellationToken);
+}
+```
+
+**New (Fixed)**:
+```csharp
+if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0 && _toolManager != null)
+{
+    // ✅ Convert LLMToolCall list to ToolCall list
+    var toolCalls = llmResponse.ToolCalls
+        .Select(tc => new ToolCall(tc.Id, tc.Name, tc.Arguments))
+        .ToList();
+
+    // ✅ Create ONE assistant message with ALL tool calls
+    var assistantToolCallMessage = new AssistantToolCallMessage(
+        llmResponse.Content ?? string.Empty,
+        toolCalls);
+    _conversationManager.AddMessage(assistantToolCallMessage);
+
+    // ✅ Execute each tool and add result messages
+    foreach (var toolCall in llmResponse.ToolCalls)
+    {
+        var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
+
+        var toolResultMessage = new ToolResultMessage(
+            toolCall.Id,
+            toolCall.Name,
+            toolResult.Content,
+            toolResult.IsSuccess,
+            toolResult.ErrorMessage);
+        _conversationManager.AddMessage(toolResultMessage);
+    }
+
+    // Continue tool loop
+    return await ProcessWithToolLoopAsync(depth + 1, cancellationToken);
+}
+```
+
+**Tests**:
+- Single tool call creates one AssistantToolCallMessage + one ToolResultMessage
+- Multiple tool calls create one AssistantToolCallMessage + N ToolResultMessages
+- Content preserved in AssistantToolCallMessage
+- Empty content allowed
+
+**Time**: ~2 hours
+
+---
+
+#### Step 18: Update MessagePipeline Conversion Logic
+
+**Goal**: Fix LLM message conversion to handle new message types
+
+**File**: `TransparentAiAgentCore/Application/Pipeline/MessagePipeline.cs`
+
+**Current (Broken)**:
+```csharp
+public LLMMessage ConvertToLLMMessage(IMessage message)
+{
+    return message switch
+    {
+        UserMessage userMsg => new LLMMessage("user", userMsg.Content),
+
+        AssistantMessage assistantMsg => new LLMMessage("assistant", assistantMsg.Content),
+
+        SystemMessage systemMsg => new LLMMessage("system", systemMsg.Content),
+
+        // ❌ Wrong role, wrong structure
+        ToolCallMessage toolCallMsg => new LLMMessage(
+            "assistant",  // Should be this, but content is wrong
+            toolCallMsg.Content,  // "Tool Call: tool_name(...)" - not what provider expects
+            new List<LLMToolCall> {
+                new LLMToolCall(toolCallMsg.ToolCallId, toolCallMsg.ToolName, toolCallMsg.ToolParameters)
+            }),
+
+        ToolResultMessage toolResultMsg => new LLMMessage(
+            "tool",
+            toolResultMsg.Result,
+            toolResultMsg.ToolCallId),
+
+        _ => throw new AgentException($"Unknown message type: {message.GetType().Name}")
+    };
+}
+```
+
+**New (Fixed)**:
+```csharp
+public LLMMessage ConvertToLLMMessage(IMessage message)
+{
+    return message switch
+    {
+        UserMessage userMsg => new LLMMessage("user", userMsg.Content),
+
+        // ⚠️ CRITICAL: Check derived class BEFORE base class!
+        AssistantToolCallMessage toolCallMsg => new LLMMessage(
+            "assistant",
+            toolCallMsg.Content,
+            toolCallMsg.ToolCalls
+                .Select(tc => new LLMToolCall(tc.Id, tc.Name, tc.Arguments))
+                .ToList()),  // ✅ Converts ALL tool calls
+
+        AssistantMessage assistantMsg => new LLMMessage("assistant", assistantMsg.Content),
+
+        SystemMessage systemMsg => new LLMMessage("system", systemMsg.Content),
+
+        ToolResultMessage toolResultMsg => new LLMMessage(
+            "tool",
+            toolResultMsg.Result,
+            toolResultMsg.ToolCallId),
+
+        _ => throw new AgentException($"Unknown message type: {message.GetType().Name}")
+    };
+}
+```
+
+**Key Points**:
+- **Order matters**: Must check `AssistantToolCallMessage` before `AssistantMessage`
+- **Multiple tool calls**: Converts entire list
+- **Provider-correct format**: Single LLM message with tool_calls array
+
+**Tests**:
+- Regular AssistantMessage converts to LLM message without tool_calls
+- AssistantToolCallMessage with 1 tool call converts correctly
+- AssistantToolCallMessage with N tool calls converts all
+- Pattern matching order (derived before base)
+- Content preserved in both cases
+
+**Time**: ~2 hours
+
+---
+
+#### Step 19: Remove Old ToolCallMessage Class
+
+**Goal**: Delete obsolete ToolCallMessage class
+
+**File to Delete**: `TransparentAiAgentCore/Domain/Models/ToolCallMessage.cs`
+
+**Verification**:
+- Ensure no references remain (except in deprecated tests)
+- Update any documentation referencing ToolCallMessage
+- Clean up any imports
+
+**Tests**:
+- Remove ToolCallMessage-specific tests
+- Verify compilation succeeds
+- All tests pass
+
+**Time**: ~1 hour
+
+---
+
+#### Step 20: Update UIMessage Mapping
+
+**Goal**: Fix UI message mapping for new tool call structure
+
+**File**: `TransparentAiAgentGui/Models/UIMessage.cs`
+
+**Current (Broken)**:
+```csharp
+// Handle tool-specific messages
+if (message is ToolCallMessage toolCall)
+{
+    uiMessage.IsToolCall = true;
+    uiMessage.ToolName = toolCall.ToolName;
+    uiMessage.ToolArguments = toolCall.ToolParameters;
+}
+else if (message is ToolResultMessage toolResult)
+{
+    // ... unchanged
+}
+```
+
+**New (Fixed)**:
+```csharp
+// Handle tool-specific messages
+if (message is AssistantToolCallMessage toolCallMsg)
+{
+    uiMessage.IsToolCall = true;
+
+    // For UI simplicity, show first tool call details
+    // (Multiple tool calls will have multiple UI messages)
+    var firstToolCall = toolCallMsg.ToolCalls[0];
+    uiMessage.ToolName = firstToolCall.Name;
+    uiMessage.ToolArguments = firstToolCall.Arguments;
+
+    // If multiple tool calls, indicate in content
+    if (toolCallMsg.ToolCalls.Count > 1)
+    {
+        uiMessage.Content = $"{toolCallMsg.Content}\n[Calling {toolCallMsg.ToolCalls.Count} tools]";
+    }
+}
+else if (message is ToolResultMessage toolResult)
+{
+    // ... unchanged
+}
+```
+
+**Alternative Approach** (if UI should show all tool calls):
+- Create separate UIMessage for each tool call
+- Or enhance UIMessage to support list of tool calls
+
+**Decision**: Start with showing first tool call + count indicator (simpler UI)
+
+**Tests**:
+- UI message created for AssistantToolCallMessage
+- Tool call properties correctly set
+- Multiple tool calls indicated in UI
+
+**Time**: ~2 hours
+
+---
+
+#### Step 21: Update All Tests
+
+**Goal**: Fix tests for new message architecture
+
+**Files**:
+- `TransparentAiAgentCore_Tests/Application/Pipeline/MessagePipelineTests.cs`
+- `TransparentAiAgentCore_Tests/Application/Agent/AgentOrchestratorTests.cs`
+- `TransparentAiAgentCore_Tests/Application/Tools/ToolManagerTests.cs`
+- Any other tests using ToolCallMessage
+
+**Changes**:
+1. Replace `ToolCallMessage` usage with `AssistantToolCallMessage`
+2. Update pattern matching tests
+3. Update LLM conversion tests
+4. Fix assertions for new structure
+
+**Verification**:
+- All 312+ existing tests still pass
+- New tests for AssistantToolCallMessage
+- New tests for ToolCall value object
+- Pattern matching order tests
+
+**Time**: ~3-4 hours
+
+---
+
+#### Step 22: End-to-End Testing with Real MCP Server
+
+**Goal**: Verify complete fix with real MCP server
+
+**Test Scenarios**:
+
+1. **Single Tool Call**:
+   ```
+   User: "Add a todo: Test tool calling"
+   Expected: Assistant message with 1 tool call → tool result → LLM response
+   ```
+
+2. **Multiple Tool Calls (Parallel)**:
+   ```
+   User: "Add todo 'Task 1' and add todo 'Task 2'"
+   Expected: Assistant message with 2 tool calls → 2 tool results → LLM response
+   ```
+
+3. **Tool Call Loop**:
+   ```
+   User: "Add a todo and then list all todos"
+   Expected: Multiple rounds of tool calling
+   ```
+
+4. **Content + Tool Call**:
+   ```
+   User: "Can you add this to my list: Review code"
+   Expected: Assistant message with text + tool call
+   ```
+
+**Verification**:
+- No Azure OpenAI validation errors
+- Tool calls execute successfully
+- Results returned to LLM correctly
+- UI displays tool calls properly
+- Transparency events logged correctly
+
+**Time**: ~3-4 hours
+
+---
+
+### Refactoring Summary
+
+**Total Additional Steps**: 8 steps (Steps 15-22)
+
+**Time Estimate**: ~17-21 hours
+
+**Impact**:
+- **Domain Layer**: +2 new classes (ToolCall, AssistantToolCallMessage)
+- **Application Layer**: AgentOrchestrator, MessagePipeline updates
+- **Infrastructure Layer**: No changes
+- **Presentation Layer**: UIMessage mapping update
+- **Tests**: Significant updates
+
+**Breaking Changes**:
+- `ToolCallMessage` removed
+- Message pipeline conversion order critical
+- UI message mapping changed
+
+**Benefits**:
+- ✅ Fixes Azure OpenAI validation error
+- ✅ Supports multiple parallel tool calls
+- ✅ Provider-agnostic (works with OpenAI, Anthropic, etc.)
+- ✅ Type-safe design
+- ✅ Clean domain model
+
+---
+
+### Updated Success Criteria
+
+Add to existing Phase 5 success criteria:
+
+#### Refactoring Success Criteria
+
+- [ ] ToolCall value object created and tested
+- [ ] AssistantToolCallMessage properly inherits from AssistantMessage
+- [ ] AgentOrchestrator creates single message for tool calls
+- [ ] MessagePipeline handles derived class before base class
+- [ ] Old ToolCallMessage class removed
+- [ ] UI correctly displays tool calls from new structure
+- [ ] All existing tests updated and passing
+- [ ] **Critical**: Real MCP server test completes without Azure validation errors
+- [ ] Multiple tool calls in single response work correctly
+- [ ] Tool call loop (recursive) works correctly
+
+---
+
+### Dependency on Prior Work
+
+**Prerequisites**:
+- Steps 1-14 must be complete
+- Phase 5 initial implementation functional (except for Azure validation bug)
+
+**Can Start**: Immediately after Step 14 completion
+
+**Blocks**: Real MCP server end-to-end testing until complete

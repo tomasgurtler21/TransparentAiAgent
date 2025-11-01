@@ -67,13 +67,15 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         }
 
         [TestMethod]
-        public void ConvertToLLMMessage_ToolCallMessage_ConvertsCorrectly()
+        public void ConvertToLLMMessage_AssistantToolCallMessage_ConvertsCorrectly()
         {
-            var toolCallMessage = new ToolCallMessage("get_weather", "{\"city\":\"Prague\"}", "call_123");
+            var toolCall = new ToolCall("call_123", "get_weather", "{\"city\":\"Prague\"}");
+            var toolCallMessage = new AssistantToolCallMessage("Calling weather API", new List<ToolCall> { toolCall });
 
             var llmMessage = _pipeline.ConvertToLLMMessage(toolCallMessage);
 
             Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("Calling weather API", llmMessage.Content);
             Assert.IsNotNull(llmMessage.ToolCalls);
             Assert.AreEqual(1, llmMessage.ToolCalls.Count);
             Assert.AreEqual("call_123", llmMessage.ToolCalls[0].Id);
@@ -165,23 +167,8 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             Assert.AreEqual("This is a text response", domainMessage.Content);
         }
 
-        [TestMethod]
-        public void ConvertToDomainMessage_ResponseWithToolCalls_CreatesToolCallMessage()
-        {
-            var toolCalls = new List<LLMToolCall>
-            {
-                new LLMToolCall("call_456", "search", "{\"query\":\"test\"}")
-            };
-            var llmResponse = new LLMResponse("", toolCalls);
-
-            var domainMessage = _pipeline.ConvertToDomainMessage(llmResponse);
-
-            Assert.IsInstanceOfType(domainMessage, typeof(ToolCallMessage));
-            var toolCallMessage = (ToolCallMessage)domainMessage;
-            Assert.AreEqual("call_456", toolCallMessage.ToolCallId);
-            Assert.AreEqual("search", toolCallMessage.ToolName);
-            Assert.AreEqual("{\"query\":\"test\"}", toolCallMessage.ToolParameters);
-        }
+        // Note: ConvertToDomainMessage no longer handles tool calls - they are handled in AgentOrchestrator
+        // This test is removed as the functionality has been refactored
 
         [TestMethod]
         public void ConvertToDomainMessage_PreservesContentCorrectly()
