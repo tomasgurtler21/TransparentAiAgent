@@ -1,0 +1,46 @@
+.message-filter-controls {
+    background-color: var(--surface-color, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.message-filter-controls h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #333);
+}
+
+.filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.filter-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.filter-option:hover {
+    background-color: var(--hover-color, rgba(0, 0, 0, 0.05));
+}
+
+.filter-option input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+.filter-option span {
+    font-size: 13px;
+    color: var(--text-secondary, #666);
+}

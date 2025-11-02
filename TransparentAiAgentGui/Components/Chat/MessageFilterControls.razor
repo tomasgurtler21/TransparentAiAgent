@@ -1,0 +1,92 @@
+@using TransparentAiAgentCore.Domain.UIControl
+@inject IUIControlService UIControlService
+@implements IDisposable
+
+<div class="message-filter-controls">
+    <h4>Message Filters</h4>
+
+    <div class="filter-options">
+        <label class="filter-option">
+            <input type="checkbox"
+                   checked="@_currentFilter.ShowUserMessages"
+                   @onchange="@(e => UpdateFilter(showUserMessages: (bool)e.Value!))" />
+            <span>User Messages</span>
+        </label>
+
+        <label class="filter-option">
+            <input type="checkbox"
+                   checked="@_currentFilter.ShowAssistantMessages"
+                   @onchange="@(e => UpdateFilter(showAssistantMessages: (bool)e.Value!))" />
+            <span>Assistant Messages</span>
+        </label>
+
+        <label class="filter-option">
+            <input type="checkbox"
+                   checked="@_currentFilter.ShowSystemMessages"
+                   @onchange="@(e => UpdateFilter(showSystemMessages: (bool)e.Value!))" />
+            <span>System Messages</span>
+        </label>
+
+        <label class="filter-option">
+            <input type="checkbox"
+                   checked="@_currentFilter.ShowToolCalls"
+                   @onchange="@(e => UpdateFilter(showToolCalls: (bool)e.Value!))" />
+            <span>Tool Calls</span>
+        </label>
+
+        <label class="filter-option">
+            <input type="checkbox"
+                   checked="@_currentFilter.ShowToolResults"
+                   @onchange="@(e => UpdateFilter(showToolResults: (bool)e.Value!))" />
+            <span>Tool Results</span>
+        </label>
+
+        <label class="filter-option">
+            <input type="checkbox"
+                   checked="@_currentFilter.ShowTruncatedMessages"
+                   @onchange="@(e => UpdateFilter(showTruncatedMessages: (bool)e.Value!))" />
+            <span>Truncated Messages</span>
+        </label>
+    </div>
+</div>
+
+@code {
+    private ChatFilterState _currentFilter = new();
+
+    protected override void OnInitialized()
+    {
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _currentFilter = UIControlService.GetCurrentState().ChatFilter;
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _currentFilter = newState.ChatFilter;
+            StateHasChanged();
+        });
+    }
+
+    private void UpdateFilter(
+        bool? showUserMessages = null,
+        bool? showAssistantMessages = null,
+        bool? showSystemMessages = null,
+        bool? showToolCalls = null,
+        bool? showToolResults = null,
+        bool? showTruncatedMessages = null)
+    {
+        UIControlService.UpdateChatFilter(
+            showUserMessages,
+            showAssistantMessages,
+            showSystemMessages,
+            showToolCalls,
+            showToolResults,
+            showTruncatedMessages);
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
+    }
+}

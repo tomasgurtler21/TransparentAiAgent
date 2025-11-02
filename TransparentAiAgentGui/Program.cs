@@ -15,6 +15,8 @@ using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Application.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools.MCP;
+using TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
+using TransparentAiAgentCore.Domain.UIControl;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -92,8 +94,11 @@ if (appConfig.Agent.EnableTools)
             // Create MCP Tool Registry
             var mcpRegistry = new MCPToolRegistry(appConfig.MCP);
 
-            // Create Tool Registry Composite (for now just MCP, can add built-in tools later)
-            var compositeRegistry = new ToolRegistryComposite(new[] { mcpRegistry });
+            // Create Built-in UI Control Tool Registry (Phase 9)
+            var uiControlRegistry = sp.GetRequiredService<BuiltInUIControlToolRegistry>();
+
+            // Create Tool Registry Composite (MCP + UI Control)
+            var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { mcpRegistry, uiControlRegistry });
 
             // Discover tools on startup if configured (and if servers exist)
             if (appConfig.MCP.AutoDiscoverTools && appConfig.MCP.Servers.Count > 0)
@@ -138,13 +143,16 @@ if (appConfig.Agent.EnableTools)
                 // Create MCP Tool Executor
                 var mcpExecutor = new MCPToolExecutor(mcpDiscovery);
 
+                // Create UI Control Tool Executor (Phase 9)
+                var uiControlExecutor = sp.GetRequiredService<UIControlToolExecutor>();
+
                 // Get tool usage statistics service
                 var statistics = sp.GetRequiredService<IToolUsageStatistics>();
 
-                // Create Tool Manager
+                // Create Tool Manager with both MCP and UI Control executors
                 var toolManager = new ToolManager(
                     toolRegistry,
-                    new IToolExecutor[] { mcpExecutor },
+                    new IToolExecutor[] { mcpExecutor, uiControlExecutor },
                     transparencyService,
                     statistics);
 
@@ -210,6 +218,11 @@ else
 
 // Register UI services
 builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
+
+// Register UI Control services (Phase 9 - Teaching Mode)
+builder.Services.AddScoped<IUIControlService, UIControlService>();
+builder.Services.AddSingleton<BuiltInUIControlToolRegistry>();
+builder.Services.AddScoped<UIControlToolExecutor>();
 
 // Register HttpClient for API calls
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5001") });

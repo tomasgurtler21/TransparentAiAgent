@@ -16,5 +16,11 @@ public enum ToolSourceType
     /// </summary>
     BuiltIn,
 
+    /// <summary>
+    /// Built-in UI control tool (Phase 9 - Teaching Mode)
+    /// Used by agents to control UI components dynamically
+    /// </summary>
+    BuiltInUIControl,
+
     // Future: ExternalAPI, CustomProtocol, etc.
 }

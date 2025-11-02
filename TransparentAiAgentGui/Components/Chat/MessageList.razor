@@ -1,7 +1,17 @@
 @using TransparentAiAgentGui.Models
+@using TransparentAiAgentCore.Domain.UIControl
+@using TransparentAiAgentCore.Domain.Enums
+@inject IUIControlService UIControlService
+@implements IDisposable
 
 <div class="message-list">
-    @if (Messages == null || !Messages.Any())
+    @* Show filter controls if visible in UI state *@
+    @if (_uiState.ChatFilter.FilterControlsVisible)
+    {
+        <MessageFilterControls />
+    }
+
+    @if (FilteredMessages == null || !FilteredMessages.Any())
     {
         <div class="empty-state">
             <p>No messages yet. Start a conversation!</p>
@@ -9,7 +19,7 @@
     }
     else
     {
-        @foreach (var message in Messages)
+        @foreach (var message in FilteredMessages)
         {
             <MessageDisplay Message="message" />
         }
@@ -30,4 +40,60 @@
 
     [Parameter]
     public bool IsProcessing { get; set; }
+
+    private UIState _uiState = UIState.DefaultNormalMode();
+
+    private IEnumerable<UIMessage> FilteredMessages =>
+        Messages?.Where(ShouldDisplayMessage) ?? Enumerable.Empty<UIMessage>();
+
+    protected override void OnInitialized()
+    {
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
+    }
+
+    private bool ShouldDisplayMessage(UIMessage message)
+    {
+        var filter = _uiState.ChatFilter;
+
+        // Check role-based filters
+        var showByRole = message.Role switch
+        {
+            MessageRole.User => filter.ShowUserMessages,
+            MessageRole.Assistant => filter.ShowAssistantMessages,
+            MessageRole.System => filter.ShowSystemMessages,
+            _ => true
+        };
+
+        if (!showByRole)
+            return false;
+
+        // Check tool-based filters
+        if (message.IsToolCall && !filter.ShowToolCalls)
+            return false;
+
+        if (message.IsToolResult && !filter.ShowToolResults)
+            return false;
+
+        // Check truncation filter
+        if (!filter.ShowTruncatedMessages &&
+            message.ContextStatus == MessageContextStatus.TruncatedFromContext)
+            return false;
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
+    }
 }

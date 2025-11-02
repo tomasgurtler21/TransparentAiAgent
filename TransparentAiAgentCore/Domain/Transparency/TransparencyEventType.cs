@@ -27,5 +27,8 @@ public enum TransparencyEventType
     MCPServerConnecting,
     MCPServerConnected,
     MCPServerDisconnected,
-    MCPServerConnectionFailed
+    MCPServerConnectionFailed,
+
+    // UI Control events (Phase 9)
+    UIControlAction
 }
