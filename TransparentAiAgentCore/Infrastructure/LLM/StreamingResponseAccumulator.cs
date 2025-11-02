@@ -12,9 +12,15 @@ namespace TransparentAiAgentCore.Infrastructure.LLM;
 public class StreamingResponseAccumulator
 {
     private readonly StringBuilder _contentBuilder = new();
-    private readonly Dictionary<string, StringBuilder> _toolCallArguments = new();
-    private readonly List<LLMToolCall> _toolCalls = new();
+    private readonly Dictionary<string, ToolCallData> _toolCalls = new();
     private string? _finishReason;
+
+    private class ToolCallData
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public StringBuilder Arguments { get; } = new();
+    }
 
     public void AddChunk(StreamingLLMChunk chunk)
     {
@@ -32,12 +38,26 @@ public class StreamingResponseAccumulator
         {
             var toolCall = chunk.ToolCallDelta;
 
-            if (!_toolCallArguments.ContainsKey(toolCall.Id))
+            if (!_toolCalls.ContainsKey(toolCall.Id))
             {
-                _toolCallArguments[toolCall.Id] = new StringBuilder();
+                _toolCalls[toolCall.Id] = new ToolCallData
+                {
+                    Id = toolCall.Id,
+                    Name = toolCall.Name
+                };
             }
 
-            _toolCallArguments[toolCall.Id].Append(toolCall.Arguments);
+            // Update name if provided (it might come in later chunks)
+            if (!string.IsNullOrEmpty(toolCall.Name))
+            {
+                _toolCalls[toolCall.Id].Name = toolCall.Name;
+            }
+
+            // Accumulate arguments
+            if (!string.IsNullOrEmpty(toolCall.Arguments))
+            {
+                _toolCalls[toolCall.Id].Arguments.Append(toolCall.Arguments);
+            }
         }
 
         // Track finish reason
@@ -51,10 +71,10 @@ public class StreamingResponseAccumulator
     {
         // Build complete tool calls
         List<LLMToolCall>? toolCalls = null;
-        if (_toolCallArguments.Count > 0)
+        if (_toolCalls.Count > 0)
         {
-            toolCalls = _toolCallArguments
-                .Select(kvp => new LLMToolCall(kvp.Key, "extracted_name", kvp.Value.ToString()))
+            toolCalls = _toolCalls.Values
+                .Select(tc => new LLMToolCall(tc.Id, tc.Name, tc.Arguments.ToString()))
                 .ToList();
         }
 
@@ -68,7 +88,6 @@ public class StreamingResponseAccumulator
     public void Reset()
     {
         _contentBuilder.Clear();
-        _toolCallArguments.Clear();
         _toolCalls.Clear();
         _finishReason = null;
     }

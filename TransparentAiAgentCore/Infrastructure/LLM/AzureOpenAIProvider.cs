@@ -523,10 +523,16 @@ public class AzureOpenAIProvider : ILLMProvider
         if (update.ToolCallUpdates.Count > 0)
         {
             var toolUpdate = update.ToolCallUpdates[0];
-            toolCallDelta = new LLMToolCall(
-                toolUpdate.ToolCallId ?? string.Empty,
-                toolUpdate.FunctionName ?? string.Empty,
-                toolUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty);
+
+            // Only create tool call delta if we have a valid ID
+            // Azure OpenAI streams tool calls in chunks, early chunks may not have ID yet
+            if (!string.IsNullOrWhiteSpace(toolUpdate.ToolCallId))
+            {
+                toolCallDelta = new LLMToolCall(
+                    toolUpdate.ToolCallId,
+                    toolUpdate.FunctionName ?? string.Empty,
+                    toolUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty);
+            }
         }
 
         return new StreamingLLMChunk(contentDelta, toolCallDelta, isComplete, finishReason);
