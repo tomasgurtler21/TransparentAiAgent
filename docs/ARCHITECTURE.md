@@ -671,13 +671,193 @@ AgentException (base)
 - **HTTP**: `HttpClient` (for LLM providers)
 - **Streaming**: `IAsyncEnumerable`, Server-Sent Events
 
-## Next Steps
+## Interactive UI Control Layer (Phase 9)
 
-1. Review architecture with user
-2. Update DESIGN_DECISIONS.md with choices made
-3. Create component hierarchy in docs
-4. Begin implementation planning (which component first?)
+**Status**: Planning Complete - Ready for Implementation
+
+### Overview
+
+The Interactive UI Control Layer is a **transformational addition** to the transparent agent architecture. It enables agents to dynamically control UI components through built-in tools, creating interactive teaching experiences while maintaining full transparency.
+
+**This is not just another feature—it's a new conceptual layer that transforms the transparent agent into an interactive teaching platform.**
+
+### Architecture Extension
+
+The UI Control Layer adds a cross-cutting concern that bridges the Application and Presentation layers:
+
+```
+┌───────────────────────────────────────────────────────────┐
+│           NEW: Interactive UI Control Layer              │
+│                                                           │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ Built-In UI Control Tools (7 tools)                │  │
+│  │ - ui_control_chat_filter                           │  │
+│  │ - ui_control_filter_visibility                     │  │
+│  │ - ui_get_state                                     │  │
+│  │ - ui_control_transparency_viewer                   │  │
+│  │ - ui_control_tools_panel                           │  │
+│  │ - ui_control_context_indicators                    │  │
+│  │ - ui_control_configuration                         │  │
+│  └────────────────────────────────────────────────────┘  │
+│                            │                              │
+│                            ▼                              │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ UIControlService (scoped per connection)           │  │
+│  │ - Manages UIState (immutable record)               │  │
+│  │ - Fires UIStateChanged events                      │  │
+│  │ - Logs all actions to TransparencyService          │  │
+│  └────────────────────────────────────────────────────┘  │
+│                            │                              │
+│                            ▼                              │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ UI Components (subscribe to events)                │  │
+│  │ - MessageList + MessageFilterControls              │  │
+│  │ - TransparencyViewer                               │  │
+│  │ - ToolsOverview                                    │  │
+│  │ - Configuration                                    │  │
+│  └────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────┘
+              │
+              ▼ (integrates with existing tool system)
+┌───────────────────────────────────────────────────────────┐
+│  Tool System (ToolSourceType.BuiltInUIControl added)     │
+│  - ToolManager routes UI control tools to                │
+│  - UIControlToolExecutor (implements IToolExecutor)       │
+│  - BuiltInUIControlToolRegistry (implements IToolRegistry)│
+└───────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+1. **UIState Model** (Domain Layer)
+   - Immutable record containing all UI component states
+   - `ChatFilterState`, `TransparencyViewerState`, `ToolsPanelState`, etc.
+   - `DefaultNormalMode()` and `DefaultTeachingMode()` factories
+
+2. **IUIControlService** (Domain Interface)
+   - `UIStateChanged` event for real-time updates
+   - Methods for updating each UI component
+   - `SwitchMode(AppMode)` for Teaching/Normal mode switching
+
+3. **UIControlService** (Presentation Implementation)
+   - Scoped per SignalR connection (isolated state per user)
+   - Maintains current `UIState`
+   - Logs all changes to `TransparencyService`
+   - Fires events triggering UI re-renders
+
+4. **Built-In UI Control Tools** (Infrastructure)
+   - 7 tools registered in `BuiltInUIControlToolRegistry`
+   - Appear as MCP tools to agent (same protocol)
+   - Executed locally by `UIControlToolExecutor` (<5ms latency)
+   - Fully transparent (visible in tool calls, transparency logs)
+
+5. **Teaching Mode System**
+   - `AppModeService` manages mode switching
+   - Teaching-specific system prompt
+   - Initial UI state differs by mode
+   - Mode toggle in navigation
+
+### Two Modes of Operation
+
+| Aspect | Normal Mode | Teaching Mode |
+|--------|-------------|---------------|
+| **Target Audience** | Power users, developers | New users, learners |
+| **Initial UI State** | All controls visible | Controls hidden |
+| **System Prompt** | Standard transparent agent | Teaching-focused instructions |
+| **Agent Behavior** | Task-focused, concise | Explanatory, progressive reveal |
+| **Use Case** | Development, debugging | Onboarding, education |
+
+### Data Flow: Agent Controls UI
+
+```
+1. Agent decides to reveal system messages
+   │
+   ▼
+2. Agent calls tool: ui_control_chat_filter(show_system_messages=true)
+   │
+   ▼
+3. ToolManager routes to UIControlToolExecutor
+   │
+   ▼
+4. Executor calls UIControlService.UpdateChatFilter()
+   │
+   ▼
+5. Service updates UIState (immutable, new instance)
+   │
+   ├─→ Logs to TransparencyService
+   ├─→ Fires UIStateChanged event
+   │
+   ▼
+6. MessageList component receives event
+   │
+   ├─→ Calls StateHasChanged()
+   ├─→ Blazor calculates DOM diff
+   │
+   ▼
+7. SignalR pushes updates to browser (~100ms total latency)
+   │
+   ▼
+8. Tool execution returns success to agent
+   │
+   ▼
+9. Agent continues: "See that message at the top? That's my system prompt..."
+```
+
+### Integration with Existing Architecture
+
+**Clean Architecture Preserved:**
+- Domain layer defines `IUIControlService` interface
+- Infrastructure implements tools
+- Presentation implements service and components
+- No changes to core agent orchestration logic
+
+**Tool System Extension:**
+- `ToolSourceType.BuiltInUIControl` added to enum
+- `BuiltInUIControlToolRegistry` added to `ToolRegistryComposite`
+- `UIControlToolExecutor` added to executor factory
+- Agent sees UI control tools alongside MCP tools
+
+**Event-Driven Pattern:**
+- Follows existing patterns from Phase 6 (streaming) and Phase 7 (config)
+- `UIStateChanged` event analogous to `MessagesChanged`, `ProcessingStateChanged`
+- Components subscribe/dispose properly (no memory leaks)
+
+### Design Principles
+
+1. **Transparency First**: All UI control actions logged and visible
+2. **User Agency**: User can always override agent changes
+3. **Progressive Complexity**: Features revealed as needed, not all at once
+4. **Contextual Relevance**: Teach features when they're relevant
+5. **Graceful Degradation**: System works even if UI control fails
+6. **Performance**: <5ms tool execution, <100ms user-perceivable latency
+
+### Future Extensions
+
+- **Teaching Presets**: Quick tours vs. deep dives
+- **Adaptive Teaching**: Track what user has learned
+- **Interactive Challenges**: Gamified learning
+- **Visual Highlights**: Animations and emphasis effects
+- **Multi-Agent Teaching**: Teacher + demonstrator agents
+
+### Documentation
+
+For detailed technical specifications and implementation guidance, see:
+
+- 📘 **[Interactive Teaching Mode Vision](./INTERACTIVE_TEACHING_MODE_VISION.md)** - Philosophy, use cases, user journeys
+- 🏗️ **[Agent UI Control Architecture](./AGENT_UI_CONTROL_ARCHITECTURE.md)** - Complete technical specifications
+- 🗺️ **[Teaching Mode Implementation Roadmap](./TEACHING_MODE_IMPLEMENTATION_ROADMAP.md)** - Phase-by-phase implementation plan
 
 ---
 
-**Last Updated**: 2025-11-01 (Updated for Phase 5 - Tool Integration)
+## Next Steps
+
+1. ✅ Review architecture with user (Phases 1-7 complete)
+2. ✅ Update DESIGN_DECISIONS.md with choices made
+3. ✅ Create component hierarchy in docs
+4. 🚧 Phase 8: Anthropic API integration (in progress)
+5. 📋 Phase 9: Interactive Teaching Mode Layer (planned - documentation complete)
+6. 🔮 Phase 10: Polish & refinement
+
+---
+
+**Last Updated**: 2025-11-02 (Added Interactive UI Control Layer - Phase 9)

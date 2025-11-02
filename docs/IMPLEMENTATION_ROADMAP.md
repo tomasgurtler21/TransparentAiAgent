@@ -326,9 +326,67 @@ This document outlines the proposed implementation order for the TransparentAiAg
 
 ---
 
-### Phase 9: Polish & Refinement
+### Phase 9: Interactive Teaching Mode Layer
 
-**Goal**: Improve user experience and robustness.
+**Status**: 📋 Planning Complete - Ready for Implementation
+
+**Goal**: Build a transformational layer that enables the agent to teach users about transparency features through interactive UI control.
+
+**This is NOT just another incremental phase** - this represents a new conceptual layer on top of the transparent agent foundation.
+
+**Overview**:
+The Interactive Teaching Mode Layer enables agents to:
+- Dynamically control UI components via built-in tools
+- Progressively reveal features in Teaching Mode
+- Teach users about transparency concepts interactively
+- Provide context-aware learning experiences
+
+**Key Components**:
+1. **Built-In UI Control Tools** (7 tools appearing as MCP tools to agent)
+   - `ui_control_chat_filter` - Show/hide message types
+   - `ui_control_filter_visibility` - Reveal filter controls
+   - `ui_get_state` - Query current UI state
+   - `ui_control_transparency_viewer` - Control event logging panel
+   - `ui_control_tools_panel` - Highlight and expand tools
+   - `ui_control_context_indicators` - Teach about context windows
+   - `ui_control_configuration` - Guide through configuration
+
+2. **UI Control Service** - Manages UI state and coordinates updates
+
+3. **Teaching Mode System** - Mode switching, teaching-focused system prompt
+
+4. **Enhanced UI Components** - Filter controls, state-aware rendering
+
+**Sub-Phases**:
+- **Phase 9a**: Core Infrastructure (UIState, Services, Tool Registry) - 2-3 days
+- **Phase 9b**: Chat History Control Tools - 2 days
+- **Phase 9c**: Additional UI Component Tools - 3-4 days
+- **Phase 9d**: Teaching Mode System - 2-3 days
+- **Phase 9e**: Polish & Documentation - 1-2 days
+
+**Deliverables**:
+- All 7 UI control tools functional
+- Agent can control UI components
+- Teaching Mode with progressive reveal
+- Normal Mode with full transparency
+- Comprehensive documentation (Vision, Architecture, Roadmap)
+- >80% test coverage
+- Production-ready teaching system
+
+**Time Estimate**: 10-15 development days
+
+**Detailed Documentation**:
+- 📘 **[Interactive Teaching Mode Vision](./INTERACTIVE_TEACHING_MODE_VISION.md)** - Philosophy, use cases, and user journeys
+- 🏗️ **[Agent UI Control Architecture](./AGENT_UI_CONTROL_ARCHITECTURE.md)** - Technical specifications and designs
+- 🗺️ **[Teaching Mode Implementation Roadmap](./TEACHING_MODE_IMPLEMENTATION_ROADMAP.md)** - Detailed step-by-step implementation guide
+
+**Tests**: Comprehensive unit, component (bUnit), and integration tests following Lean TDD
+
+---
+
+### Phase 10: Polish & Refinement
+
+**Goal**: Improve user experience and robustness across the entire system.
 
 **Improvements**:
 - Better error messages
@@ -337,12 +395,13 @@ This document outlines the proposed implementation order for the TransparentAiAg
 - Token counting (if desired)
 - Performance optimization
 - Documentation updates
-- User guide
+- User guide updates for Teaching Mode
+- Accessibility improvements
 
 **Deliverables**:
-- Production-ready agent
+- Production-ready agent with teaching capabilities
 - Complete documentation
-- User guide
+- Comprehensive user guide
 
 ---
 
@@ -356,9 +415,12 @@ This document outlines the proposed implementation order for the TransparentAiAg
 6. **Enhanced UI**: Real-time streaming and transparency after tools work
 7. **Configuration UI**: Nice-to-have, can be done after core functionality
 8. **Anthropic provider**: Validates architecture works for multiple providers
-9. **Polish last**: Refine once core features are solid
+9. **Teaching Mode Layer**: Transformational layer built on solid foundation (Phases 1-8)
+10. **Polish last**: Refine once core features are solid
 
-**Key Change**: Basic UI moved before MCP (Phase 4 instead of Phase 5) to enable early functional testing and validation.
+**Key Changes**:
+- Basic UI moved before MCP (Phase 4 instead of Phase 5) to enable early functional testing
+- Teaching Mode Layer added as Phase 9 (distinct from incremental phases - new conceptual layer)
 
 ## TDD Approach
 
@@ -399,5 +461,5 @@ All questions resolved:
 
 ---
 
-**Status**: Planning complete - Ready for implementation
-**Last Updated**: 2025-11-01 (Phase 5 updated with approved tool architecture)
+**Status**: Phases 1-7 Complete | Phase 8 (Anthropic API) In Progress | Phase 9 (Teaching Mode) Planned
+**Last Updated**: 2025-11-02 (Phase 9 Teaching Mode Layer added)
