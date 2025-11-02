@@ -82,6 +82,43 @@ public class ConversationManager : IConversationManager
     }
 
     /// <summary>
+    /// Updates the system prompt by replacing the first SystemMessage in conversation.
+    /// If no SystemMessage exists, creates a new one.
+    /// </summary>
+    public void UpdateSystemPrompt(string newPrompt)
+    {
+        if (string.IsNullOrWhiteSpace(newPrompt))
+            throw new ArgumentException("System prompt cannot be null or whitespace", nameof(newPrompt));
+
+        lock (_lock)
+        {
+            // Find first system message
+            var systemMessage = _messages.FirstOrDefault(m => m.Role == MessageRole.System) as SystemMessage;
+
+            if (systemMessage != null)
+            {
+                // Replace existing system message (maintain immutability)
+                var oldContent = systemMessage.Content;
+                var index = _messages.IndexOf(systemMessage);
+                var newSystemMessage = new SystemMessage(newPrompt);
+
+                // Preserve context status from old message
+                newSystemMessage.ContextStatus = systemMessage.ContextStatus;
+
+                _messages[index] = newSystemMessage;
+                LogEvent("SystemPromptUpdated", $"System prompt updated from '{oldContent}' to '{newPrompt}'");
+            }
+            else
+            {
+                // Create new system message at the beginning
+                var newSystemMessage = new SystemMessage(newPrompt);
+                _messages.Insert(0, newSystemMessage);
+                LogEvent("SystemPromptCreated", $"New system prompt created: '{newPrompt}'");
+            }
+        }
+    }
+
+    /// <summary>
     /// Truncate oldest messages if we exceed context window size.
     /// Strategy: Remove oldest InContext messages first, keeping system messages if possible.
     /// </summary>

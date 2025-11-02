@@ -28,4 +28,16 @@ public interface IConfigurationService
     /// Update configuration at runtime
     /// </summary>
     void UpdateConfiguration(AppConfiguration config);
+
+    /// <summary>
+    /// Updates the system prompt in configuration and saves to file.
+    /// Returns the updated configuration.
+    /// </summary>
+    Task<AppConfiguration> UpdateSystemPromptAsync(string newPrompt, string? filePath = null);
+
+    /// <summary>
+    /// Updates LLM parameters in configuration and saves to file.
+    /// Returns the updated configuration.
+    /// </summary>
+    Task<AppConfiguration> UpdateLLMParametersAsync(double temperature, int maxTokens, double topP, string? filePath = null);
 }

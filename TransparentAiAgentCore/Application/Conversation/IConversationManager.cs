@@ -43,6 +43,12 @@ public interface IConversationManager
     void ClearConversation();
 
     /// <summary>
+    /// Updates the system prompt by replacing the first SystemMessage.
+    /// If no SystemMessage exists, creates a new one.
+    /// </summary>
+    void UpdateSystemPrompt(string newPrompt);
+
+    /// <summary>
     /// Event raised when a message's context status changes
     /// </summary>
     event EventHandler<ContextStatusChangedEventArgs>? ContextStatusChanged;

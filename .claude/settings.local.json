@@ -6,7 +6,8 @@
       "Bash(dotnet test:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "Skill(tdd)"
     ]
   },
   "enableAllProjectMcpServers": true,

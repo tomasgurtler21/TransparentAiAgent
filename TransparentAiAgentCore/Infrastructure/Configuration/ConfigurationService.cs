@@ -112,4 +112,49 @@ public class ConfigurationService : IConfigurationService
         config.Validate();
         _currentConfiguration = config;
     }
+
+    public async Task<AppConfiguration> UpdateSystemPromptAsync(string newPrompt, string? filePath = null)
+    {
+        if (string.IsNullOrWhiteSpace(newPrompt))
+            throw new ArgumentException("System prompt cannot be null or whitespace", nameof(newPrompt));
+
+        // Update in-memory configuration
+        _currentConfiguration.Agent.SystemPrompt = newPrompt;
+
+        // Validate the updated configuration
+        _currentConfiguration.Validate();
+
+        // Save to file
+        var targetPath = filePath ?? _defaultConfigPath;
+        await Task.Run(() => SaveConfiguration(_currentConfiguration, targetPath));
+
+        return _currentConfiguration;
+    }
+
+    public async Task<AppConfiguration> UpdateLLMParametersAsync(double temperature, int maxTokens, double topP, string? filePath = null)
+    {
+        // Validate parameters first
+        if (temperature < 0 || temperature > 2)
+            throw new ArgumentOutOfRangeException(nameof(temperature), "Temperature must be between 0 and 2");
+
+        if (maxTokens <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxTokens), "MaxTokens must be greater than 0");
+
+        if (topP < 0 || topP > 1)
+            throw new ArgumentOutOfRangeException(nameof(topP), "TopP must be between 0 and 1");
+
+        // Update in-memory configuration
+        _currentConfiguration.LLM.Temperature = temperature;
+        _currentConfiguration.LLM.MaxTokens = maxTokens;
+        _currentConfiguration.LLM.TopP = topP;
+
+        // Validate the updated configuration
+        _currentConfiguration.Validate();
+
+        // Save to file
+        var targetPath = filePath ?? _defaultConfigPath;
+        await Task.Run(() => SaveConfiguration(_currentConfiguration, targetPath));
+
+        return _currentConfiguration;
+    }
 }

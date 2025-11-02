@@ -416,5 +416,114 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         }
 
         #endregion
+
+        #region UpdateSystemPrompt Tests
+
+        [TestMethod]
+        public void UpdateSystemPrompt_ValidPrompt_UpdatesExistingSystemMessage()
+        {
+            // Arrange
+            var manager = new ConversationManager(10, _transparencyService);
+            var originalPrompt = "Original system prompt";
+            var systemMessage = new SystemMessage(originalPrompt);
+            manager.AddMessage(systemMessage);
+
+            var newPrompt = "Updated system prompt";
+
+            // Act
+            manager.UpdateSystemPrompt(newPrompt);
+
+            // Assert
+            var messages = manager.GetAllMessages();
+            var systemMessages = messages.Where(m => m.Role == MessageRole.System).ToList();
+            Assert.AreEqual(1, systemMessages.Count, "Should have exactly one system message");
+
+            var updatedSystemMessage = systemMessages[0] as SystemMessage;
+            Assert.IsNotNull(updatedSystemMessage);
+            Assert.AreEqual(newPrompt, updatedSystemMessage.Content);
+        }
+
+        [TestMethod]
+        public void UpdateSystemPrompt_NullPrompt_ThrowsArgumentException()
+        {
+            // Arrange
+            var manager = new ConversationManager(10, _transparencyService);
+
+            // Act & Assert
+            Assert.ThrowsException<ArgumentException>(() =>
+                manager.UpdateSystemPrompt(null!));
+        }
+
+        [TestMethod]
+        public void UpdateSystemPrompt_EmptyPrompt_ThrowsArgumentException()
+        {
+            // Arrange
+            var manager = new ConversationManager(10, _transparencyService);
+
+            // Act & Assert
+            Assert.ThrowsException<ArgumentException>(() =>
+                manager.UpdateSystemPrompt(string.Empty));
+        }
+
+        [TestMethod]
+        public void UpdateSystemPrompt_WhitespacePrompt_ThrowsArgumentException()
+        {
+            // Arrange
+            var manager = new ConversationManager(10, _transparencyService);
+
+            // Act & Assert
+            Assert.ThrowsException<ArgumentException>(() =>
+                manager.UpdateSystemPrompt("   "));
+        }
+
+        [TestMethod]
+        public void UpdateSystemPrompt_NoExistingSystemMessage_CreatesNewSystemMessage()
+        {
+            // Arrange
+            var manager = new ConversationManager(10, _transparencyService);
+            var newPrompt = "New system prompt";
+
+            // Act
+            manager.UpdateSystemPrompt(newPrompt);
+
+            // Assert
+            var messages = manager.GetAllMessages();
+            var systemMessages = messages.Where(m => m.Role == MessageRole.System).ToList();
+            Assert.AreEqual(1, systemMessages.Count, "Should create a new system message");
+
+            var systemMessage = systemMessages[0] as SystemMessage;
+            Assert.IsNotNull(systemMessage);
+            Assert.AreEqual(newPrompt, systemMessage.Content);
+        }
+
+        [TestMethod]
+        public void UpdateSystemPrompt_MultipleSystemMessages_UpdatesFirstOne()
+        {
+            // Arrange
+            var manager = new ConversationManager(10, _transparencyService);
+            manager.AddMessage(new SystemMessage("First system prompt"));
+            manager.AddMessage(new UserMessage("User message"));
+            manager.AddMessage(new SystemMessage("Second system prompt"));
+
+            var newPrompt = "Updated system prompt";
+
+            // Act
+            manager.UpdateSystemPrompt(newPrompt);
+
+            // Assert
+            var messages = manager.GetAllMessages();
+            var systemMessages = messages.Where(m => m.Role == MessageRole.System).ToList();
+            Assert.AreEqual(2, systemMessages.Count, "Should still have two system messages");
+
+            var firstSystemMessage = systemMessages[0] as SystemMessage;
+            Assert.IsNotNull(firstSystemMessage);
+            Assert.AreEqual(newPrompt, firstSystemMessage.Content, "First system message should be updated");
+
+            var secondSystemMessage = systemMessages[1] as SystemMessage;
+            Assert.IsNotNull(secondSystemMessage);
+            Assert.AreEqual("Second system prompt", secondSystemMessage.Content, "Second system message should remain unchanged");
+        }
+
+        #endregion
     }
 }
