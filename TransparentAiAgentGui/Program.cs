@@ -220,9 +220,9 @@ else
 builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
 
 // Register UI Control services (Phase 9 - Teaching Mode)
-builder.Services.AddScoped<IUIControlService, UIControlService>();
+builder.Services.AddScoped<IUIControlService, UIControlService>();  // Scoped per SignalR connection
 builder.Services.AddSingleton<BuiltInUIControlToolRegistry>();
-builder.Services.AddScoped<UIControlToolExecutor>();
+builder.Services.AddSingleton<UIControlToolExecutor>();  // Singleton - uses IServiceProvider for lazy resolution
 
 // Register HttpClient for API calls
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5001") });

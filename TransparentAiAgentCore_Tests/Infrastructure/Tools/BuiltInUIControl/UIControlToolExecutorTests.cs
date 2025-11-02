@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using TransparentAiAgentCore.Domain.Tools;
@@ -16,6 +17,7 @@ public class UIControlToolExecutorTests
 {
     private Mock<IUIControlService> _mockUIControlService = null!;
     private Mock<ILogger<UIControlToolExecutor>> _mockLogger = null!;
+    private Mock<IServiceProvider> _mockServiceProvider = null!;
     private UIControlToolExecutor _executor = null!;
 
     [TestInitialize]
@@ -23,7 +25,14 @@ public class UIControlToolExecutorTests
     {
         _mockUIControlService = new Mock<IUIControlService>();
         _mockLogger = new Mock<ILogger<UIControlToolExecutor>>();
-        _executor = new UIControlToolExecutor(_mockUIControlService.Object, _mockLogger.Object);
+        _mockServiceProvider = new Mock<IServiceProvider>();
+
+        // Setup service provider to return mock UI control service
+        _mockServiceProvider
+            .Setup(sp => sp.GetService(typeof(IUIControlService)))
+            .Returns(_mockUIControlService.Object);
+
+        _executor = new UIControlToolExecutor(_mockServiceProvider.Object, _mockLogger.Object);
     }
 
     [TestMethod]

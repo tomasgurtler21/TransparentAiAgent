@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.UIControl;
@@ -9,17 +10,18 @@ namespace TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
 /// <summary>
 /// Executes built-in UI control tools by routing to IUIControlService.
 /// Parses JSON arguments and converts Result&lt;UIState&gt; to ToolExecutionResult.
+/// Uses IServiceProvider to resolve scoped IUIControlService at execution time.
 /// </summary>
 public class UIControlToolExecutor : IToolExecutor
 {
-    private readonly IUIControlService _uiControlService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UIControlToolExecutor> _logger;
 
     public UIControlToolExecutor(
-        IUIControlService uiControlService,
+        IServiceProvider serviceProvider,
         ILogger<UIControlToolExecutor> logger)
     {
-        _uiControlService = uiControlService ?? throw new ArgumentNullException(nameof(uiControlService));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -30,6 +32,7 @@ public class UIControlToolExecutor : IToolExecutor
 
     /// <summary>
     /// Executes a UI control tool by routing to the appropriate IUIControlService method.
+    /// Resolves IUIControlService from current scope to support per-connection UI state.
     /// </summary>
     public Task<ToolExecutionResult> ExecuteAsync(
         ITool tool,
@@ -41,6 +44,9 @@ public class UIControlToolExecutor : IToolExecutor
         try
         {
             _logger.LogDebug("Executing UI control tool: {ToolName}", tool.Name);
+
+            // Resolve IUIControlService from current scope (per SignalR connection)
+            var uiControlService = _serviceProvider.GetRequiredService<IUIControlService>();
 
             // Parse arguments
             JsonDocument argsDoc;
@@ -59,13 +65,13 @@ public class UIControlToolExecutor : IToolExecutor
             // Route to appropriate handler
             Result<UIState> result = tool.Name.ToLowerInvariant() switch
             {
-                "ui_control_chat_filter" => ExecuteChatFilterTool(argsDoc),
-                "ui_control_filter_visibility" => ExecuteFilterVisibilityTool(argsDoc),
-                "ui_get_state" => ExecuteGetStateTool(argsDoc),
-                "ui_control_transparency_viewer" => ExecuteTransparencyViewerTool(argsDoc),
-                "ui_control_tools_panel" => ExecuteToolsPanelTool(argsDoc),
-                "ui_control_context_indicators" => ExecuteContextIndicatorsTool(argsDoc),
-                "ui_control_configuration" => ExecuteConfigurationTool(argsDoc),
+                "ui_control_chat_filter" => ExecuteChatFilterTool(uiControlService, argsDoc),
+                "ui_control_filter_visibility" => ExecuteFilterVisibilityTool(uiControlService, argsDoc),
+                "ui_get_state" => ExecuteGetStateTool(uiControlService, argsDoc),
+                "ui_control_transparency_viewer" => ExecuteTransparencyViewerTool(uiControlService, argsDoc),
+                "ui_control_tools_panel" => ExecuteToolsPanelTool(uiControlService, argsDoc),
+                "ui_control_context_indicators" => ExecuteContextIndicatorsTool(uiControlService, argsDoc),
+                "ui_control_configuration" => ExecuteConfigurationTool(uiControlService, argsDoc),
                 _ => Result<UIState>.Fail($"Unknown tool: {tool.Name}")
             };
 
@@ -100,11 +106,11 @@ public class UIControlToolExecutor : IToolExecutor
         }
     }
 
-    private Result<UIState> ExecuteChatFilterTool(JsonDocument args)
+    private Result<UIState> ExecuteChatFilterTool(IUIControlService uiControlService, JsonDocument args)
     {
         var root = args.RootElement;
 
-        return _uiControlService.UpdateChatFilter(
+        return uiControlService.UpdateChatFilter(
             showUserMessages: GetBoolProperty(root, "show_user_messages"),
             showAssistantMessages: GetBoolProperty(root, "show_assistant_messages"),
             showSystemMessages: GetBoolProperty(root, "show_system_messages"),
@@ -113,18 +119,18 @@ public class UIControlToolExecutor : IToolExecutor
             showTruncatedMessages: GetBoolProperty(root, "show_truncated_messages"));
     }
 
-    private Result<UIState> ExecuteFilterVisibilityTool(JsonDocument args)
+    private Result<UIState> ExecuteFilterVisibilityTool(IUIControlService uiControlService, JsonDocument args)
     {
         var root = args.RootElement;
         var visible = GetBoolProperty(root, "visible") ?? true;
 
-        return _uiControlService.UpdateFilterControlVisibility(visible);
+        return uiControlService.UpdateFilterControlVisibility(visible);
     }
 
-    private Result<UIState> ExecuteGetStateTool(JsonDocument args)
+    private Result<UIState> ExecuteGetStateTool(IUIControlService uiControlService, JsonDocument args)
     {
         // ui_get_state doesn't modify state, just returns current state
-        var currentState = _uiControlService.GetCurrentState();
+        var currentState = uiControlService.GetCurrentState();
 
         var root = args.RootElement;
         var component = GetStringProperty(root, "component");
@@ -173,44 +179,44 @@ public class UIControlToolExecutor : IToolExecutor
         return Result<UIState>.Ok(stateToReturn);
     }
 
-    private Result<UIState> ExecuteTransparencyViewerTool(JsonDocument args)
+    private Result<UIState> ExecuteTransparencyViewerTool(IUIControlService uiControlService, JsonDocument args)
     {
         var root = args.RootElement;
 
         var eventTypeFilters = GetStringArrayProperty(root, "event_type_filters");
 
-        return _uiControlService.UpdateTransparencyViewer(
+        return uiControlService.UpdateTransparencyViewer(
             visible: GetBoolProperty(root, "visible"),
             eventTypeFilters: eventTypeFilters,
             showTimestamps: GetBoolProperty(root, "show_timestamps"));
     }
 
-    private Result<UIState> ExecuteToolsPanelTool(JsonDocument args)
+    private Result<UIState> ExecuteToolsPanelTool(IUIControlService uiControlService, JsonDocument args)
     {
         var root = args.RootElement;
 
         // Handle expand/collapse by building the expanded tools list
         // This is simplified - a full implementation might track expand/collapse operations
-        return _uiControlService.UpdateToolsPanel(
+        return uiControlService.UpdateToolsPanel(
             visible: GetBoolProperty(root, "visible"),
             expandedTools: null, // Could parse expand_tool/collapse_tool to build this
             highlightedTool: GetStringProperty(root, "highlight_tool"));
     }
 
-    private Result<UIState> ExecuteContextIndicatorsTool(JsonDocument args)
+    private Result<UIState> ExecuteContextIndicatorsTool(IUIControlService uiControlService, JsonDocument args)
     {
         var root = args.RootElement;
 
-        return _uiControlService.UpdateContextIndicators(
+        return uiControlService.UpdateContextIndicators(
             visible: GetBoolProperty(root, "visible"),
             highlighted: GetBoolProperty(root, "highlighted"));
     }
 
-    private Result<UIState> ExecuteConfigurationTool(JsonDocument args)
+    private Result<UIState> ExecuteConfigurationTool(IUIControlService uiControlService, JsonDocument args)
     {
         var root = args.RootElement;
 
-        return _uiControlService.UpdateConfigurationPage(
+        return uiControlService.UpdateConfigurationPage(
             navigate: GetBoolProperty(root, "navigate"),
             highlightSection: GetStringProperty(root, "highlight_section"));
     }
