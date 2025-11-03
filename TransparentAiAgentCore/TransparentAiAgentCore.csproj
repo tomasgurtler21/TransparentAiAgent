@@ -13,4 +13,8 @@
     <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\anthropic-sdk-csharp\src\Anthropic.Client\Anthropic.Client.csproj" />
+  </ItemGroup>
+
 </Project>

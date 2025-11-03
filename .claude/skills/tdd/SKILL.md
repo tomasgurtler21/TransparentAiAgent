@@ -58,14 +58,42 @@ Skip this skill for:
 
 ## TDD Workflow: Red → Green → Refactor
 
+### ⚠️ CRITICAL: What RED Really Means
+
+**RED DOES NOT MEAN "COMPILATION ERROR"**
+
+The RED phase is when:
+- ✅ Test code **compiles successfully**
+- ✅ Test **runs and executes**
+- ✅ Test **fails** due to missing/incorrect implementation logic
+- ✅ Failure message shows **exactly what's missing**
+
+**RED means the test RUNS and FAILS, not that it doesn't compile.**
+
+If tests don't compile, you're still in the "setup" phase, NOT the RED phase.
+
 ### Step 1: RED (Write Failing Test)
 
 1. **Write test FIRST** before any implementation
-2. **Run test** - it MUST fail (compilation error or assertion failure)
-3. **Verify failure reason** - ensure it's failing for the right reason
+2. **Add MINIMAL implementation stubs** to make test compile (empty methods, NotImplementedException, etc.)
+3. **Run test** - it MUST **execute and fail** with assertion/logic error
+4. **INVESTIGATE failure** - verify it's failing for the RIGHT reason
+5. **STOP if test passes unexpectedly** - investigate WHY it passed
 
-```bash
-dotnet test --filter "FullyQualifiedName~YourTestClass"
+**Example RED Phase:**
+```csharp
+// Test compiles, runs, and FAILS with "Expected ArgumentNullException but none was thrown"
+[TestMethod]
+public void Constructor_NullParameter_ThrowsArgumentNullException()
+{
+    Assert.ThrowsException<ArgumentNullException>(() => new MyClass(null));
+}
+
+// Minimal stub to make test compile (not yet implementing validation)
+public class MyClass
+{
+    public MyClass(string param) { } // No validation yet - test will FAIL
+}
 ```
 
 ### Step 2: GREEN (Make Test Pass)
@@ -73,12 +101,45 @@ dotnet test --filter "FullyQualifiedName~YourTestClass"
 1. **Write MINIMUM code** to make test pass
 2. **No extra features** - only what the test requires
 3. **Run test** - it MUST pass
+4. **INVESTIGATE if test fails** - understand why and fix
+
+**Example GREEN Phase:**
+```csharp
+public class MyClass
+{
+    public MyClass(string param)
+    {
+        if (param == null) throw new ArgumentNullException(nameof(param)); // Now test PASSES
+    }
+}
+```
 
 ### Step 3: REFACTOR (Improve Code)
 
 1. **Improve code quality** while keeping tests green
 2. **Run tests** after each refactoring
 3. **Don't add features** - only improve existing code
+
+---
+
+## 🚨 CRITICAL DISCIPLINE: Investigate Unexpected Results
+
+**ALWAYS STOP AND INVESTIGATE WHEN:**
+
+1. ❌ **Test passes when you expected it to fail**
+   - WHY did it pass? Is the test wrong? Is implementation already there?
+   - DO NOT continue until you understand
+
+2. ❌ **Test fails for the WRONG reason**
+   - Expected: "ArgumentNullException not thrown"
+   - Actual: "NullReferenceException thrown"
+   - This means implementation has a BUG, not just missing logic
+
+3. ❌ **Test fails after refactoring**
+   - You broke something - find it and fix it
+   - DO NOT add new features until tests are green again
+
+**NEVER ignore unexpected test results. NEVER continue with lazy assumptions.**
 
 ---
 
@@ -207,22 +268,43 @@ dotnet test --filter "FullyQualifiedName~Domain.Exceptions"
 
 ## Common Pitfalls & Solutions
 
-### Pitfall 1: Testing Trivial Properties
+### Pitfall 1: Confusing "Won't Compile" with RED Phase
+
+❌ **Bad**: Test doesn't compile → "It's RED, let me implement"
+✅ **Good**: Add minimal stubs to compile → Run test → See it FAIL → Then implement
+
+**Why it matters**: RED phase teaches you what's missing. Compilation errors don't teach anything.
+
+### Pitfall 2: Ignoring Unexpected Test Passes
+
+❌ **Bad**: Test passes when it shouldn't → "Great, moving on!"
+✅ **Good**: Test passes unexpectedly → STOP → Investigate → Understand WHY
+
+**Why it matters**: Unexpected passes mean test is wrong or implementation already exists. Continuing blindly leads to false confidence.
+
+### Pitfall 3: Not Verifying Failure Reason
+
+❌ **Bad**: Test fails → "Good, it's RED" → Implement
+✅ **Good**: Test fails → Check failure message → Verify it's the RIGHT failure → Then implement
+
+**Example:**
+```
+Expected: ArgumentNullException not thrown
+Actual: NullReferenceException on line 15
+```
+This is NOT proper RED - there's a bug, not just missing logic!
+
+### Pitfall 4: Testing Trivial Properties
 
 ❌ **Bad**: Testing property getters with no logic
 ✅ **Good**: Skip these tests, focus on meaningful behavior
 
-### Pitfall 2: Testing Multiple Things in One Test
+### Pitfall 5: Testing Multiple Things in One Test
 
 ❌ **Bad**: One giant test that verifies everything
 ✅ **Good**: Separate tests for each meaningful behavior
 
-### Pitfall 3: Not Running Tests Before Implementation
-
-❌ **Bad**: Write implementation first, then tests (not TDD)
-✅ **Good**: Always write tests first, see them fail (RED), then implement (GREEN)
-
-### Pitfall 4: Over-Complicated Test Setup
+### Pitfall 6: Over-Complicated Test Setup
 
 ❌ **Bad**: Complex factories, builders, and setup code
 ✅ **Good**: Direct construction and minimal setup

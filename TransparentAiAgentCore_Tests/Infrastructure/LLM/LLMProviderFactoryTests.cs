@@ -155,16 +155,58 @@ public class LLMProviderFactoryTests
     }
 
     [TestMethod]
-    public void CreateProvider_Anthropic_ThrowsNotImplementedException()
+    public void CreateProvider_Anthropic_ReturnsAnthropicProvider()
     {
         // Arrange
-        var config = CreateValidConfiguration();
+        var config = CreateAnthropicConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        // Act
+        var provider = factory.CreateProvider("Anthropic");
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.AreEqual("Anthropic", provider.ProviderName);
+        Assert.IsInstanceOfType(provider, typeof(AnthropicProvider));
+    }
+
+    [TestMethod]
+    public void CreateProvider_AnthropicCaseInsensitive_ReturnsCorrectProvider()
+    {
+        // Arrange
+        var config = CreateAnthropicConfiguration();
         var authProvider = new ConfigurationAuthenticationProvider(config);
         var transparencyService = new TransparencyService();
         var factory = new LLMProviderFactory(authProvider, transparencyService, config);
 
         // Act & Assert
-        Assert.ThrowsException<NotImplementedException>(() => factory.CreateProvider("Anthropic"));
+        var provider1 = factory.CreateProvider("anthropic");
+        Assert.AreEqual("Anthropic", provider1.ProviderName);
+
+        var provider2 = factory.CreateProvider("ANTHROPIC");
+        Assert.AreEqual("Anthropic", provider2.ProviderName);
+    }
+
+    [TestMethod]
+    public void CreateProvider_AnthropicNotConfigured_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new AppConfiguration
+        {
+            LLM = new LLMConfiguration
+            {
+                Provider = "Anthropic",
+                Anthropic = null // Not configured
+            }
+        };
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => factory.CreateProvider("Anthropic"));
     }
 
     [TestMethod]
@@ -213,6 +255,22 @@ public class LLMProviderFactoryTests
                     ApiKey = "test-azure-key",
                     Endpoint = "https://test.openai.azure.com",
                     DeploymentName = "gpt-4"
+                }
+            }
+        };
+    }
+
+    private AppConfiguration CreateAnthropicConfiguration()
+    {
+        return new AppConfiguration
+        {
+            LLM = new LLMConfiguration
+            {
+                Provider = "Anthropic",
+                Anthropic = new AnthropicConfiguration
+                {
+                    ApiKey = "sk-ant-test-key-12345",
+                    Model = "claude-3-5-sonnet-20241022"
                 }
             }
         };

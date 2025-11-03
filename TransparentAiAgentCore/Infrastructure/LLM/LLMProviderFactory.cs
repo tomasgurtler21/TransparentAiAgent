@@ -39,7 +39,7 @@ public class LLMProviderFactory
         return providerName.ToLowerInvariant() switch
         {
             "azureopenai" => CreateAzureOpenAIProvider(),
-            "anthropic" => throw new NotImplementedException("Anthropic provider will be implemented in Phase 8"),
+            "anthropic" => CreateAnthropicProvider(),
             _ => throw new ConfigurationException($"Unknown LLM provider: {providerName}")
         };
     }
@@ -52,6 +52,18 @@ public class LLMProviderFactory
         return new AzureOpenAIProvider(
             _authProvider,
             _configuration.LLM.AzureOpenAI.DeploymentName,
+            _transparencyService,
+            _configuration);
+    }
+
+    private ILLMProvider CreateAnthropicProvider()
+    {
+        if (_configuration.LLM.Anthropic == null)
+            throw new ConfigurationException("Anthropic configuration is missing");
+
+        return new AnthropicProvider(
+            _authProvider,
+            _configuration.LLM.Anthropic.Model,
             _transparencyService,
             _configuration);
     }
