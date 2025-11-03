@@ -3,7 +3,8 @@ using System;
 namespace TransparentAiAgentCore.Domain.LLM;
 
 /// <summary>
-/// Represents a tool call request from the LLM
+/// Represents a tool call request from the LLM.
+/// Can also represent a streaming delta where name/arguments may be incomplete.
 /// </summary>
 public class LLMToolCall
 {
@@ -15,8 +16,10 @@ public class LLMToolCall
     {
         if (string.IsNullOrWhiteSpace(id))
             throw new ArgumentException("Tool call ID cannot be null or whitespace", nameof(id));
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Tool name cannot be null or whitespace", nameof(name));
+
+        // Allow empty name for streaming deltas (name may arrive in later chunks)
+        if (name == null)
+            throw new ArgumentException("Tool name cannot be null", nameof(name));
 
         Id = id;
         Name = name;

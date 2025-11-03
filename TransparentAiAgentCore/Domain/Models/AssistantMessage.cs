@@ -12,7 +12,7 @@ public class AssistantMessage : IMessage
 
     public AssistantMessage(string content)
     {
-        // Allow empty content (for tool call messages), but not null
+        // Allow empty content, but not null (empty content is valid for responses that only contain tool calls)
         if (content == null)
             throw new ArgumentException("Content cannot be null", nameof(content));
 

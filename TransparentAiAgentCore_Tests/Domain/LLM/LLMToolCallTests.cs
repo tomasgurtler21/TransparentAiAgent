@@ -36,17 +36,26 @@ public class LLMToolCallTests
     }
 
     [TestMethod]
-    public void LLMToolCall_EmptyName_ThrowsArgumentException()
+    public void LLMToolCall_EmptyName_AllowsForStreamingDeltas()
     {
-        // Arrange, Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => new LLMToolCall("call-1", "", "{}"));
+        // Arrange, Act - Empty name is valid for streaming deltas
+        var toolCall = new LLMToolCall("call-1", "", "{}");
+
+        // Assert
+        Assert.AreEqual("call-1", toolCall.Id);
+        Assert.AreEqual("", toolCall.Name);
+        Assert.AreEqual("{}", toolCall.Arguments);
     }
 
     [TestMethod]
-    public void LLMToolCall_WhitespaceName_ThrowsArgumentException()
+    public void LLMToolCall_WhitespaceName_AllowsForStreamingDeltas()
     {
-        // Arrange, Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => new LLMToolCall("call-1", "   ", "{}"));
+        // Arrange, Act - Whitespace name is valid for streaming deltas
+        var toolCall = new LLMToolCall("call-1", "   ", "{}");
+
+        // Assert
+        Assert.AreEqual("call-1", toolCall.Id);
+        Assert.AreEqual("   ", toolCall.Name);
     }
 
     [TestMethod]

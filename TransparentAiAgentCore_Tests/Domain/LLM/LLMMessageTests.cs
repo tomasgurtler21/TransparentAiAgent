@@ -39,17 +39,53 @@ public class LLMMessageTests
     }
 
     [TestMethod]
-    public void LLMMessage_EmptyContent_ThrowsArgumentException()
+    public void LLMMessage_UserRole_EmptyContent_ThrowsArgumentException()
     {
-        // Arrange, Act & Assert
+        // Arrange, Act & Assert - User messages require content
         Assert.ThrowsException<ArgumentException>(() => new LLMMessage("user", ""));
     }
 
     [TestMethod]
-    public void LLMMessage_WhitespaceContent_ThrowsArgumentException()
+    public void LLMMessage_UserRole_WhitespaceContent_ThrowsArgumentException()
     {
-        // Arrange, Act & Assert
+        // Arrange, Act & Assert - User messages require content
         Assert.ThrowsException<ArgumentException>(() => new LLMMessage("user", "   "));
+    }
+
+    [TestMethod]
+    public void LLMMessage_SystemRole_EmptyContent_ThrowsArgumentException()
+    {
+        // Arrange, Act & Assert - System messages require content
+        Assert.ThrowsException<ArgumentException>(() => new LLMMessage("system", ""));
+    }
+
+    [TestMethod]
+    public void LLMMessage_SystemRole_WhitespaceContent_ThrowsArgumentException()
+    {
+        // Arrange, Act & Assert - System messages require content
+        Assert.ThrowsException<ArgumentException>(() => new LLMMessage("system", "   "));
+    }
+
+    [TestMethod]
+    public void LLMMessage_AssistantRole_EmptyContent_AllowsEmptyString()
+    {
+        // Arrange, Act - Assistant messages can have empty content (tool-call-only responses)
+        var message = new LLMMessage("assistant", "");
+
+        // Assert
+        Assert.AreEqual("assistant", message.Role);
+        Assert.AreEqual("", message.Content);
+    }
+
+    [TestMethod]
+    public void LLMMessage_AssistantRole_WhitespaceContent_AllowsWhitespace()
+    {
+        // Arrange, Act - Assistant messages can have whitespace content
+        var message = new LLMMessage("assistant", "   ");
+
+        // Assert
+        Assert.AreEqual("assistant", message.Role);
+        Assert.AreEqual("   ", message.Content);
     }
 
     [TestMethod]

@@ -104,6 +104,97 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
                 _pipeline.ConvertToLLMMessage(unknownMessage));
         }
 
+        // ========================================
+        // EMPTY CONTENT CONVERSION TESTS
+        // ========================================
+        // These tests ensure conversion works correctly with empty content
+        // which is valid for assistant messages with tool calls
+
+        [TestMethod]
+        public void ConvertToLLMMessage_AssistantMessage_EmptyContent_ConvertsSuccessfully()
+        {
+            // Arrange - Assistant message with empty content (valid for tool-call-only responses)
+            var assistantMessage = new AssistantMessage("");
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(assistantMessage);
+
+            // Assert
+            Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("", llmMessage.Content);
+            Assert.IsNull(llmMessage.ToolCalls);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_AssistantToolCallMessage_EmptyContent_ConvertsSuccessfully()
+        {
+            // Arrange - Tool call message with empty content (common when LLM only calls tools)
+            var toolCall = new ToolCall("call-1", "search", "{\"query\":\"test\"}");
+            var toolCallMessage = new AssistantToolCallMessage("", new List<ToolCall> { toolCall });
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(toolCallMessage);
+
+            // Assert
+            Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("", llmMessage.Content);
+            Assert.IsNotNull(llmMessage.ToolCalls);
+            Assert.AreEqual(1, llmMessage.ToolCalls.Count);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessages_MixedEmptyAndNonEmptyContent_ConvertsAll()
+        {
+            // Arrange - Realistic scenario: conversation with mix of regular and tool-call messages
+            var messages = new List<IMessage>
+            {
+                new UserMessage("Search for weather"),
+                new AssistantToolCallMessage("", new List<ToolCall>
+                {
+                    new ToolCall("c1", "search", "{}")
+                }),
+                new ToolResultMessage("c1", "search", "{\"temp\":20}", true),
+                new AssistantMessage("The temperature is 20°C")
+            };
+
+            // Act
+            var llmMessages = _pipeline.ConvertToLLMMessages(messages);
+
+            // Assert
+            Assert.AreEqual(4, llmMessages.Count);
+            Assert.AreEqual("user", llmMessages[0].Role);
+            Assert.AreEqual("assistant", llmMessages[1].Role);
+            Assert.AreEqual("", llmMessages[1].Content); // Empty content
+            Assert.IsNotNull(llmMessages[1].ToolCalls);
+            Assert.AreEqual("tool", llmMessages[2].Role);
+            Assert.AreEqual("assistant", llmMessages[3].Role);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_RoundTrip_AssistantMessageWithEmptyContent()
+        {
+            // Arrange - Test round-trip: LLMResponse → AssistantMessage → LLMMessage
+            var llmResponse = new LLMResponse("", new List<LLMToolCall>
+            {
+                new LLMToolCall("c1", "tool", "{}")
+            });
+
+            // Act - Simulate what happens in AgentOrchestrator
+            // 1. Create domain message from response (handled in AgentOrchestrator)
+            var toolCalls = llmResponse.ToolCalls!.Select(tc =>
+                new ToolCall(tc.Id, tc.Name, tc.Arguments)).ToList();
+            var domainMessage = new AssistantToolCallMessage(llmResponse.Content, toolCalls);
+
+            // 2. Convert back to LLM message for next request
+            var llmMessage = _pipeline.ConvertToLLMMessage(domainMessage);
+
+            // Assert - Should preserve empty content
+            Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("", llmMessage.Content);
+            Assert.IsNotNull(llmMessage.ToolCalls);
+            Assert.AreEqual(1, llmMessage.ToolCalls.Count);
+        }
+
         #endregion
 
         #region ConvertToLLMMessages Tests

@@ -18,8 +18,14 @@ public class LLMMessage
     {
         if (string.IsNullOrWhiteSpace(role))
             throw new ArgumentException("Role cannot be null or whitespace", nameof(role));
-        if (string.IsNullOrWhiteSpace(content))
+
+        // Allow empty content for assistant messages (they may have only tool calls)
+        // but require non-empty content for user and system messages
+        if (role.ToLowerInvariant() != "assistant" && string.IsNullOrWhiteSpace(content))
             throw new ArgumentException("Content cannot be null or whitespace", nameof(content));
+
+        if (content == null)
+            throw new ArgumentException("Content cannot be null", nameof(content));
 
         Role = role;
         Content = content;
