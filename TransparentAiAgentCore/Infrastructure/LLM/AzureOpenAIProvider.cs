@@ -15,6 +15,7 @@ using TransparentAiAgentCore.Domain.Authentication;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Exceptions;
 using TransparentAiAgentCore.Domain.LLM;
+using TransparentAiAgentCore.Domain.Transparency.EventData;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 
 namespace TransparentAiAgentCore.Infrastructure.LLM;
@@ -143,6 +144,10 @@ public class AzureOpenAIProvider : ILLMProvider
         if (request == null)
             throw new ArgumentNullException(nameof(request));
 
+        // Generate correlation ID for this request
+        var correlationId = Guid.NewGuid().ToString();
+        var requestStartTime = DateTime.UtcNow;
+
         try
         {
             // Log request to transparency system
@@ -151,7 +156,7 @@ public class AzureOpenAIProvider : ILLMProvider
             // For reasoning models, use protocol method to send max_completion_tokens
             if (_isReasoningModel)
             {
-                return await SendRequestAsync_ReasoningModel(request, cancellationToken);
+                return await SendRequestAsync_ReasoningModel(request, correlationId, requestStartTime, cancellationToken);
             }
 
             // Standard path for traditional models
@@ -161,8 +166,17 @@ public class AzureOpenAIProvider : ILLMProvider
             // Build options
             var options = BuildChatCompletionOptions(request);
 
+            // Log RAW request BEFORE sending
+            LogRawRequest(request, messages, options, correlationId);
+
             // Send request
             ClientResult<ChatCompletion> response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
+
+            // Calculate latency
+            var latency = DateTime.UtcNow - requestStartTime;
+
+            // Log RAW response IMMEDIATELY after receiving (before any processing)
+            LogRawResponse(response.Value, correlationId, latency);
 
             // Convert response
             var llmResponse = ConvertResponse(response.Value);
@@ -182,7 +196,7 @@ public class AzureOpenAIProvider : ILLMProvider
         }
     }
 
-    private async Task<LLMResponse> SendRequestAsync_ReasoningModel(LLMRequest request, CancellationToken cancellationToken)
+    private async Task<LLMResponse> SendRequestAsync_ReasoningModel(LLMRequest request, string correlationId, DateTime requestStartTime, CancellationToken cancellationToken)
     {
         // Convert messages
         var messages = ConvertToAzureMessages(request.Messages);
@@ -192,6 +206,9 @@ public class AzureOpenAIProvider : ILLMProvider
 
         // Build request JSON with max_completion_tokens
         var requestJson = BuildRequestJsonForReasoningModel(messages, options, request.MaxTokens);
+
+        // Log RAW request JSON BEFORE sending
+        LogRawRequestJson(requestJson.ToJsonString(), request.Messages.Count, correlationId);
 
         // Make HTTP request directly to Azure OpenAI API
         using var httpClient = new HttpClient();
@@ -215,6 +232,9 @@ public class AzureOpenAIProvider : ILLMProvider
         var content = new StringContent(requestJson.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync(url, content, cancellationToken);
 
+        // Calculate latency
+        var latency = DateTime.UtcNow - requestStartTime;
+
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -223,6 +243,10 @@ public class AzureOpenAIProvider : ILLMProvider
 
         // Parse response
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        // Log RAW response JSON IMMEDIATELY after receiving
+        LogRawResponseJson(responseJson, correlationId, latency, (int)response.StatusCode);
+
         using JsonDocument jsonDoc = JsonDocument.Parse(responseJson);
         var llmResponse = ParseLLMResponseFromJson(jsonDoc.RootElement);
 
@@ -575,5 +599,171 @@ public class AzureOpenAIProvider : ILLMProvider
                 Domain.Transparency.TransparencyEventType.AssistantResponse,
                 eventData,
                 "LLM Response"));
+    }
+
+    private void LogRawRequest(LLMRequest request, List<ChatMessage> messages, ChatCompletionOptions options, string correlationId)
+    {
+        var rawData = new RawLLMRequestData(
+            correlationId,
+            ProviderName,
+            SerializeRawRequest(request, messages, options),
+            request.Messages.Count);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMRequest,
+                eventData,
+                $"Raw request to {ProviderName} (Correlation: {correlationId})"));
+    }
+
+    private void LogRawResponse(ChatCompletion response, string correlationId, TimeSpan latency)
+    {
+        var rawData = new RawLLMResponseData(
+            correlationId,
+            ProviderName,
+            SerializeRawResponse(response),
+            null, // Status code not available for SDK calls
+            latency);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMResponse,
+                eventData,
+                $"Raw response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
+    }
+
+    private void LogRawRequestJson(string requestJson, int messageCount, string correlationId)
+    {
+        var rawData = new RawLLMRequestData(
+            correlationId,
+            ProviderName,
+            requestJson,
+            messageCount);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMRequest,
+                eventData,
+                $"Raw JSON request to {ProviderName} (Correlation: {correlationId})"));
+    }
+
+    private void LogRawResponseJson(string responseJson, string correlationId, TimeSpan latency, int statusCode)
+    {
+        var rawData = new RawLLMResponseData(
+            correlationId,
+            ProviderName,
+            responseJson,
+            statusCode,
+            latency);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMResponse,
+                eventData,
+                $"Raw JSON response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
+    }
+
+    private string SerializeRawRequest(LLMRequest request, List<ChatMessage> messages, ChatCompletionOptions options)
+    {
+        var requestData = new
+        {
+            Provider = ProviderName,
+            Messages = messages.Select(m => new
+            {
+                Role = GetMessageRole(m),
+                Content = GetMessageContent(m),
+                ToolCalls = m is AssistantChatMessage assistantMsg && assistantMsg.ToolCalls.Count > 0
+                    ? assistantMsg.ToolCalls.Select(tc => new
+                    {
+                        Id = tc.Id,
+                        Name = tc.FunctionName,
+                        Arguments = tc.FunctionArguments.ToString()
+                    }).ToList()
+                    : null,
+                ToolCallId = m is ToolChatMessage toolMsg ? toolMsg.ToolCallId : null
+            }).ToList(),
+            Parameters = new
+            {
+                Temperature = options.Temperature,
+                TopP = options.TopP,
+                MaxTokens = options.MaxOutputTokenCount,
+                Tools = options.Tools.Select(t => new
+                {
+                    Name = t.FunctionName,
+                    Description = t.FunctionDescription,
+                    Parameters = t.FunctionParameters.ToString()
+                }).ToList()
+            },
+            Timestamp = DateTime.UtcNow
+        };
+
+        return JsonSerializer.Serialize(requestData, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private string SerializeRawResponse(ChatCompletion response)
+    {
+        var responseData = new
+        {
+            Provider = ProviderName,
+            Id = response.Id,
+            Model = response.Model,
+            Created = response.CreatedAt,
+            Content = response.Content.Select(c => c.Text).ToList(),
+            ToolCalls = response.ToolCalls.Select(tc => new
+            {
+                Id = tc.Id,
+                Type = tc.Kind.ToString(),
+                Function = new
+                {
+                    Name = tc.FunctionName,
+                    Arguments = tc.FunctionArguments.ToString()
+                }
+            }).ToList(),
+            FinishReason = response.FinishReason.ToString(),
+            Usage = response.Usage != null
+                ? new
+                {
+                    PromptTokens = response.Usage.InputTokenCount,
+                    CompletionTokens = response.Usage.OutputTokenCount,
+                    TotalTokens = response.Usage.TotalTokenCount
+                }
+                : null,
+            Timestamp = DateTime.UtcNow
+        };
+
+        return JsonSerializer.Serialize(responseData, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private string GetMessageRole(ChatMessage message)
+    {
+        return message switch
+        {
+            UserChatMessage => "user",
+            AssistantChatMessage => "assistant",
+            SystemChatMessage => "system",
+            ToolChatMessage => "tool",
+            _ => "unknown"
+        };
+    }
+
+    private string? GetMessageContent(ChatMessage message)
+    {
+        return message switch
+        {
+            UserChatMessage userMsg => userMsg.Content.FirstOrDefault()?.Text,
+            AssistantChatMessage assistantMsg =>
+                assistantMsg.Content.Count > 0 ? assistantMsg.Content[0].Text : null,
+            SystemChatMessage systemMsg => systemMsg.Content.FirstOrDefault()?.Text,
+            ToolChatMessage toolMsg => toolMsg.Content.FirstOrDefault()?.Text,
+            _ => null
+        };
     }
 }

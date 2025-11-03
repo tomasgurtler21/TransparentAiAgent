@@ -30,5 +30,10 @@ public enum TransparencyEventType
     MCPServerConnectionFailed,
 
     // UI Control events (Phase 9)
-    UIControlAction
+    UIControlAction,
+
+    // Raw LLM request/response events (Phase 9a - Transparency Enhancement)
+    RawLLMRequest,          // Complete request JSON before sending to LLM
+    RawLLMResponse,         // Complete response JSON as received from LLM
+    MessageParsingError     // Error during message/response parsing
 }

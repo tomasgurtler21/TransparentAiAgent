@@ -7,8 +7,10 @@ using TransparentAiAgentCore.Application.Conversation;
 using TransparentAiAgentCore.Application.Pipeline;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Domain.Transparency;
+using TransparentAiAgentCore.Domain.Transparency.EventData;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 
 namespace TransparentAiAgentCore.Application.Agent;
 
@@ -104,16 +106,25 @@ public class AgentOrchestrator : IAgentOrchestrator
         // Check if LLM wants to call tools
         if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0 && _toolManager != null)
         {
-            // Convert LLMToolCall list to ToolCall list
-            var toolCalls = llmResponse.ToolCalls
-                .Select(tc => new ToolCall(tc.Id, tc.Name, tc.Arguments))
-                .ToList();
+            try
+            {
+                // Convert LLMToolCall list to ToolCall list
+                var toolCalls = llmResponse.ToolCalls
+                    .Select(tc => new ToolCall(tc.Id, tc.Name, tc.Arguments))
+                    .ToList();
 
-            // Create ONE assistant message with ALL tool calls
-            var assistantToolCallMessage = new AssistantToolCallMessage(
-                llmResponse.Content ?? string.Empty,
-                toolCalls);
-            _conversationManager.AddMessage(assistantToolCallMessage);
+                // Create ONE assistant message with ALL tool calls
+                var assistantToolCallMessage = new AssistantToolCallMessage(
+                    llmResponse.Content ?? string.Empty,
+                    toolCalls);
+                _conversationManager.AddMessage(assistantToolCallMessage);
+            }
+            catch (Exception ex)
+            {
+                // Log parsing error
+                LogParsingError(llmResponse, ex);
+                throw; // Re-throw to maintain error handling behavior
+            }
 
             // Execute each tool and add result messages
             foreach (var toolCall in llmResponse.ToolCalls)
@@ -136,10 +147,19 @@ public class AgentOrchestrator : IAgentOrchestrator
         }
         else
         {
-            // No tool calls - convert response to message and return
-            var assistantMessage = _messagePipeline.ConvertToDomainMessage(llmResponse);
-            _conversationManager.AddMessage(assistantMessage);
-            return assistantMessage;
+            try
+            {
+                // No tool calls - convert response to message and return
+                var assistantMessage = _messagePipeline.ConvertToDomainMessage(llmResponse);
+                _conversationManager.AddMessage(assistantMessage);
+                return assistantMessage;
+            }
+            catch (Exception ex)
+            {
+                // Log parsing error
+                LogParsingError(llmResponse, ex);
+                throw; // Re-throw to maintain error handling behavior
+            }
         }
     }
 
@@ -244,5 +264,22 @@ public class AgentOrchestrator : IAgentOrchestrator
                 Domain.Transparency.TransparencyEventType.SystemState,
                 System.Text.Json.JsonSerializer.Serialize(new { EventType = eventType }),
                 details));
+    }
+
+    private void LogParsingError(LLMResponse llmResponse, Exception exception)
+    {
+        var parsingEventData = new MessageParsingEventData(
+            JsonSerializer.Serialize(llmResponse, new JsonSerializerOptions { WriteIndented = true }),
+            null,
+            false,
+            $"{exception.GetType().Name}: {exception.Message}");
+
+        var eventData = JsonSerializer.Serialize(parsingEventData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new TransparencyEvent(
+                TransparencyEventType.MessageParsingError,
+                eventData,
+                $"Failed to parse LLM response: {exception.Message}"));
     }
 }
