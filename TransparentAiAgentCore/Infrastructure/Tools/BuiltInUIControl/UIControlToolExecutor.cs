@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.UIControl;
@@ -10,18 +9,18 @@ namespace TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
 /// <summary>
 /// Executes built-in UI control tools by routing to IUIControlService.
 /// Parses JSON arguments and converts Result&lt;UIState&gt; to ToolExecutionResult.
-/// Uses IServiceProvider to resolve scoped IUIControlService at execution time.
+/// Registered as Scoped to share the same IUIControlService instance with UI components.
 /// </summary>
 public class UIControlToolExecutor : IToolExecutor
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IUIControlService _uiControlService;
     private readonly ILogger<UIControlToolExecutor> _logger;
 
     public UIControlToolExecutor(
-        IServiceProvider serviceProvider,
+        IUIControlService uiControlService,
         ILogger<UIControlToolExecutor> logger)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _uiControlService = uiControlService ?? throw new ArgumentNullException(nameof(uiControlService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -32,7 +31,7 @@ public class UIControlToolExecutor : IToolExecutor
 
     /// <summary>
     /// Executes a UI control tool by routing to the appropriate IUIControlService method.
-    /// Resolves IUIControlService from current scope to support per-connection UI state.
+    /// Uses the injected scoped IUIControlService instance to support per-connection UI state.
     /// </summary>
     public Task<ToolExecutionResult> ExecuteAsync(
         ITool tool,
@@ -44,10 +43,6 @@ public class UIControlToolExecutor : IToolExecutor
         try
         {
             _logger.LogDebug("Executing UI control tool: {ToolName}", tool.Name);
-
-            // Create a scope to resolve scoped IUIControlService (per SignalR connection)
-            using var scope = _serviceProvider.CreateScope();
-            var uiControlService = scope.ServiceProvider.GetRequiredService<IUIControlService>();
 
             // Parse arguments
             JsonDocument argsDoc;
@@ -66,13 +61,13 @@ public class UIControlToolExecutor : IToolExecutor
             // Route to appropriate handler
             Result<UIState> result = tool.Name.ToLowerInvariant() switch
             {
-                "ui_control_chat_filter" => ExecuteChatFilterTool(uiControlService, argsDoc),
-                "ui_control_filter_visibility" => ExecuteFilterVisibilityTool(uiControlService, argsDoc),
-                "ui_get_state" => ExecuteGetStateTool(uiControlService, argsDoc),
-                "ui_control_transparency_viewer" => ExecuteTransparencyViewerTool(uiControlService, argsDoc),
-                "ui_control_tools_panel" => ExecuteToolsPanelTool(uiControlService, argsDoc),
-                "ui_control_context_indicators" => ExecuteContextIndicatorsTool(uiControlService, argsDoc),
-                "ui_control_configuration" => ExecuteConfigurationTool(uiControlService, argsDoc),
+                "ui_control_chat_filter" => ExecuteChatFilterTool(_uiControlService, argsDoc),
+                "ui_control_filter_visibility" => ExecuteFilterVisibilityTool(_uiControlService, argsDoc),
+                "ui_get_state" => ExecuteGetStateTool(_uiControlService, argsDoc),
+                "ui_control_transparency_viewer" => ExecuteTransparencyViewerTool(_uiControlService, argsDoc),
+                "ui_control_tools_panel" => ExecuteToolsPanelTool(_uiControlService, argsDoc),
+                "ui_control_context_indicators" => ExecuteContextIndicatorsTool(_uiControlService, argsDoc),
+                "ui_control_configuration" => ExecuteConfigurationTool(_uiControlService, argsDoc),
                 _ => Result<UIState>.Fail($"Unknown tool: {tool.Name}")
             };
 

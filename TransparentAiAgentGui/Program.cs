@@ -75,8 +75,8 @@ builder.Services.AddSingleton<IAuthenticationProvider, ConfigurationAuthenticati
 // Register Message Pipeline (always needed)
 builder.Services.AddSingleton<IMessagePipeline, MessagePipeline>();
 
-// Register Conversation Manager (always needed)
-builder.Services.AddSingleton<IConversationManager>(sp =>
+// Register Conversation Manager (always needed) - Scoped for per-user isolation
+builder.Services.AddScoped<IConversationManager>(sp =>
 {
     var config = sp.GetRequiredService<AppConfiguration>();
     var transparencyService = sp.GetRequiredService<ITransparencyService>();
@@ -127,10 +127,10 @@ if (appConfig.Agent.EnableTools)
         }
     });
 
-    // Register IToolManager only if we have servers configured
+    // Register IToolManager only if we have servers configured - Scoped to support scoped executors
     if (appConfig.MCP.Servers.Count > 0)
     {
-        builder.Services.AddSingleton<IToolManager>(sp =>
+        builder.Services.AddScoped<IToolManager>(sp =>
         {
             try
             {
@@ -182,7 +182,8 @@ if (isLLMConfigured)
         var factory = sp.GetRequiredService<LLMProviderFactory>();
         return factory.CreateProvider();
     });
-    builder.Services.AddSingleton<IAgentOrchestrator>(sp =>
+    // Scoped to support scoped IToolManager and IConversationManager
+    builder.Services.AddScoped<IAgentOrchestrator>(sp =>
     {
         var llmProvider = sp.GetRequiredService<ILLMProvider>();
         var conversationManager = sp.GetRequiredService<IConversationManager>();
@@ -204,8 +205,8 @@ if (isLLMConfigured)
 }
 else
 {
-    // Register stub implementation that throws helpful errors with details
-    builder.Services.AddSingleton<IAgentOrchestrator>(sp =>
+    // Register stub implementation that throws helpful errors with details - Scoped to match main registration
+    builder.Services.AddScoped<IAgentOrchestrator>(sp =>
     {
         var conversationManager = sp.GetRequiredService<IConversationManager>();
         return new NotConfiguredAgentOrchestrator(conversationManager, llmConfigurationError);
@@ -222,7 +223,7 @@ builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
 // Register UI Control services (Phase 9 - Teaching Mode)
 builder.Services.AddScoped<IUIControlService, UIControlService>();  // Scoped per SignalR connection
 builder.Services.AddSingleton<BuiltInUIControlToolRegistry>();
-builder.Services.AddSingleton<UIControlToolExecutor>();  // Singleton - uses IServiceProvider for lazy resolution
+builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to share IUIControlService instance with UI components
 
 // Register HttpClient for API calls
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5001") });

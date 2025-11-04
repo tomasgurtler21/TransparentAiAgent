@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using TransparentAiAgentCore.Domain.Tools;
@@ -17,7 +16,6 @@ public class UIControlToolExecutorTests
 {
     private Mock<IUIControlService> _mockUIControlService = null!;
     private Mock<ILogger<UIControlToolExecutor>> _mockLogger = null!;
-    private IServiceProvider _serviceProvider = null!;
     private UIControlToolExecutor _executor = null!;
 
     [TestInitialize]
@@ -26,12 +24,8 @@ public class UIControlToolExecutorTests
         _mockUIControlService = new Mock<IUIControlService>();
         _mockLogger = new Mock<ILogger<UIControlToolExecutor>>();
 
-        // Use a real ServiceCollection to support CreateScope()
-        var services = new ServiceCollection();
-        services.AddScoped<IUIControlService>(_ => _mockUIControlService.Object);
-        _serviceProvider = services.BuildServiceProvider();
-
-        _executor = new UIControlToolExecutor(_serviceProvider, _mockLogger.Object);
+        // Inject mocks directly - UIControlToolExecutor is now Scoped with direct injection
+        _executor = new UIControlToolExecutor(_mockUIControlService.Object, _mockLogger.Object);
     }
 
     [TestMethod]
