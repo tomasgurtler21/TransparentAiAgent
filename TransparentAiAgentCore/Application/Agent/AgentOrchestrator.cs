@@ -108,6 +108,9 @@ public class AgentOrchestrator : IAgentOrchestrator
         {
             try
             {
+                // DIAGNOSTIC: Log LLMToolCalls BEFORE conversion
+                LogToolCallsBeforeConversion(llmResponse.ToolCalls);
+
                 // Convert LLMToolCall list to ToolCall list
                 var toolCalls = llmResponse.ToolCalls
                     .Select(tc => new ToolCall(tc.Id, tc.Name, tc.Arguments))
@@ -281,5 +284,39 @@ public class AgentOrchestrator : IAgentOrchestrator
                 TransparencyEventType.MessageParsingError,
                 eventData,
                 $"Failed to parse LLM response: {exception.Message}"));
+    }
+
+    private void LogToolCallsBeforeConversion(List<LLMToolCall> toolCalls)
+    {
+        // Log detailed diagnostic information about each LLMToolCall BEFORE attempting conversion
+        var diagnosticData = new
+        {
+            ToolCallCount = toolCalls.Count,
+            ToolCalls = toolCalls.Select((tc, index) => new
+            {
+                Index = index,
+                Id = tc.Id,
+                IdIsNull = tc.Id == null,
+                IdIsEmpty = string.IsNullOrEmpty(tc.Id),
+                IdIsWhitespace = string.IsNullOrWhiteSpace(tc.Id),
+                Name = tc.Name,
+                NameIsNull = tc.Name == null,
+                NameIsEmpty = string.IsNullOrEmpty(tc.Name),
+                NameIsWhitespace = string.IsNullOrWhiteSpace(tc.Name),
+                Arguments = tc.Arguments,
+                ArgumentsIsNull = tc.Arguments == null,
+                ArgumentsIsEmpty = string.IsNullOrEmpty(tc.Arguments),
+                ArgumentsLength = tc.Arguments?.Length ?? 0
+            }).ToList(),
+            Timestamp = DateTime.UtcNow
+        };
+
+        var diagnosticJson = JsonSerializer.Serialize(diagnosticData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new TransparencyEvent(
+                TransparencyEventType.SystemState,
+                diagnosticJson,
+                $"[DIAGNOSTIC] LLMToolCalls before conversion to ToolCalls (Count: {toolCalls.Count})"));
     }
 }

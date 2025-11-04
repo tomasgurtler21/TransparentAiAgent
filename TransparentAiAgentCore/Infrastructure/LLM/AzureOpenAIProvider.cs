@@ -341,6 +341,9 @@ public class AzureOpenAIProvider : ILLMProvider
         {
             await foreach (StreamingChatCompletionUpdate update in streamingResponse.WithCancellation(cancellationToken))
             {
+                // LOG RAW STREAMING CHUNK for diagnostics
+                LogStreamingChunk(update, correlationId);
+
                 // Accumulate content from chunks
                 if (update.ContentUpdate.Count > 0)
                 {
@@ -394,6 +397,10 @@ public class AzureOpenAIProvider : ILLMProvider
 
             // Log complete accumulated response after streaming finishes
             var latency = DateTime.UtcNow - startTime;
+
+            // LOG ACCUMULATED RESULT for diagnostics
+            LogAccumulatedToolCalls(accumulatedToolCalls, correlationId);
+
             LogStreamingResponse(
                 accumulatedContent.ToString(),
                 accumulatedToolCalls.Count > 0 ? accumulatedToolCalls : null,
@@ -690,6 +697,47 @@ public class AzureOpenAIProvider : ILLMProvider
 
     private void LogRawResponse(ChatCompletion response, string correlationId, TimeSpan latency)
     {
+        // Enhanced logging for diagnostics - log tool call details BEFORE any conversion
+        var diagnosticData = new
+        {
+            Provider = ProviderName,
+            CorrelationId = correlationId,
+            ResponseId = response.Id,
+            Model = response.Model,
+            ContentParts = response.Content.Select(c => new
+            {
+                Type = c.Kind.ToString(),
+                Text = c.Text
+            }).ToList(),
+            ToolCallsCount = response.ToolCalls.Count,
+            ToolCallsRaw = response.ToolCalls.Select(tc => new
+            {
+                Id = tc.Id,
+                Kind = tc.Kind.ToString(),
+                FunctionName = tc.FunctionName,
+                FunctionNameIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionName),
+                FunctionArguments = tc.FunctionArguments.ToString(),
+                FunctionArgumentsIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionArguments.ToString())
+            }).ToList(),
+            FinishReason = response.FinishReason.ToString(),
+            Usage = response.Usage != null ? new
+            {
+                InputTokens = response.Usage.InputTokenCount,
+                OutputTokens = response.Usage.OutputTokenCount,
+                TotalTokens = response.Usage.TotalTokenCount
+            } : null,
+            Timestamp = DateTime.UtcNow
+        };
+
+        var diagnosticJson = JsonSerializer.Serialize(diagnosticData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.SystemState,
+                diagnosticJson,
+                $"[DIAGNOSTIC] Raw ChatCompletion object details (Correlation: {correlationId})"));
+
+        // Standard raw response logging
         var rawData = new RawLLMResponseData(
             correlationId,
             ProviderName,
@@ -870,5 +918,72 @@ public class AzureOpenAIProvider : ILLMProvider
             ToolChatMessage toolMsg => toolMsg.Content.FirstOrDefault()?.Text,
             _ => null
         };
+    }
+
+    private void LogStreamingChunk(StreamingChatCompletionUpdate update, string correlationId)
+    {
+        // Log each streaming chunk for diagnostics
+        var chunkData = new
+        {
+            CorrelationId = correlationId,
+            Provider = ProviderName,
+            ContentUpdateCount = update.ContentUpdate.Count,
+            ContentUpdates = update.ContentUpdate.Select(c => new
+            {
+                Kind = c.Kind.ToString(),
+                Text = c.Text,
+                TextIsNullOrEmpty = string.IsNullOrEmpty(c.Text)
+            }).ToList(),
+            ToolCallUpdateCount = update.ToolCallUpdates.Count,
+            ToolCallUpdates = update.ToolCallUpdates.Select(tc => new
+            {
+                Index = tc.Index,
+                ToolCallId = tc.ToolCallId,
+                ToolCallIdIsNullOrEmpty = string.IsNullOrEmpty(tc.ToolCallId),
+                FunctionName = tc.FunctionName,
+                FunctionNameIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionName),
+                FunctionArgumentsUpdate = tc.FunctionArgumentsUpdate?.ToString(),
+                FunctionArgumentsUpdateIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionArgumentsUpdate?.ToString())
+            }).ToList(),
+            FinishReason = update.FinishReason?.ToString(),
+            Timestamp = DateTime.UtcNow
+        };
+
+        var chunkJson = JsonSerializer.Serialize(chunkData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.SystemState,
+                chunkJson,
+                $"[DIAGNOSTIC] Streaming chunk received (Correlation: {correlationId})"));
+    }
+
+    private void LogAccumulatedToolCalls(List<LLMToolCall> accumulatedToolCalls, string correlationId)
+    {
+        // Log accumulated tool calls BEFORE final response creation
+        var accumulatedData = new
+        {
+            CorrelationId = correlationId,
+            Provider = ProviderName,
+            AccumulatedToolCallsCount = accumulatedToolCalls.Count,
+            AccumulatedToolCalls = accumulatedToolCalls.Select(tc => new
+            {
+                Id = tc.Id,
+                IdIsNullOrEmpty = string.IsNullOrEmpty(tc.Id),
+                Name = tc.Name,
+                NameIsNullOrEmpty = string.IsNullOrEmpty(tc.Name),
+                Arguments = tc.Arguments,
+                ArgumentsIsNullOrEmpty = string.IsNullOrEmpty(tc.Arguments)
+            }).ToList(),
+            Timestamp = DateTime.UtcNow
+        };
+
+        var accumulatedJson = JsonSerializer.Serialize(accumulatedData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.SystemState,
+                accumulatedJson,
+                $"[DIAGNOSTIC] Accumulated tool calls from streaming (Correlation: {correlationId})"));
     }
 }
