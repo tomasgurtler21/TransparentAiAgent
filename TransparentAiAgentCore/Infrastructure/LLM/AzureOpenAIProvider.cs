@@ -377,11 +377,23 @@ public class AzureOpenAIProvider : ILLMProvider
                 yield return chunk;
             }
 
-            // Log complete accumulated response after streaming finishes
-            var latency = DateTime.UtcNow - startTime;
-
             // Get accumulated tool calls from helper
             var accumulatedToolCalls = toolCallAccumulator.GetAccumulatedToolCalls();
+
+            // Yield final completion chunk with accumulated tool calls
+            if (accumulatedToolCalls.Count > 0)
+            {
+                var finalChunk = new StreamingLLMChunk(
+                    contentDelta: string.Empty,
+                    toolCallDelta: null,
+                    isComplete: true,
+                    finishReason: finishReason,
+                    accumulatedToolCalls: accumulatedToolCalls);
+                yield return finalChunk;
+            }
+
+            // Log complete accumulated response after streaming finishes
+            var latency = DateTime.UtcNow - startTime;
 
             // LOG ACCUMULATED RESULT for diagnostics
             LogAccumulatedToolCalls(accumulatedToolCalls, correlationId);

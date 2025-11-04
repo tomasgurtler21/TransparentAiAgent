@@ -353,11 +353,14 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
                 if (callCount == 1)
                 {
                     // First call: LLM wants to use a tool
+                    var toolCalls = new List<LLMToolCall>
+                    {
+                        new LLMToolCall("call_1", "test_tool", "{\"arg\":\"value\"}")
+                    };
                     return new[]
                     {
                         new StreamingLLMChunk("I will use a tool", toolCallDelta: null, isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "test_tool", "{\"arg\":\"value\"}"), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls")
+                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls", accumulatedToolCalls: toolCalls)
                     };
                 }
                 else
@@ -412,13 +415,15 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
                 callCount++;
                 if (callCount == 1)
                 {
+                    // Simulate Azure OpenAI behavior - accumulated tool calls in final chunk
+                    var toolCalls = new List<LLMToolCall>
+                    {
+                        new LLMToolCall("call_1", "test_tool", "{\"arg\":\"value\"}")
+                    };
                     return new[]
                     {
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "test_tool", ""), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "", "{\"ar"), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "", "g\":\""), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "", "value\"}"), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls")
+                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: false),
+                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls", accumulatedToolCalls: toolCalls)
                     };
                 }
                 else
@@ -464,11 +469,14 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
                 callCount++;
                 if (callCount == 1)
                 {
+                    var toolCalls = new List<LLMToolCall>
+                    {
+                        new LLMToolCall("call_1", "tool_one", "{\"arg1\":\"val1\"}"),
+                        new LLMToolCall("call_2", "tool_two", "{\"arg2\":\"val2\"}")
+                    };
                     return new[]
                     {
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "tool_one", "{\"arg1\":\"val1\"}"), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_2", "tool_two", "{\"arg2\":\"val2\"}"), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls")
+                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls", accumulatedToolCalls: toolCalls)
                     };
                 }
                 else
@@ -506,19 +514,19 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
                 mockToolManager);
 
             // Round 1: LLM calls tool
+            var toolCalls1 = new List<LLMToolCall> { new LLMToolCall("call_1", "tool1", "{}") };
             var chunks1 = new[]
             {
                 new StreamingLLMChunk("First", toolCallDelta: null, isComplete: false),
-                new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "tool1", "{}"), isComplete: false),
-                new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls")
+                new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls", accumulatedToolCalls: toolCalls1)
             };
 
             // Round 2: LLM calls another tool
+            var toolCalls2 = new List<LLMToolCall> { new LLMToolCall("call_2", "tool2", "{}") };
             var chunks2 = new[]
             {
                 new StreamingLLMChunk("Second", toolCallDelta: null, isComplete: false),
-                new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_2", "tool2", "{}"), isComplete: false),
-                new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls")
+                new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls", accumulatedToolCalls: toolCalls2)
             };
 
             // Round 3: No more tools, final response
@@ -568,10 +576,10 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
                 mockToolManager);
 
             // Always return tool calls to trigger infinite loop
+            var infiniteToolCalls = new List<LLMToolCall> { new LLMToolCall("call_1", "infinite_tool", "{}") };
             var chunksWithTools = new[]
             {
-                new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "infinite_tool", "{}"), isComplete: false),
-                new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls")
+                new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls", accumulatedToolCalls: infiniteToolCalls)
             };
             _mockLLMProvider.SetStreamingChunks(chunksWithTools);
 
@@ -647,10 +655,10 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
                 callCount++;
                 if (callCount == 1)
                 {
+                    var toolCalls = new List<LLMToolCall> { new LLMToolCall("call_1", "failing_tool", "{}") };
                     return new[]
                     {
-                        new StreamingLLMChunk("", toolCallDelta: new LLMToolCall("call_1", "failing_tool", "{}"), isComplete: false),
-                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls")
+                        new StreamingLLMChunk("", toolCallDelta: null, isComplete: true, finishReason: "ToolCalls", accumulatedToolCalls: toolCalls)
                     };
                 }
                 else

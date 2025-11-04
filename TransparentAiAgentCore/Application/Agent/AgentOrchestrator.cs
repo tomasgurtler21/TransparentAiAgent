@@ -246,11 +246,11 @@ public class AgentOrchestrator : IAgentOrchestrator
             stream: true,
             llmRequest.Tools);
 
-        // Stream from LLM and accumulate tool calls
+        // Stream from LLM and collect accumulated tool calls from final chunk
         LogEvent("LLMStreamRequestSent", $"Sending streaming request to LLM (depth: {depth})");
 
         var contentBuilder = new StringBuilder();
-        var toolCallsById = new Dictionary<string, (string Name, StringBuilder Arguments)>();
+        List<LLMToolCall>? accumulatedToolCalls = null;
 
         await foreach (var chunk in _llmProvider.StreamRequestAsync(llmRequest, cancellationToken))
         {
@@ -262,39 +262,23 @@ public class AgentOrchestrator : IAgentOrchestrator
                 yield return new StreamingResponseChunk(chunk.ContentDelta, IsComplete: false, Status: StreamingStatus.Streaming);
             }
 
-            // Accumulate tool calls
-            if (chunk.ToolCallDelta != null)
+            // Capture accumulated tool calls from final chunk
+            if (chunk.AccumulatedToolCalls != null && chunk.AccumulatedToolCalls.Count > 0)
             {
-                var toolCall = chunk.ToolCallDelta;
-
-                if (toolCallsById.TryGetValue(toolCall.Id, out var existingToolCall))
-                {
-                    // Update existing tool call
-                    var name = !string.IsNullOrEmpty(toolCall.Name) ? toolCall.Name : existingToolCall.Name;
-                    existingToolCall.Arguments.Append(toolCall.Arguments);
-                    toolCallsById[toolCall.Id] = (name, existingToolCall.Arguments);
-                }
-                else
-                {
-                    // Create new tool call entry
-                    var name = toolCall.Name ?? string.Empty;
-                    var arguments = new StringBuilder(toolCall.Arguments ?? string.Empty);
-                    toolCallsById[toolCall.Id] = (name, arguments);
-                }
+                accumulatedToolCalls = chunk.AccumulatedToolCalls;
+                LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, Tool calls: {accumulatedToolCalls.Count}");
             }
 
             // Check if stream is complete
-            if (chunk.IsComplete)
+            if (chunk.IsComplete && accumulatedToolCalls == null)
             {
-                LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, Tool calls: {toolCallsById.Count}");
+                LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, No tool calls");
                 break;
             }
         }
 
-        // Convert accumulated tool calls to LLMToolCall list
-        var accumulatedToolCalls = toolCallsById
-            .Select(kvp => new LLMToolCall(kvp.Key, kvp.Value.Name, kvp.Value.Arguments.ToString()))
-            .ToList();
+        // Use accumulated tool calls from provider (or empty list if none)
+        accumulatedToolCalls ??= new List<LLMToolCall>();
 
         // Check if LLM wants to call tools
         if (accumulatedToolCalls.Count > 0 && _toolManager != null)
