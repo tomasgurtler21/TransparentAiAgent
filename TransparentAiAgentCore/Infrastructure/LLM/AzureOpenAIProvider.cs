@@ -309,7 +309,9 @@ public class AzureOpenAIProvider : ILLMProvider
 
         // Accumulate response for final logging
         var accumulatedContent = new System.Text.StringBuilder();
-        var accumulatedToolCalls = new List<LLMToolCall>();
+        // Use Dictionary with Index as key to properly accumulate tool calls
+        // Azure OpenAI only sends ID and Name in first chunk, then uses Index for subsequent deltas
+        var accumulatedToolCallsByIndex = new Dictionary<int, (string Id, string Name, System.Text.StringBuilder Arguments)>();
         string? finishReason = null;
 
         // Get streaming response outside of try-catch to allow yield
@@ -358,29 +360,43 @@ public class AzureOpenAIProvider : ILLMProvider
                 {
                     foreach (var toolCallUpdate in update.ToolCallUpdates)
                     {
-                        // Find or create tool call entry
-                        var existingToolCall = accumulatedToolCalls.FirstOrDefault(tc => tc.Id == toolCallUpdate.ToolCallId);
-                        if (existingToolCall != null)
+                        // Azure OpenAI streams tool calls by INDEX, not ID
+                        // First chunk contains ID + Name, subsequent chunks only have Index + arguments
+                        int index = toolCallUpdate.Index;
+
+                        if (accumulatedToolCallsByIndex.TryGetValue(index, out var existingToolCall))
                         {
-                            // Append to existing arguments
-                            var argumentsUpdate = toolCallUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty;
-                            var updatedArguments = existingToolCall.Arguments + argumentsUpdate;
-                            accumulatedToolCalls.Remove(existingToolCall);
-                            accumulatedToolCalls.Add(new LLMToolCall(
-                                existingToolCall.Id,
-                                existingToolCall.Name,
-                                updatedArguments
-                            ));
+                            // Update existing tool call entry
+                            var id = !string.IsNullOrEmpty(toolCallUpdate.ToolCallId)
+                                ? toolCallUpdate.ToolCallId
+                                : existingToolCall.Id;
+
+                            var name = !string.IsNullOrEmpty(toolCallUpdate.FunctionName)
+                                ? toolCallUpdate.FunctionName
+                                : existingToolCall.Name;
+
+                            // Append arguments delta
+                            if (toolCallUpdate.FunctionArgumentsUpdate != null)
+                            {
+                                existingToolCall.Arguments.Append(toolCallUpdate.FunctionArgumentsUpdate.ToString());
+                            }
+
+                            // Update the dictionary entry (ID or Name might have been updated)
+                            accumulatedToolCallsByIndex[index] = (id, name, existingToolCall.Arguments);
                         }
-                        else if (!string.IsNullOrEmpty(toolCallUpdate.FunctionName))
+                        else
                         {
                             // Create new tool call entry
-                            var argumentsUpdate = toolCallUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty;
-                            accumulatedToolCalls.Add(new LLMToolCall(
-                                toolCallUpdate.ToolCallId,
-                                toolCallUpdate.FunctionName,
-                                argumentsUpdate
-                            ));
+                            var id = toolCallUpdate.ToolCallId ?? string.Empty;
+                            var name = toolCallUpdate.FunctionName ?? string.Empty;
+                            var arguments = new System.Text.StringBuilder();
+
+                            if (toolCallUpdate.FunctionArgumentsUpdate != null)
+                            {
+                                arguments.Append(toolCallUpdate.FunctionArgumentsUpdate.ToString());
+                            }
+
+                            accumulatedToolCallsByIndex[index] = (id, name, arguments);
                         }
                     }
                 }
@@ -397,6 +413,11 @@ public class AzureOpenAIProvider : ILLMProvider
 
             // Log complete accumulated response after streaming finishes
             var latency = DateTime.UtcNow - startTime;
+
+            // Convert accumulated tool calls from dictionary to list
+            var accumulatedToolCalls = accumulatedToolCallsByIndex.Values
+                .Select(tc => new LLMToolCall(tc.Id, tc.Name, tc.Arguments.ToString()))
+                .ToList();
 
             // LOG ACCUMULATED RESULT for diagnostics
             LogAccumulatedToolCalls(accumulatedToolCalls, correlationId);
