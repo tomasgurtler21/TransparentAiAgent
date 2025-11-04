@@ -29,6 +29,7 @@
     private void ToggleExpanded()
     {
         IsExpanded = !IsExpanded;
+        StateHasChanged();
     }
 
     private string GetEventClass()

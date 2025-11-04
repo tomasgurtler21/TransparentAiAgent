@@ -5,8 +5,8 @@ namespace TransparentAiAgentCore.Domain.Configuration;
 public class LLMConfiguration
 {
     public string Provider { get; set; } = "AzureOpenAI";
-    public double Temperature { get; set; } = 0.7;
-    public double TopP { get; set; } = 1.0;
+    public double? Temperature { get; set; }
+    public double? TopP { get; set; }
     public int MaxTokens { get; set; } = 4096;
 
     public AzureOpenAIConfiguration? AzureOpenAI { get; set; }
@@ -17,10 +17,10 @@ public class LLMConfiguration
         if (string.IsNullOrWhiteSpace(Provider))
             throw new ConfigurationException("Provider cannot be null or whitespace");
 
-        if (Temperature < 0 || Temperature > 2)
+        if (Temperature.HasValue && (Temperature.Value < 0 || Temperature.Value > 2))
             throw new ConfigurationException("Temperature must be between 0 and 2");
 
-        if (TopP < 0 || TopP > 1)
+        if (TopP.HasValue && (TopP.Value < 0 || TopP.Value > 1))
             throw new ConfigurationException("TopP must be between 0 and 1");
 
         if (MaxTokens <= 0)

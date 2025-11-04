@@ -97,8 +97,8 @@ public class LLMRequestTests
         // Assert
         Assert.IsNotNull(request.Messages);
         Assert.AreEqual(1, request.Messages.Count);
-        Assert.AreEqual(0.7, request.Temperature);
-        Assert.AreEqual(1.0, request.TopP);
+        Assert.IsNull(request.Temperature, "Temperature should be null when not specified");
+        Assert.IsNull(request.TopP, "TopP should be null when not specified");
         Assert.AreEqual(4096, request.MaxTokens);
         Assert.IsFalse(request.Stream);
         Assert.IsNull(request.Tools);

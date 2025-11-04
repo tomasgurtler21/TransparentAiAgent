@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Anthropic.Client;
@@ -12,6 +14,7 @@ using Anthropic.Client.Models.Messages.ToolProperties;
 using TransparentAiAgentCore.Domain.Authentication;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.LLM;
+using TransparentAiAgentCore.Domain.Transparency.EventData;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 
 namespace TransparentAiAgentCore.Infrastructure.LLM;
@@ -80,23 +83,24 @@ public class AnthropicProvider : ILLMProvider
             // Build request parameters
             var messageParams = BuildMessageRequest(request, null);
 
-            // Log transparency event - simplified for now, can be enhanced later
-            _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
-                Domain.Transparency.TransparencyEventType.SystemState,
-                $"Anthropic LLM Request: Model={_modelName}, Messages={request.Messages.Count}, MaxTokens={request.MaxTokens}, Tools={request.Tools?.Count ?? 0}",
-                "LLM Request"));
+            // Generate correlation ID for request/response tracking
+            var correlationId = Guid.NewGuid().ToString();
+            var startTime = DateTime.UtcNow;
+
+            // Log raw request
+            LogRawRequest(request, messageParams, correlationId);
 
             // Call Anthropic API
             var response = await _client.Messages.Create(messageParams);
 
+            // Calculate latency
+            var latency = DateTime.UtcNow - startTime;
+
             // Convert response
             var llmResponse = ConvertResponse(response);
 
-            // Log transparency event
-            _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
-                Domain.Transparency.TransparencyEventType.AssistantResponse,
-                $"Anthropic LLM Response: Content length={llmResponse.Content.Length}, FinishReason={llmResponse.FinishReason}",
-                "LLM Response"));
+            // Log raw response
+            LogRawResponse(response, correlationId, latency);
 
             return llmResponse;
         }
@@ -120,19 +124,22 @@ public class AnthropicProvider : ILLMProvider
         if (request == null)
             throw new ArgumentNullException(nameof(request));
 
-        // Log transparency event
-        _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
-            Domain.Transparency.TransparencyEventType.SystemState,
-            $"Anthropic LLM Streaming Request: Model={_modelName}, Messages={request.Messages.Count}, MaxTokens={request.MaxTokens}, Tools={request.Tools?.Count ?? 0}",
-            "LLM Streaming Request"));
-
         IAsyncEnumerable<Anthropic.Client.Models.Messages.RawMessageStreamEvent>? streamingResponse = null;
+        string correlationId = Guid.NewGuid().ToString();
+        DateTime startTime = DateTime.UtcNow;
+
+        // Accumulate response for final logging
+        var accumulatedContent = new System.Text.StringBuilder();
+        string? stopReason = null;
 
         // Get streaming response outside of try-catch to allow yield
         try
         {
             // Build request parameters
             var messageParams = BuildMessageRequest(request, null);
+
+            // Log raw request before streaming starts
+            LogRawRequest(request, messageParams, correlationId);
 
             // Get streaming response
             streamingResponse = _client.Messages.CreateStreaming(messageParams);
@@ -151,12 +158,30 @@ public class AnthropicProvider : ILLMProvider
         {
             await foreach (var streamEvent in streamingResponse.WithCancellation(cancellationToken))
             {
+                // Accumulate content from chunks
+                if (streamEvent.TryPickContentBlockDelta(out var deltaEvent))
+                {
+                    if (deltaEvent.Delta.TryPickText(out var textDelta))
+                    {
+                        accumulatedContent.Append(textDelta.Text);
+                    }
+                }
+                // Capture stop reason
+                else if (streamEvent.TryPickStop(out var stopEvent))
+                {
+                    stopReason = "stop";
+                }
+
                 var chunk = ConvertStreamingEvent(streamEvent);
                 if (chunk != null)
                 {
                     yield return chunk;
                 }
             }
+
+            // Log complete accumulated response after streaming finishes
+            var latency = DateTime.UtcNow - startTime;
+            LogStreamingResponse(accumulatedContent.ToString(), stopReason, correlationId, latency);
         }
     }
 
@@ -361,5 +386,231 @@ public class AnthropicProvider : ILLMProvider
         }
 
         return (systemPrompt, messages);
+    }
+
+    /// <summary>
+    /// Log raw LLM request for transparency
+    /// </summary>
+    private void LogRawRequest(LLMRequest request, MessageCreateParams messageParams, string correlationId)
+    {
+        var rawData = new RawLLMRequestData(
+            correlationId,
+            ProviderName,
+            SerializeRawRequest(request, messageParams),
+            request.Messages.Count);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMRequest,
+                eventData,
+                $"Raw request to {ProviderName} (Correlation: {correlationId})"));
+    }
+
+    /// <summary>
+    /// Log raw LLM response for transparency
+    /// </summary>
+    private void LogRawResponse(Message response, string correlationId, TimeSpan latency)
+    {
+        var rawData = new RawLLMResponseData(
+            correlationId,
+            ProviderName,
+            SerializeRawResponse(response),
+            null, // Status code not available for SDK calls
+            latency);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMResponse,
+                eventData,
+                $"Raw response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
+    }
+
+    /// <summary>
+    /// Log accumulated streaming response for transparency
+    /// </summary>
+    private void LogStreamingResponse(string accumulatedContent, string? stopReason, string correlationId, TimeSpan latency)
+    {
+        var responseData = new
+        {
+            Provider = ProviderName,
+            Content = new[]
+            {
+                new { Type = "text", Text = accumulatedContent }
+            },
+            StopReason = stopReason ?? "unknown",
+            Timestamp = DateTime.UtcNow,
+            IsStreaming = true
+        };
+
+        var responseJson = JsonSerializer.Serialize(responseData, new JsonSerializerOptions { WriteIndented = true });
+
+        var rawData = new RawLLMResponseData(
+            correlationId,
+            ProviderName,
+            responseJson,
+            null, // Status code not available for SDK calls
+            latency);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMResponse,
+                eventData,
+                $"Raw streaming response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
+    }
+
+    /// <summary>
+    /// Serialize raw request to JSON for transparency logging
+    /// </summary>
+    private string SerializeRawRequest(LLMRequest request, MessageCreateParams messageParams)
+    {
+        var requestData = new
+        {
+            Provider = ProviderName,
+            Model = _modelName,
+            Messages = messageParams.Messages.Select(m => new
+            {
+                Role = m.Role.ToString(),
+                Content = ExtractMessageContent(m)
+            }).ToList(),
+            Parameters = new
+            {
+                MaxTokens = messageParams.MaxTokens,
+                Temperature = messageParams.Temperature,
+                TopP = messageParams.TopP,
+                System = messageParams.System != null ? ExtractSystemPrompt(messageParams.System) : null,
+                Tools = messageParams.Tools?.Select(t => ExtractToolInfo(t)).ToList()
+            },
+            Timestamp = DateTime.UtcNow
+        };
+
+        return JsonSerializer.Serialize(requestData, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>
+    /// Serialize raw response to JSON for transparency logging
+    /// </summary>
+    private string SerializeRawResponse(Message response)
+    {
+        var responseData = new
+        {
+            Provider = ProviderName,
+            Id = response.ID,
+            Model = response.Model,
+            Role = response.Role.ToString(),
+            Content = response.Content.Select(c => ExtractContentBlock(c)).ToList(),
+            StopReason = response.StopReason?.ToString(),
+            Usage = response.Usage != null
+                ? new
+                {
+                    InputTokens = response.Usage.InputTokens,
+                    OutputTokens = response.Usage.OutputTokens
+                }
+                : null,
+            Timestamp = DateTime.UtcNow
+        };
+
+        return JsonSerializer.Serialize(responseData, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>
+    /// Extract content from a MessageParam
+    /// </summary>
+    private object ExtractMessageContent(MessageParam messageParam)
+    {
+        if (messageParam.Content.TryPickString(out var stringContent))
+        {
+            return stringContent;
+        }
+        // If not a string, serialize the content as-is
+        return JsonSerializer.Serialize(messageParam.Content);
+    }
+
+    /// <summary>
+    /// Extract content from a content block (dynamic type from Anthropic SDK)
+    /// </summary>
+    private object ExtractContentBlock(dynamic contentBlock)
+    {
+        try
+        {
+            if (contentBlock.TryPickText(out dynamic textBlock))
+            {
+                return new { Type = "text", Text = textBlock.Text };
+            }
+            else if (contentBlock.TryPickToolUse(out dynamic toolUseBlock))
+            {
+                return new
+                {
+                    Type = "tool_use",
+                    Id = toolUseBlock.ID,
+                    Name = toolUseBlock.Name,
+                    Input = toolUseBlock.Input
+                };
+            }
+        }
+        catch
+        {
+            // Fallback if TryPick methods aren't available
+        }
+
+        return new { Type = "unknown", Raw = contentBlock?.ToString() };
+    }
+
+    /// <summary>
+    /// Extract system prompt from SystemModel
+    /// </summary>
+    private string ExtractSystemPrompt(SystemModel systemModel)
+    {
+        if (systemModel.TryPickString(out var systemString))
+        {
+            return systemString;
+        }
+        // If not a string, serialize as JSON
+        return JsonSerializer.Serialize(systemModel);
+    }
+
+    /// <summary>
+    /// Extract tool information from ToolUnion
+    /// </summary>
+    private object ExtractToolInfo(ToolUnion toolUnion)
+    {
+        if (toolUnion.TryPickTool(out var tool))
+        {
+            // Extract type from JsonElement
+            string? typeValue = null;
+            try
+            {
+                if (tool.InputSchema.Type.ValueKind == JsonValueKind.String)
+                {
+                    typeValue = tool.InputSchema.Type.GetString();
+                }
+                else
+                {
+                    typeValue = tool.InputSchema.Type.ToString();
+                }
+            }
+            catch
+            {
+                typeValue = tool.InputSchema.Type.ToString();
+            }
+
+            return new
+            {
+                Name = tool.Name,
+                Description = tool.Description,
+                InputSchema = new
+                {
+                    Type = typeValue,
+                    Properties = tool.InputSchema.Properties1,
+                    Required = tool.InputSchema.Required
+                }
+            };
+        }
+        return new { Raw = toolUnion?.ToString() };
     }
 }

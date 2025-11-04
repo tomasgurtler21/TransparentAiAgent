@@ -303,10 +303,14 @@ public class AzureOpenAIProvider : ILLMProvider
         if (request == null)
             throw new ArgumentNullException(nameof(request));
 
-        // Log request to transparency system
-        LogRequest(request);
-
         AsyncCollectionResult<StreamingChatCompletionUpdate>? streamingResponse = null;
+        string correlationId = Guid.NewGuid().ToString();
+        DateTime startTime = DateTime.UtcNow;
+
+        // Accumulate response for final logging
+        var accumulatedContent = new System.Text.StringBuilder();
+        var accumulatedToolCalls = new List<LLMToolCall>();
+        string? finishReason = null;
 
         // Get streaming response outside of try-catch to allow yield
         try
@@ -316,6 +320,9 @@ public class AzureOpenAIProvider : ILLMProvider
 
             // Build options
             var options = BuildChatCompletionOptions(request);
+
+            // Log raw request before streaming starts
+            LogRawRequest(request, messages, options, correlationId);
 
             // Get streaming response
             streamingResponse = _chatClient.CompleteChatStreamingAsync(messages, options, cancellationToken);
@@ -334,9 +341,65 @@ public class AzureOpenAIProvider : ILLMProvider
         {
             await foreach (StreamingChatCompletionUpdate update in streamingResponse.WithCancellation(cancellationToken))
             {
+                // Accumulate content from chunks
+                if (update.ContentUpdate.Count > 0)
+                {
+                    foreach (var content in update.ContentUpdate)
+                    {
+                        accumulatedContent.Append(content.Text);
+                    }
+                }
+
+                // Accumulate tool calls
+                if (update.ToolCallUpdates.Count > 0)
+                {
+                    foreach (var toolCallUpdate in update.ToolCallUpdates)
+                    {
+                        // Find or create tool call entry
+                        var existingToolCall = accumulatedToolCalls.FirstOrDefault(tc => tc.Id == toolCallUpdate.ToolCallId);
+                        if (existingToolCall != null)
+                        {
+                            // Append to existing arguments
+                            var argumentsUpdate = toolCallUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty;
+                            var updatedArguments = existingToolCall.Arguments + argumentsUpdate;
+                            accumulatedToolCalls.Remove(existingToolCall);
+                            accumulatedToolCalls.Add(new LLMToolCall(
+                                existingToolCall.Id,
+                                existingToolCall.Name,
+                                updatedArguments
+                            ));
+                        }
+                        else if (!string.IsNullOrEmpty(toolCallUpdate.FunctionName))
+                        {
+                            // Create new tool call entry
+                            var argumentsUpdate = toolCallUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty;
+                            accumulatedToolCalls.Add(new LLMToolCall(
+                                toolCallUpdate.ToolCallId,
+                                toolCallUpdate.FunctionName,
+                                argumentsUpdate
+                            ));
+                        }
+                    }
+                }
+
+                // Capture finish reason
+                if (update.FinishReason.HasValue)
+                {
+                    finishReason = update.FinishReason.Value.ToString();
+                }
+
                 var chunk = ConvertStreamingUpdate(update);
                 yield return chunk;
             }
+
+            // Log complete accumulated response after streaming finishes
+            var latency = DateTime.UtcNow - startTime;
+            LogStreamingResponse(
+                accumulatedContent.ToString(),
+                accumulatedToolCalls.Count > 0 ? accumulatedToolCalls : null,
+                finishReason,
+                correlationId,
+                latency);
         }
     }
 
@@ -385,11 +448,18 @@ public class AzureOpenAIProvider : ILLMProvider
 
     private ChatCompletionOptions BuildChatCompletionOptions(LLMRequest request)
     {
-        var options = new ChatCompletionOptions
+        var options = new ChatCompletionOptions();
+
+        // Only set Temperature and TopP if they have values
+        if (request.Temperature.HasValue)
         {
-            Temperature = (float)request.Temperature,
-            TopP = (float)request.TopP
-        };
+            options.Temperature = (float)request.Temperature.Value;
+        }
+
+        if (request.TopP.HasValue)
+        {
+            options.TopP = (float)request.TopP.Value;
+        }
 
         // For reasoning models, we'll use protocol method with BinaryContent to avoid SDK bug
         // So don't set MaxOutputTokenCount here for reasoning models
@@ -634,6 +704,41 @@ public class AzureOpenAIProvider : ILLMProvider
                 Domain.Transparency.TransparencyEventType.RawLLMResponse,
                 eventData,
                 $"Raw response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
+    }
+
+    private void LogStreamingResponse(string content, List<LLMToolCall>? toolCalls, string? finishReason, string correlationId, TimeSpan latency)
+    {
+        var responseData = new
+        {
+            Provider = ProviderName,
+            Content = content,
+            ToolCalls = toolCalls?.Select(tc => new
+            {
+                Id = tc.Id,
+                Name = tc.Name,
+                Arguments = tc.Arguments
+            }).ToList(),
+            FinishReason = finishReason ?? "unknown",
+            Timestamp = DateTime.UtcNow,
+            IsStreaming = true
+        };
+
+        var responseJson = JsonSerializer.Serialize(responseData, new JsonSerializerOptions { WriteIndented = true });
+
+        var rawData = new RawLLMResponseData(
+            correlationId,
+            ProviderName,
+            responseJson,
+            null, // Status code not available for SDK calls
+            latency);
+
+        var eventData = JsonSerializer.Serialize(rawData, new JsonSerializerOptions { WriteIndented = true });
+
+        _transparencyService.LogEvent(
+            new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.RawLLMResponse,
+                eventData,
+                $"Raw streaming response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
     }
 
     private void LogRawRequestJson(string requestJson, int messageCount, string correlationId)

@@ -50,7 +50,7 @@
         {
             @foreach (var ev in FilteredEvents)
             {
-                <TransparencyEventDisplay Event="ev" />
+                <TransparencyEventDisplay @key="ev.Id" Event="ev" />
             }
         }
     </div>
