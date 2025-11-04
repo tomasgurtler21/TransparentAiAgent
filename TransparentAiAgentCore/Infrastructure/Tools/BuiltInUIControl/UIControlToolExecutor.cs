@@ -45,8 +45,9 @@ public class UIControlToolExecutor : IToolExecutor
         {
             _logger.LogDebug("Executing UI control tool: {ToolName}", tool.Name);
 
-            // Resolve IUIControlService from current scope (per SignalR connection)
-            var uiControlService = _serviceProvider.GetRequiredService<IUIControlService>();
+            // Create a scope to resolve scoped IUIControlService (per SignalR connection)
+            using var scope = _serviceProvider.CreateScope();
+            var uiControlService = scope.ServiceProvider.GetRequiredService<IUIControlService>();
 
             // Parse arguments
             JsonDocument argsDoc;
