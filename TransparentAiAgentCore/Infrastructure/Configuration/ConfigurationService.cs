@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Exceptions;
@@ -19,6 +20,7 @@ public class ConfigurationService : IConfigurationService
             WriteIndented = true,
             ReadCommentHandling = JsonCommentHandling.Skip,
             AllowTrailingCommas = true,
+            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
             Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
     }
@@ -38,25 +40,36 @@ public class ConfigurationService : IConfigurationService
 
         try
         {
-            var json = File.ReadAllText(filePath);
-
-            // Parse the JSON to get the TransparentAiAgent section
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            // Look for TransparentAiAgent section
-            if (root.TryGetProperty("TransparentAiAgent", out var agentSection))
+            // Force InvariantCulture for JSON parsing to avoid culture-specific number formatting issues
+            var previousCulture = CultureInfo.CurrentCulture;
+            try
             {
-                var config = JsonSerializer.Deserialize<AppConfiguration>(agentSection.GetRawText(), _jsonOptions);
-                if (config == null)
-                    throw new ConfigurationException("Failed to deserialize configuration");
+                CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
-                _currentConfiguration = config;
-                return config;
+                var json = File.ReadAllText(filePath);
+
+                // Parse the JSON to get the TransparentAiAgent section
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                // Look for TransparentAiAgent section
+                if (root.TryGetProperty("TransparentAiAgent", out var agentSection))
+                {
+                    var config = JsonSerializer.Deserialize<AppConfiguration>(agentSection.GetRawText(), _jsonOptions);
+                    if (config == null)
+                        throw new ConfigurationException("Failed to deserialize configuration");
+
+                    _currentConfiguration = config;
+                    return config;
+                }
+
+                // If no TransparentAiAgent section, return default
+                return new AppConfiguration();
             }
-
-            // If no TransparentAiAgent section, return default
-            return new AppConfiguration();
+            finally
+            {
+                CultureInfo.CurrentCulture = previousCulture;
+            }
         }
         catch (JsonException ex)
         {
