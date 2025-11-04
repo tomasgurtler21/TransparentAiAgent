@@ -373,24 +373,27 @@ public class AzureOpenAIProvider : ILLMProvider
                     finishReason = update.FinishReason.Value.ToString();
                 }
 
-                var chunk = ConvertStreamingUpdate(update);
-                yield return chunk;
+                // Only yield chunk if it's NOT the final chunk
+                // Final chunk will be yielded after the loop with accumulated tool calls
+                if (!update.FinishReason.HasValue)
+                {
+                    var chunk = ConvertStreamingUpdate(update);
+                    yield return chunk;
+                }
             }
 
             // Get accumulated tool calls from helper
             var accumulatedToolCalls = toolCallAccumulator.GetAccumulatedToolCalls();
 
-            // Yield final completion chunk with accumulated tool calls
-            if (accumulatedToolCalls.Count > 0)
-            {
-                var finalChunk = new StreamingLLMChunk(
-                    contentDelta: string.Empty,
-                    toolCallDelta: null,
-                    isComplete: true,
-                    finishReason: finishReason,
-                    accumulatedToolCalls: accumulatedToolCalls);
-                yield return finalChunk;
-            }
+            // ALWAYS yield final completion chunk with accumulated tool calls
+            // This is the ONLY source of truth for complete tool calls after streaming
+            var finalChunk = new StreamingLLMChunk(
+                contentDelta: string.Empty,
+                toolCallDelta: null,
+                isComplete: true,
+                finishReason: finishReason,
+                accumulatedToolCalls: accumulatedToolCalls.Count > 0 ? accumulatedToolCalls : null);
+            yield return finalChunk;
 
             // Log complete accumulated response after streaming finishes
             var latency = DateTime.UtcNow - startTime;
