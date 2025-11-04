@@ -106,44 +106,11 @@ public class AgentOrchestrator : IAgentOrchestrator
         // Check if LLM wants to call tools
         if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0 && _toolManager != null)
         {
-            try
-            {
-                // DIAGNOSTIC: Log LLMToolCalls BEFORE conversion
-                LogToolCallsBeforeConversion(llmResponse.ToolCalls);
-
-                // Convert LLMToolCall list to ToolCall list
-                var toolCalls = llmResponse.ToolCalls
-                    .Select(tc => new ToolCall(tc.Id, tc.Name, tc.Arguments))
-                    .ToList();
-
-                // Create ONE assistant message with ALL tool calls
-                var assistantToolCallMessage = new AssistantToolCallMessage(
-                    llmResponse.Content ?? string.Empty,
-                    toolCalls);
-                _conversationManager.AddMessage(assistantToolCallMessage);
-            }
-            catch (Exception ex)
-            {
-                // Log parsing error
-                LogParsingError(llmResponse, ex);
-                throw; // Re-throw to maintain error handling behavior
-            }
-
-            // Execute each tool and add result messages
-            foreach (var toolCall in llmResponse.ToolCalls)
-            {
-                // Execute tool
-                var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
-
-                // Add tool result message to conversation
-                var toolResultMessage = new ToolResultMessage(
-                    toolCall.Id,
-                    toolCall.Name,
-                    toolResult.Content,
-                    toolResult.IsSuccess,
-                    toolResult.ErrorMessage);
-                _conversationManager.AddMessage(toolResultMessage);
-            }
+            // Execute tools using extracted method
+            await ExecuteToolCallsAsync(
+                llmResponse.Content ?? string.Empty,
+                llmResponse.ToolCalls,
+                cancellationToken);
 
             // Continue loop with tool results
             return await ProcessWithToolLoopAsync(depth + 1, cancellationToken);
@@ -166,6 +133,201 @@ public class AgentOrchestrator : IAgentOrchestrator
         }
     }
 
+    /// <summary>
+    /// Executes tool calls from LLM response and adds messages to conversation.
+    /// Extracted method to be reused by both streaming and non-streaming paths.
+    /// </summary>
+    /// <param name="assistantContent">The text content from the LLM response</param>
+    /// <param name="llmToolCalls">List of tool calls from the LLM</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    private async Task ExecuteToolCallsAsync(
+        string assistantContent,
+        List<LLMToolCall> llmToolCalls,
+        CancellationToken cancellationToken)
+    {
+        if (_toolManager == null)
+        {
+            LogEvent("ToolExecutionSkipped", "Tool manager not available");
+            return;
+        }
+
+        try
+        {
+            // DIAGNOSTIC: Log LLMToolCalls BEFORE conversion
+            LogToolCallsBeforeConversion(llmToolCalls);
+
+            // Convert LLMToolCall list to ToolCall list
+            var toolCalls = llmToolCalls
+                .Select(tc => new ToolCall(tc.Id, tc.Name, tc.Arguments))
+                .ToList();
+
+            // Create ONE assistant message with ALL tool calls
+            var assistantToolCallMessage = new AssistantToolCallMessage(
+                assistantContent,
+                toolCalls);
+            _conversationManager.AddMessage(assistantToolCallMessage);
+        }
+        catch (Exception ex)
+        {
+            // Log parsing error and re-throw
+            LogEvent("ToolCallConversionError", $"Failed to convert tool calls: {ex.Message}");
+            throw;
+        }
+
+        // Execute each tool and add result messages
+        foreach (var toolCall in llmToolCalls)
+        {
+            try
+            {
+                // Execute tool
+                LogEvent("ToolExecutionStarted", $"Executing tool: {toolCall.Name}");
+                var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
+                LogEvent("ToolExecutionCompleted", $"Tool {toolCall.Name} completed. Success: {toolResult.IsSuccess}");
+
+                // Add tool result message to conversation
+                var toolResultMessage = new ToolResultMessage(
+                    toolCall.Id,
+                    toolCall.Name,
+                    toolResult.Content,
+                    toolResult.IsSuccess,
+                    toolResult.ErrorMessage);
+                _conversationManager.AddMessage(toolResultMessage);
+            }
+            catch (Exception ex)
+            {
+                // Log error but continue with other tools
+                LogEvent("ToolExecutionError", $"Error executing tool {toolCall.Name}: {ex.Message}");
+
+                // Add error result message with error description as content
+                var errorResultMessage = new ToolResultMessage(
+                    toolCall.Id,
+                    toolCall.Name,
+                    $"Tool execution failed: {ex.Message}",
+                    isSuccess: false,
+                    errorMessage: ex.Message);
+                _conversationManager.AddMessage(errorResultMessage);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recursive streaming method that handles tool loops.
+    /// Streams LLM response, accumulates tool calls, executes tools, and recursively continues if needed.
+    /// </summary>
+    /// <param name="depth">Current recursion depth (for infinite loop protection)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Streaming chunks including text content and status updates</returns>
+    private async IAsyncEnumerable<StreamingResponseChunk> ProcessStreamingToolLoopAsync(
+        int depth,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Prevent infinite tool loops
+        if (depth >= MaxToolCallDepth)
+        {
+            LogEvent("ToolLoopMaxDepthReached", $"Maximum tool call depth ({MaxToolCallDepth}) reached in streaming");
+            var errorMessage = $"I've reached the maximum number of tool calls ({MaxToolCallDepth}). Please try rephrasing your request.";
+
+            // Add error message to conversation
+            var errorAssistantMessage = new AssistantMessage(errorMessage);
+            _conversationManager.AddMessage(errorAssistantMessage);
+
+            // Yield error chunk and complete
+            yield return new StreamingResponseChunk(errorMessage, IsComplete: true, Status: StreamingStatus.Error);
+            yield break;
+        }
+
+        // Build LLM request from current conversation state
+        var llmRequest = BuildLLMRequest();
+        llmRequest = new LLMRequest(
+            llmRequest.Messages,
+            llmRequest.Temperature,
+            llmRequest.TopP,
+            llmRequest.MaxTokens,
+            stream: true,
+            llmRequest.Tools);
+
+        // Stream from LLM and accumulate tool calls
+        LogEvent("LLMStreamRequestSent", $"Sending streaming request to LLM (depth: {depth})");
+
+        var contentBuilder = new StringBuilder();
+        var toolCallsById = new Dictionary<string, (string Name, StringBuilder Arguments)>();
+
+        await foreach (var chunk in _llmProvider.StreamRequestAsync(llmRequest, cancellationToken))
+        {
+            // Accumulate text content
+            if (!string.IsNullOrEmpty(chunk.ContentDelta))
+            {
+                contentBuilder.Append(chunk.ContentDelta);
+                // Yield text content immediately for real-time streaming
+                yield return new StreamingResponseChunk(chunk.ContentDelta, IsComplete: false, Status: StreamingStatus.Streaming);
+            }
+
+            // Accumulate tool calls
+            if (chunk.ToolCallDelta != null)
+            {
+                var toolCall = chunk.ToolCallDelta;
+
+                if (toolCallsById.TryGetValue(toolCall.Id, out var existingToolCall))
+                {
+                    // Update existing tool call
+                    var name = !string.IsNullOrEmpty(toolCall.Name) ? toolCall.Name : existingToolCall.Name;
+                    existingToolCall.Arguments.Append(toolCall.Arguments);
+                    toolCallsById[toolCall.Id] = (name, existingToolCall.Arguments);
+                }
+                else
+                {
+                    // Create new tool call entry
+                    var name = toolCall.Name ?? string.Empty;
+                    var arguments = new StringBuilder(toolCall.Arguments ?? string.Empty);
+                    toolCallsById[toolCall.Id] = (name, arguments);
+                }
+            }
+
+            // Check if stream is complete
+            if (chunk.IsComplete)
+            {
+                LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, Tool calls: {toolCallsById.Count}");
+                break;
+            }
+        }
+
+        // Convert accumulated tool calls to LLMToolCall list
+        var accumulatedToolCalls = toolCallsById
+            .Select(kvp => new LLMToolCall(kvp.Key, kvp.Value.Name, kvp.Value.Arguments.ToString()))
+            .ToList();
+
+        // Check if LLM wants to call tools
+        if (accumulatedToolCalls.Count > 0 && _toolManager != null)
+        {
+            // Yield status update: executing tools
+            yield return new StreamingResponseChunk(null, IsComplete: false, Status: StreamingStatus.ExecutingTools);
+            LogEvent("ToolExecutionStarting", $"Starting execution of {accumulatedToolCalls.Count} tool(s) in streaming mode");
+
+            // Execute tools using extracted method
+            await ExecuteToolCallsAsync(
+                contentBuilder.ToString(),
+                accumulatedToolCalls,
+                cancellationToken);
+
+            LogEvent("ToolExecutionCompleted", $"Completed execution of {accumulatedToolCalls.Count} tool(s)");
+
+            // Recursive call to continue tool loop
+            await foreach (var chunk in ProcessStreamingToolLoopAsync(depth + 1, cancellationToken))
+            {
+                yield return chunk;
+            }
+        }
+        else
+        {
+            // No tool calls - add assistant message and complete
+            var assistantMessage = new AssistantMessage(contentBuilder.ToString());
+            _conversationManager.AddMessage(assistantMessage);
+
+            // Yield final completion chunk
+            yield return new StreamingResponseChunk(null, IsComplete: true, Status: StreamingStatus.Completed);
+        }
+    }
+
     public async IAsyncEnumerable<StreamingResponseChunk> ProcessUserInputStreamingAsync(
         string userInput,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -178,39 +340,11 @@ public class AgentOrchestrator : IAgentOrchestrator
         _conversationManager.AddMessage(userMessage);
         LogEvent("UserInput", $"User input (streaming): {userInput}");
 
-        // 2. Build LLM request from in-context messages
-        var llmRequest = BuildLLMRequest();
-        llmRequest = new LLMRequest(
-            llmRequest.Messages,
-            llmRequest.Temperature,
-            llmRequest.TopP,
-            llmRequest.MaxTokens,
-            stream: true,
-            llmRequest.Tools);
-
-        // 3. Stream from LLM
-        LogEvent("LLMStreamRequestSent", "Sending streaming request to LLM");
-
-        var contentBuilder = new StringBuilder();
-
-        await foreach (var chunk in _llmProvider.StreamRequestAsync(llmRequest, cancellationToken))
+        // 2. Start streaming tool loop from depth 0
+        await foreach (var chunk in ProcessStreamingToolLoopAsync(0, cancellationToken))
         {
-            if (!string.IsNullOrEmpty(chunk.ContentDelta))
-            {
-                contentBuilder.Append(chunk.ContentDelta);
-            }
-
-            yield return new StreamingResponseChunk(chunk.ContentDelta, chunk.IsComplete);
-
-            if (chunk.IsComplete)
-            {
-                LogEvent("LLMStreamCompleted", $"Stream completed. Total content length: {contentBuilder.Length}");
-            }
+            yield return chunk;
         }
-
-        // 4. Create assistant message from accumulated content
-        var assistantMessage = new AssistantMessage(contentBuilder.ToString());
-        _conversationManager.AddMessage(assistantMessage);
     }
 
     public void StartNewConversation()

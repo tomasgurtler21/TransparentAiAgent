@@ -43,7 +43,7 @@
 
         try
         {
-            // Use streaming API for real-time response display
+            // Use streaming mode with full tool call support
             await ConversationService.SendMessageStreamingAsync(message);
         }
         catch (Exception ex)
