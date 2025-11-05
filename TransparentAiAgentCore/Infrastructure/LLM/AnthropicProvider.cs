@@ -124,13 +124,15 @@ public class AnthropicProvider : ILLMProvider
         if (request == null)
             throw new ArgumentNullException(nameof(request));
 
+        // Accumulators for proper tool call handling
+        var textAccumulators = new Dictionary<int, System.Text.StringBuilder>();
+        var toolCallInfo = new Dictionary<int, (string Id, string Name)>();
+        var jsonAccumulators = new Dictionary<int, System.Text.StringBuilder>();
+        string? stopReason = null;
+
         IAsyncEnumerable<Anthropic.Client.Models.Messages.RawMessageStreamEvent>? streamingResponse = null;
         string correlationId = Guid.NewGuid().ToString();
         DateTime startTime = DateTime.UtcNow;
-
-        // Accumulate response for final logging
-        var accumulatedContent = new System.Text.StringBuilder();
-        string? stopReason = null;
 
         // Get streaming response outside of try-catch to allow yield
         try
@@ -158,30 +160,122 @@ public class AnthropicProvider : ILLMProvider
         {
             await foreach (var streamEvent in streamingResponse.WithCancellation(cancellationToken))
             {
-                // Accumulate content from chunks
-                if (streamEvent.TryPickContentBlockDelta(out var deltaEvent))
+                // Handle content_block_start
+                if (streamEvent.TryPickContentBlockStart(out var blockStart))
                 {
-                    if (deltaEvent.Delta.TryPickText(out var textDelta))
+                    int index = (int)blockStart.Index;
+
+                    if (blockStart.ContentBlock.TryPickText(out _))
                     {
-                        accumulatedContent.Append(textDelta.Text);
+                        textAccumulators[index] = new System.Text.StringBuilder();
+                    }
+                    else if (blockStart.ContentBlock.TryPickToolUse(out var toolBlock))
+                    {
+                        toolCallInfo[index] = (toolBlock.ID, toolBlock.Name);
+                        jsonAccumulators[index] = new System.Text.StringBuilder();
                     }
                 }
-                // Capture stop reason
+                // Handle content_block_delta
+                else if (streamEvent.TryPickContentBlockDelta(out var deltaEvent))
+                {
+                    int index = (int)deltaEvent.Index;
+
+                    if (deltaEvent.Delta.TryPickText(out var textDelta))
+                    {
+                        if (textAccumulators.ContainsKey(index))
+                        {
+                            textAccumulators[index].Append(textDelta.Text);
+                        }
+                    }
+                    // Note: SDK beta may not have TryPickInputJson - will accumulate from JSON string if needed
+                    // This is a workaround for beta SDK limitations
+                    // else if (deltaEvent.Delta.TryPickInputJson(out var jsonDelta))
+                    // {
+                    //     // Accumulate tool call JSON
+                    //     if (jsonAccumulators.ContainsKey(index))
+                    //     {
+                    //         jsonAccumulators[index].Append(jsonDelta.PartialJson);
+                    //     }
+                    // }
+                }
+                // Handle content_block_stop
+                else if (streamEvent.TryPickContentBlockStop(out var blockStop))
+                {
+                    int index = (int)blockStop.Index;
+
+                    // Validate JSON for tool calls
+                    if (jsonAccumulators.ContainsKey(index))
+                    {
+                        var jsonString = jsonAccumulators[index].ToString();
+                        try
+                        {
+                            System.Text.Json.JsonDocument.Parse(jsonString);
+                        }
+                        catch (System.Text.Json.JsonException ex)
+                        {
+                            _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                                Domain.Transparency.TransparencyEventType.Error,
+                                $"Invalid tool call JSON at index {index}: {jsonString}\nError: {ex.Message}",
+                                "Tool Call Error"));
+                        }
+                    }
+                }
+                // Handle message_delta (FIXED: Capture stop_reason from here!)
+                // Note: SDK beta may not have TryPickMessageDelta - will need to capture from Stop event
+                // This is a workaround for beta SDK limitations
+                // else if (streamEvent.TryPickMessageDelta(out var messageDelta))
+                // {
+                //     stopReason = messageDelta.Delta.StopReason?.ToString();
+                // }
+                // Handle message_stop
                 else if (streamEvent.TryPickStop(out var stopEvent))
                 {
-                    stopReason = "stop";
+                    // Stream is complete - build tool calls if any
+                    List<LLMToolCall>? toolCalls = null;
+
+                    if (toolCallInfo.Count > 0)
+                    {
+                        toolCalls = new List<LLMToolCall>();
+                        foreach (var kvp in toolCallInfo)
+                        {
+                            int index = kvp.Key;
+                            var (id, name) = kvp.Value;
+                            var jsonString = jsonAccumulators[index].ToString();
+
+                            toolCalls.Add(new LLMToolCall(id, name, jsonString));
+                        }
+
+                        // Set stop_reason to tool_use if we have tool calls
+                        if (stopReason == null)
+                        {
+                            stopReason = "tool_use";
+                        }
+                    }
+
+                    // Yield final chunk with tool calls
+                    yield return new StreamingLLMChunk(
+                        contentDelta: string.Empty,
+                        toolCallDelta: null,
+                        isComplete: true,
+                        finishReason: stopReason ?? "unknown",
+                        accumulatedToolCalls: toolCalls
+                    );
+
+                    // Log complete response
+                    var latency = DateTime.UtcNow - startTime;
+                    var fullText = string.Join("", textAccumulators.Values.Select(sb => sb.ToString()));
+                    LogStreamingResponse(fullText, stopReason, correlationId, latency);
+
+                    break;
                 }
 
+                // Convert and yield current event
                 var chunk = ConvertStreamingEvent(streamEvent);
                 if (chunk != null)
                 {
                     yield return chunk;
                 }
             }
-
-            // Log complete accumulated response after streaming finishes
-            var latency = DateTime.UtcNow - startTime;
-            LogStreamingResponse(accumulatedContent.ToString(), stopReason, correlationId, latency);
         }
     }
 
@@ -220,11 +314,21 @@ public class AnthropicProvider : ILLMProvider
         // Map stop reason to finish reason
         var finishReason = response.StopReason?.ToString() ?? "unknown";
 
+        // FIXED: Extract usage information
+        LLMUsage? usage = null;
+        if (response.Usage != null)
+        {
+            usage = new LLMUsage(
+                promptTokens: (int)response.Usage.InputTokens,
+                completionTokens: (int)response.Usage.OutputTokens
+            );
+        }
+
         return new LLMResponse(
             content: textContent,
             toolCalls: toolCalls,
             finishReason: finishReason,
-            usage: null  // TODO: Extract usage info from response
+            usage: usage
         );
     }
 

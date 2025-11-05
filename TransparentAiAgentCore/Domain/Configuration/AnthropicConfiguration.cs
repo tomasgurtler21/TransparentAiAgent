@@ -5,7 +5,12 @@ namespace TransparentAiAgentCore.Domain.Configuration;
 public class AnthropicConfiguration
 {
     public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "claude-3-5-sonnet-20241022";
+    /// <summary>
+    /// Claude model identifier. Use versioned IDs for production:
+    /// - "claude-sonnet-4-5-20250929" (Sonnet 4.5 - recommended for accuracy)
+    /// - "claude-haiku-4-5-20251001" (Haiku 4.5 - recommended for speed/cost)
+    /// </summary>
+    public string Model { get; set; } = "claude-sonnet-4-5-20250929";
 
     public void Validate()
     {
