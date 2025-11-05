@@ -137,10 +137,58 @@ public class ToolManager : IToolManager
     /// </summary>
     public List<LLMTool> GetLLMToolDefinitions()
     {
-        var tools = _registry.GetAllTools();
+        try
+        {
+            // DEBUG: Log registry type and tool count
+            var registryType = _registry.GetType().Name;
+            var tools = _registry.GetAllTools();
+            var toolCount = tools?.Count ?? 0;
 
-        return tools
-            .Select(t => new LLMTool(t.Name, t.Description, t.ParametersSchema))
-            .ToList();
+            _transparencyService.LogEvent(new TransparencyEvent(
+                TransparencyEventType.SystemState,
+                JsonSerializer.Serialize(new
+                {
+                    RegistryType = registryType,
+                    ToolCount = toolCount,
+                    Tools = tools?.Select(t => new { t.Name, t.SourceType }).ToList()
+                }),
+                $"[ToolManager] GetLLMToolDefinitions - Registry: {registryType}, Count: {toolCount}"));
+
+            if (tools == null || tools.Count == 0)
+            {
+                _transparencyService.LogEvent(new TransparencyEvent(
+                    TransparencyEventType.SystemState,
+                    "Registry returned null or empty tools list",
+                    "[ToolManager] WARNING: No tools available from registry"));
+                return new List<LLMTool>();
+            }
+
+            var llmTools = tools
+                .Select(t => new LLMTool(t.Name, t.Description, t.ParametersSchema))
+                .ToList();
+
+            _transparencyService.LogEvent(new TransparencyEvent(
+                TransparencyEventType.SystemState,
+                JsonSerializer.Serialize(new
+                {
+                    ConvertedCount = llmTools.Count,
+                    ToolNames = llmTools.Select(t => t.Name).ToList()
+                }),
+                $"[ToolManager] Converted {llmTools.Count} tools to LLM format"));
+
+            return llmTools;
+        }
+        catch (Exception ex)
+        {
+            _transparencyService.LogEvent(new TransparencyEvent(
+                TransparencyEventType.Error,
+                JsonSerializer.Serialize(new
+                {
+                    Error = ex.Message,
+                    StackTrace = ex.StackTrace
+                }),
+                $"[ToolManager] Error in GetLLMToolDefinitions: {ex.Message}"));
+            throw;
+        }
     }
 }

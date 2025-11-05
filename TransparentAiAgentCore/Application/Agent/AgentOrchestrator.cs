@@ -356,16 +356,27 @@ public class AgentOrchestrator : IAgentOrchestrator
         {
             try
             {
+                LogEvent("ToolManagerAvailable", $"Tool manager is available, attempting to get tool definitions");
                 tools = _toolManager.GetLLMToolDefinitions();
-                if (tools.Count > 0)
+                LogEvent("ToolsRetrieved", $"Retrieved {tools?.Count ?? 0} tools from tool manager");
+
+                if (tools != null && tools.Count > 0)
                 {
-                    LogEvent("ToolsIncluded", $"Including {tools.Count} tools in LLM request");
+                    LogEvent("ToolsIncluded", $"Including {tools.Count} tools in LLM request: {string.Join(", ", tools.Select(t => t.Name))}");
+                }
+                else
+                {
+                    LogEvent("ToolsEmpty", "Tool manager returned 0 tools or null");
                 }
             }
             catch (Exception ex)
             {
-                LogEvent("ToolsError", $"Failed to get tool definitions: {ex.Message}");
+                LogEvent("ToolsError", $"Failed to get tool definitions: {ex.Message}\nStack trace: {ex.StackTrace}");
             }
+        }
+        else
+        {
+            LogEvent("ToolManagerNull", "Tool manager is NULL - tools will not be included in request");
         }
 
         // Build request
