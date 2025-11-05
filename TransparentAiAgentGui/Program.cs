@@ -100,6 +100,8 @@ builder.Services.AddScoped<IConversationManager>(sp =>
 if (appConfig.Agent.EnableTools)
 {
     // Register IToolRegistry first (needed by UI components like ToolsOverview)
+    // IMPORTANT: Tool discovery will be triggered synchronously after app is built
+    // to avoid race conditions where tools aren't available on first request
     builder.Services.AddSingleton<IToolRegistry>(sp =>
     {
         try
@@ -113,23 +115,8 @@ if (appConfig.Agent.EnableTools)
             // Create Tool Registry Composite (MCP + UI Control)
             var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { mcpRegistry, uiControlRegistry });
 
-            // Discover tools on startup if configured (and if servers exist)
-            if (appConfig.MCP.AutoDiscoverTools && appConfig.MCP.Servers.Count > 0)
-            {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await compositeRegistry.RefreshAsync();
-                        var tools = compositeRegistry.GetAllTools();
-                        Console.WriteLine($"✓ Discovered {tools.Count} tools from {appConfig.MCP.Servers.Count} MCP server(s)");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠ Tool discovery failed: {ex.Message}");
-                    }
-                });
-            }
+            // NOTE: Tool discovery will be triggered synchronously AFTER app.Build()
+            // to ensure tools are available before accepting requests
 
             return compositeRegistry;
         }
@@ -242,6 +229,25 @@ builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to share IUICont
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5001") });
 
 var app = builder.Build();
+
+// CRITICAL FIX: Discover tools synchronously BEFORE accepting requests
+// This prevents race condition where tools aren't available on first request
+if (appConfig.Agent.EnableTools && appConfig.MCP.AutoDiscoverTools && appConfig.MCP.Servers.Count > 0)
+{
+    try
+    {
+        Console.WriteLine($"⏳ Discovering tools from {appConfig.MCP.Servers.Count} MCP server(s)...");
+        var toolRegistry = app.Services.GetRequiredService<IToolRegistry>();
+        await toolRegistry.RefreshAsync();
+        var tools = toolRegistry.GetAllTools();
+        Console.WriteLine($"✓ Discovered {tools.Count} tools from {appConfig.MCP.Servers.Count} MCP server(s)");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠ Tool discovery failed: {ex.Message}");
+        Console.WriteLine("   The app will start but MCP tools will not be available.");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
