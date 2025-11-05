@@ -237,16 +237,44 @@ if (appConfig.Agent.EnableTools && appConfig.MCP.AutoDiscoverTools && appConfig.
     try
     {
         Console.WriteLine($"⏳ Discovering tools from {appConfig.MCP.Servers.Count} MCP server(s)...");
+        Console.WriteLine($"   MCP Servers: {string.Join(", ", appConfig.MCP.Servers.Select(s => s.Name))}");
+
         var toolRegistry = app.Services.GetRequiredService<IToolRegistry>();
+        Console.WriteLine($"   Tool registry type: {toolRegistry.GetType().Name}");
+
         await toolRegistry.RefreshAsync();
+
         var tools = toolRegistry.GetAllTools();
         Console.WriteLine($"✓ Discovered {tools.Count} tools from {appConfig.MCP.Servers.Count} MCP server(s)");
+
+        // Log each tool for verification
+        if (tools.Count > 0)
+        {
+            Console.WriteLine("   Tools:");
+            foreach (var tool in tools)
+            {
+                Console.WriteLine($"     - {tool.Name} ({tool.SourceType})");
+            }
+        }
+        else
+        {
+            Console.WriteLine("   ⚠ WARNING: No tools were discovered!");
+        }
     }
     catch (Exception ex)
     {
         Console.WriteLine($"⚠ Tool discovery failed: {ex.Message}");
+        Console.WriteLine($"   Exception type: {ex.GetType().Name}");
+        Console.WriteLine($"   Stack trace: {ex.StackTrace}");
         Console.WriteLine("   The app will start but MCP tools will not be available.");
     }
+}
+else
+{
+    Console.WriteLine($"⚠ Tool discovery skipped:");
+    Console.WriteLine($"   EnableTools: {appConfig.Agent.EnableTools}");
+    Console.WriteLine($"   AutoDiscoverTools: {appConfig.MCP.AutoDiscoverTools}");
+    Console.WriteLine($"   MCP Servers count: {appConfig.MCP.Servers.Count}");
 }
 
 // Configure the HTTP request pipeline.

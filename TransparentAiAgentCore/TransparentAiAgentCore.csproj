@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\anthropic-sdk-csharp\src\Anthropic.Client\Anthropic.Client.csproj" />
+    <ProjectReference Include="..\..\..\anthropic-sdk-csharp\src\Anthropic.Client\Anthropic.Client.csproj" />
   </ItemGroup>
 
 </Project>
