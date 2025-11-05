@@ -36,6 +36,12 @@ public interface IConfigurationService
     Task<AppConfiguration> UpdateSystemPromptAsync(string newPrompt, string? filePath = null);
 
     /// <summary>
+    /// Updates agent configuration (context window size) and saves to file.
+    /// Returns the updated configuration.
+    /// </summary>
+    Task<AppConfiguration> UpdateAgentConfigAsync(int contextWindowSize, string? filePath = null);
+
+    /// <summary>
     /// Updates LLM parameters in configuration and saves to file.
     /// Returns the updated configuration.
     /// </summary>

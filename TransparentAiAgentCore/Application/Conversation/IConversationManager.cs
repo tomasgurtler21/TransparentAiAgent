@@ -49,6 +49,11 @@ public interface IConversationManager
     void UpdateSystemPrompt(string newPrompt);
 
     /// <summary>
+    /// Updates the context window size for the conversation.
+    /// </summary>
+    void UpdateContextWindowSize(int newSize);
+
+    /// <summary>
     /// Event raised when a message's context status changes
     /// </summary>
     event EventHandler<ContextStatusChangedEventArgs>? ContextStatusChanged;

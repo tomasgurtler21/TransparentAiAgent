@@ -144,6 +144,25 @@ public class ConfigurationService : IConfigurationService
         return _currentConfiguration;
     }
 
+    public async Task<AppConfiguration> UpdateAgentConfigAsync(int contextWindowSize, string? filePath = null)
+    {
+        // Validate parameter
+        if (contextWindowSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(contextWindowSize), "ContextWindowSize must be greater than 0");
+
+        // Update in-memory configuration
+        _currentConfiguration.Agent.ContextWindowSize = contextWindowSize;
+
+        // Validate the updated configuration
+        _currentConfiguration.Validate();
+
+        // Save to file
+        var targetPath = filePath ?? _defaultConfigPath;
+        await Task.Run(() => SaveConfiguration(_currentConfiguration, targetPath));
+
+        return _currentConfiguration;
+    }
+
     public async Task<AppConfiguration> UpdateLLMParametersAsync(double temperature, int maxTokens, double topP, string? filePath = null)
     {
         // Validate parameters first

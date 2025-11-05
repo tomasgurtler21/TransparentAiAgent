@@ -1,3 +1,4 @@
+using System.Globalization;
 using TransparentAiAgentGui.Components;
 using TransparentAiAgentGui.Services;
 using TransparentAiAgentCore.Application.Agent;
@@ -18,14 +19,24 @@ using TransparentAiAgentCore.Infrastructure.Tools.MCP;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
 using TransparentAiAgentCore.Domain.UIControl;
 
+// Force InvariantCulture for the entire application to avoid locale-specific number parsing issues
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure JSON options for HTTP/API endpoints to use InvariantCulture
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString;
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Register Core Infrastructure services
-builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 builder.Services.AddSingleton<ITransparencyService, TransparencyService>();
 builder.Services.AddSingleton<ISerializationService, SerializationService>();
 builder.Services.AddSingleton<IToolUsageStatistics, ToolUsageStatistics>();
@@ -50,6 +61,8 @@ catch (Exception ex)
     Console.WriteLine("Using default configuration. The app will start but LLM features will not be available.");
 }
 
+// Register the SAME ConfigurationService instance that we just loaded (not a new one!)
+builder.Services.AddSingleton<IConfigurationService>(configService);
 builder.Services.AddSingleton(appConfig);
 
 // Check if LLM configuration is valid
@@ -289,6 +302,27 @@ app.MapPut("/api/config/system-prompt", async (
     }
 });
 
+app.MapPut("/api/config/agent-config", async (
+    IConfigurationService configService,
+    IConversationManager conversationManager,
+    AgentConfigRequest request) =>
+{
+    try
+    {
+        // Update configuration
+        await configService.UpdateAgentConfigAsync(request.ContextWindowSize);
+
+        // Update conversation manager for hot-reload
+        conversationManager.UpdateContextWindowSize(request.ContextWindowSize);
+
+        return Results.Ok(new { success = true });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
 app.MapPut("/api/config/llm-parameters", async (
     IConfigurationService configService,
     LLMParametersRequest request) =>
@@ -313,4 +347,5 @@ app.Run();
 
 // Request DTOs
 record SystemPromptRequest(string SystemPrompt);
+record AgentConfigRequest(int ContextWindowSize);
 record LLMParametersRequest(double Temperature, int MaxTokens, double TopP);

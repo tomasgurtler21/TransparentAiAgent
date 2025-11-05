@@ -15,7 +15,7 @@ public class ConversationManager : IConversationManager
     private readonly ITransparencyService _transparencyService;
 
     public Guid ConversationId { get; }
-    public int ContextWindowSize { get; }
+    public int ContextWindowSize { get; private set; }
     public int InContextMessageCount => GetInContextMessages().Count;
 
     public event EventHandler<ContextStatusChangedEventArgs>? ContextStatusChanged;
@@ -115,6 +115,25 @@ public class ConversationManager : IConversationManager
                 _messages.Insert(0, newSystemMessage);
                 LogEvent("SystemPromptCreated", $"New system prompt created: '{newPrompt}'");
             }
+        }
+    }
+
+    /// <summary>
+    /// Updates the context window size for the conversation.
+    /// </summary>
+    public void UpdateContextWindowSize(int newSize)
+    {
+        if (newSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(newSize), "Context window size must be greater than 0");
+
+        lock (_lock)
+        {
+            var oldSize = ContextWindowSize;
+            ContextWindowSize = newSize;
+            LogEvent("ContextWindowSizeUpdated", $"Context window size updated from {oldSize} to {newSize}");
+
+            // Re-apply truncation with new size
+            TruncateIfNeeded();
         }
     }
 
