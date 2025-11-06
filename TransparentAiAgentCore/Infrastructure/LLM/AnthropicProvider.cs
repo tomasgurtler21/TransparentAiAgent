@@ -240,7 +240,15 @@ public class AnthropicProvider : ILLMProvider
                         {
                             int index = kvp.Key;
                             var (id, name) = kvp.Value;
-                            var jsonString = jsonAccumulators[index].ToString();
+                            var jsonString = jsonAccumulators.ContainsKey(index)
+                                ? jsonAccumulators[index].ToString()
+                                : "";
+
+                            // If JSON is empty or whitespace, use empty object for tools with optional parameters
+                            if (string.IsNullOrWhiteSpace(jsonString))
+                            {
+                                jsonString = "{}";
+                            }
 
                             toolCalls.Add(new LLMToolCall(id, name, jsonString));
                         }
@@ -404,11 +412,28 @@ public class AnthropicProvider : ILLMProvider
         // Add tools if present
         if (request.Tools != null && request.Tools.Count > 0)
         {
-            messageParams.Tools = new List<ToolUnion>();
+            // Build the tools list FIRST, then assign it to messageParams
+            // (The SDK's Tools property may return a new list on each access)
+            var toolsList = new List<ToolUnion>();
+
             foreach (var tool in request.Tools)
             {
-                messageParams.Tools.Add(ConvertToAnthropicTool(tool));
+                try
+                {
+                    var anthropicTool = ConvertToAnthropicTool(tool);
+                    toolsList.Add(anthropicTool);
+                }
+                catch (Exception ex)
+                {
+                    _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                        Domain.Transparency.TransparencyEventType.Error,
+                        $"Failed to convert tool {tool.Name}: {ex.Message}",
+                        $"Tool conversion error: {tool.Name}"));
+                }
             }
+
+            // NOW assign the complete list to messageParams
+            messageParams.Tools = toolsList;
         }
 
         return messageParams;
@@ -462,12 +487,51 @@ public class AnthropicProvider : ILLMProvider
         var messages = new List<MessageParam>();
         string? systemPrompt = null;
 
-        foreach (var llmMsg in llmMessages)
+        // Group consecutive tool result messages into a single user message
+        var i = 0;
+        while (i < llmMessages.Count)
         {
+            var llmMsg = llmMessages[i];
+
             if (llmMsg.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
             {
                 // Extract system message - Anthropic wants it separate
                 systemPrompt = llmMsg.Content;
+                i++;
+                continue;
+            }
+
+            // Handle consecutive tool result messages - GROUP them into ONE user message
+            if (llmMsg.Role.Equals("tool", StringComparison.OrdinalIgnoreCase))
+            {
+                var toolResultBlocks = new List<ContentBlockParam>();
+
+                // Collect ALL consecutive tool result messages
+                while (i < llmMessages.Count && llmMessages[i].Role.Equals("tool", StringComparison.OrdinalIgnoreCase))
+                {
+                    var toolMsg = llmMessages[i];
+
+                    if (string.IsNullOrEmpty(toolMsg.ToolCallId))
+                        throw new ArgumentException("Tool result message must have ToolCallId");
+
+                    var toolResultBlock = new ToolResultBlockParam(toolMsg.ToolCallId)
+                    {
+                        Content = new Anthropic.Client.Models.Messages.ToolResultBlockParamProperties.Content(toolMsg.Content),
+                        IsError = false  // Assuming success; adjust based on your error handling
+                    };
+
+                    toolResultBlocks.Add(new ContentBlockParam(toolResultBlock));
+                    i++;
+                }
+
+                // Create ONE user message with ALL tool results
+                var messageParam = new MessageParam
+                {
+                    Role = Role.User,
+                    Content = new Content(toolResultBlocks)
+                };
+
+                messages.Add(messageParam);
                 continue;
             }
 
@@ -479,14 +543,55 @@ public class AnthropicProvider : ILLMProvider
                 _ => throw new ArgumentException($"Unknown role: {llmMsg.Role}")
             };
 
-            // Create message param
-            var messageParam = new MessageParam
+            // Handle assistant messages with tool calls
+            if (llmMsg.ToolCalls != null && llmMsg.ToolCalls.Count > 0)
             {
-                Role = role,
-                Content = new Content(llmMsg.Content)
-            };
+                var contentBlocks = new List<ContentBlockParam>();
 
-            messages.Add(messageParam);
+                // Add text content if present
+                if (!string.IsNullOrEmpty(llmMsg.Content))
+                {
+                    var textBlock = new TextBlockParam { Text = llmMsg.Content };
+                    contentBlocks.Add(new ContentBlockParam(textBlock));
+                }
+
+                // Add tool use blocks
+                foreach (var toolCall in llmMsg.ToolCalls)
+                {
+                    // Handle empty/whitespace arguments (tools with optional parameters)
+                    var arguments = string.IsNullOrWhiteSpace(toolCall.Arguments) ? "{}" : toolCall.Arguments;
+
+                    var inputJson = System.Text.Json.JsonDocument.Parse(arguments).RootElement;
+                    var toolUseBlock = new ToolUseBlockParam
+                    {
+                        ID = toolCall.Id,
+                        Name = toolCall.Name,
+                        Input = inputJson
+                    };
+                    contentBlocks.Add(new ContentBlockParam(toolUseBlock));
+                }
+
+                var messageParam = new MessageParam
+                {
+                    Role = role,
+                    Content = new Content(contentBlocks)
+                };
+
+                messages.Add(messageParam);
+            }
+            else
+            {
+                // Regular message without tool calls
+                var messageParam = new MessageParam
+                {
+                    Role = role,
+                    Content = new Content(llmMsg.Content)
+                };
+
+                messages.Add(messageParam);
+            }
+
+            i++;
         }
 
         return (systemPrompt, messages);

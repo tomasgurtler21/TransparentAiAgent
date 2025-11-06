@@ -244,7 +244,7 @@ public class AgentOrchestrator : IAgentOrchestrator
             llmRequest.TopP,
             llmRequest.MaxTokens,
             stream: true,
-            llmRequest.Tools);
+            tools: llmRequest.Tools);
 
         // Stream from LLM and collect accumulated tool calls from final chunk
         LogEvent("LLMStreamRequestSent", $"Sending streaming request to LLM (depth: {depth})");

@@ -44,15 +44,22 @@ public class UIControlToolExecutor : IToolExecutor
         {
             _logger.LogDebug("Executing UI control tool: {ToolName}", tool.Name);
 
-            // Parse arguments
+            // Parse arguments - handle empty/null arguments for tools with optional parameters
             JsonDocument argsDoc;
             try
             {
+                // If arguments is null, empty, or whitespace, treat as empty JSON object
+                if (string.IsNullOrWhiteSpace(arguments))
+                {
+                    _logger.LogDebug("Tool {ToolName} called with no arguments, using empty object", tool.Name);
+                    arguments = "{}";
+                }
+
                 argsDoc = JsonDocument.Parse(arguments);
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Failed to parse arguments for tool {ToolName}", tool.Name);
+                _logger.LogError(ex, "Failed to parse arguments for tool {ToolName}. Arguments: '{Arguments}'", tool.Name, arguments);
                 return Task.FromResult(ToolExecutionResult.Failure(
                     $"Invalid JSON arguments: {ex.Message}",
                     stopwatch.Elapsed));
