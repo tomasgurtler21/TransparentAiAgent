@@ -1,110 +1,73 @@
-# UI Components
+# UI/Presentation Layer
 
-This directory contains documentation for Blazor UI components and presentation logic.
-
-## Blazor Hosting Model
-
-**Selected**: Blazor Server
-
-See [ARCHITECTURE.md](../../ARCHITECTURE.md#blazor-hosting-model-options) for rationale.
-
-## Components
-
-### Chat Component
-**File**: `ChatComponent.md` (to be created during implementation)
-
-Main chat interface for user interaction.
-
-**Key Responsibilities**:
-- Display chat history
-- Show streaming LLM responses in real-time
-- Display tool calls formatted in JSON
-- Handle user input
-- Distinguish user vs LLM messages visually
-- Integrate with state management
+**Last Updated**: 2025-11-08
+**Status**: Active
+**Layer**: Presentation
 
 ---
 
-### Configuration Component
-**File**: `ConfigurationComponent.md` (to be created during implementation)
+## Overview
 
-Configuration editor UI (possibly separate tab).
+The Presentation layer provides a Blazor Server web interface for interacting with the AI agent. It includes chat, configuration, tools discovery, and transparency viewing.
 
-**Key Responsibilities**:
-- Display current configuration
-- Edit system prompts
-- Adjust LLM parameters (temperature, top-p)
-- Manage tool availability
-- Save configuration changes
+## Key Documentation
 
----
+### [UI Architecture](architecture.md)
+Complete UI architecture, services, state management, and Teaching Mode integration.
 
-### Tools Overview Component
-**File**: `ToolsOverviewComponent.md` (to be created during implementation)
-
-Display available tools and their schemas.
-
-**Key Responsibilities**:
-- List all registered tools
-- Show tool input schemas
-- Display tool descriptions
-- Show tool usage history
-- Format schemas for readability
+**Topics**:
+- Blazor Server framework
+- SignalR communication
+- UI services (ConversationUIService, UIControlService)
+- State management (UIState)
+- Component categories (Chat, Transparency, Tools)
 
 ---
 
-### Transparency Viewer
-**File**: `TransparencyViewer.md` (to be created during implementation)
+## Component Categories
 
-Real-time transparency information display.
+**Pages** (7 files):
+- Home - Main chat interface
+- Configuration - Settings editor
+- Tools - Tool discovery
+- Transparency - Event viewer
 
-**Key Responsibilities**:
-- Show current context
-- Display transparency events in real-time
-- Format structured data (JSON)
-- Provide filtering/search of events
-- Show context summarization settings
+**Chat Components** (6 files):
+- ChatInput, MessageList, MessageDisplay, MessageFilterControls, JsonDisplay, MarkdownDisplay
 
----
+**Tool Components** (3 files):
+- ToolsOverview, ToolCard, ToolDetailsModal
 
-### State Management
-**File**: `StateManagement.md` (to be created during implementation)
+**Transparency Components** (2 files):
+- TransparencyViewer, TransparencyEventDisplay
 
-Blazor state management and SSE client.
-
-**Key Responsibilities**:
-- Manage application state
-- Connect to SSE endpoints
-- Handle real-time updates
-- Coordinate component updates
-- Manage SignalR connections (Blazor Server)
+**Layout Components** (2 files):
+- MainLayout, NavMenu
 
 ---
 
-## UI Architecture
+## Services
 
-```
-Blazor Server App
-├── Pages/
-│   ├── Index.razor (main chat page)
-│   ├── Configuration.razor (config page)
-│   └── Tools.razor (tools overview page)
-├── Components/
-│   ├── Chat.razor
-│   ├── MessageDisplay.razor
-│   ├── ToolCallDisplay.razor
-│   ├── TransparencyPanel.razor
-│   └── ConfigEditor.razor
-├── Services/
-│   ├── AppStateService.cs
-│   ├── SseClientService.cs
-│   └── AgentService.cs (API wrapper)
-└── Shared/
-    ├── MainLayout.razor
-    └── NavMenu.razor
-```
+**ConversationUIService**: Bridges UI and agent orchestrator
+
+**UIControlService**: Enables agent-driven UI control (Teaching Mode)
 
 ---
 
-**Status**: Structure defined - detailed docs to be created during implementation
-**Last Updated**: 2025-10-28
+## Teaching Mode
+
+UI Control Tools + UIState + UIControlService enable dynamic UI manipulation by the agent.
+
+**Cross-Reference**: See `docs/03-concepts/teaching-mode/`
+
+---
+
+## Related Documentation
+
+- [UI Architecture](architecture.md) - Complete architecture
+- [UI Control Tools](../tools/builtin/ui-control-tools.md) - Agent UI control
+- [Blazor Reference](../../06-reference/blazor/) - Blazor Server details
+
+---
+
+**See Also**: [Component Overview](../README.md)

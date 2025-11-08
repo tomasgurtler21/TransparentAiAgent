@@ -1,85 +1,63 @@
 # Infrastructure Components
 
-This directory contains documentation for cross-cutting infrastructure components.
+**Last Updated**: 2025-11-08
+**Status**: Active
+**Layer**: Infrastructure
+
+---
+
+## Overview
+
+Infrastructure components implement external integrations and cross-cutting concerns. They provide concrete implementations of domain interfaces for LLM providers, configuration, authentication, transparency logging, and serialization.
 
 ## Components
 
-### Configuration Manager
-**File**: `ConfigurationManager.md` (to be created during implementation)
+### [Configuration Service](configuration-service.md)
+Manages application configuration loading, validation, and persistence.
 
-Manages application configuration.
-
-**Key Responsibilities**:
-- Load configuration from files
-- Support layered configuration (defaults, files, UI overrides)
-- Provide configuration to components
-- Support hot-reload where appropriate
-- Validate configuration
-
-**Configuration Sources**:
-1. Default embedded config
-2. `appsettings.json`
-3. `agent-config.json` (agent-specific)
-4. UI runtime overrides
-5. Environment variables
+**Key Features**:
+- Load from appsettings.json
+- Runtime updates
+- Configuration validation
 
 ---
 
-### Authentication Manager
-**File**: `AuthenticationManager.md` (to be created during implementation)
+### [Authentication](authentication.md)
+Provides API credentials to LLM providers and services.
 
-Handles authentication for different services.
-
-**Key Responsibilities**:
-- Provide credentials for LLM providers
-- Support multiple auth types (API key, Azure, etc.)
-- Secure credential storage
-- Credential validation
-
-**Known Challenge**: Different auth methods per service (known pain point)
+**Key Features**:
+- API key retrieval
+- Endpoint configuration
+- Multiple auth modes (API key, OAuth)
 
 ---
 
-### Transparency System
-**File**: `TransparencySystem.md` (to be created during implementation)
+### [Transparency Service](transparency-service.md)
+Logs and stores transparency events for debugging and education.
 
-Core transparency and event logging system.
-
-**Key Responsibilities**:
-- Capture all transparency events
-- Structure events (JSON format)
-- Stream events to UI via SSE
-- Store events (in-memory initially)
-- Provide event queries
-
-**Event Types**:
-- User input
-- LLM requests/responses (streaming chunks)
-- Tool calls and results
-- Context changes
-- Configuration changes
-- Errors
+**Key Features**:
+- Event logging (LLM, tools, errors)
+- In-memory storage
+- Real-time event notifications
 
 ---
 
-### Serialization Service
-**File**: `SerializationService.md` (to be created during implementation)
+### [Serialization Service](serialization-service.md)
+Standardized JSON serialization using System.Text.Json.
 
-Formats data for display and transmission.
-
-**Key Responsibilities**:
-- Serialize tool calls to JSON
-- Format messages for UI display
-- Handle structured data formatting
-- Support pretty-printing for transparency view
+**Key Features**:
+- Object to/from JSON
+- CamelCase naming
+- Pretty printing
 
 ---
 
-## Cross-Cutting Concerns
+## Related Documentation
 
-These components support all other layers and are used throughout the application.
+- [LLM Providers](../llm/README.md) - LLM integration infrastructure
+- [Tools](../tools/README.md) - Tool execution infrastructure
+- [Configuration Guide](../../05-guides/deployment/configuration-guide.md)
 
 ---
 
-**Status**: Structure defined - detailed docs to be created during implementation
-**Last Updated**: 2025-10-28
+**See Also**: [Component Overview](../README.md)

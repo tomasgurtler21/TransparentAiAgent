@@ -43,12 +43,13 @@ Cross-cutting features and ideas
 - [Tool System](03-concepts/tool-system.md) - MCP integration and tool abstraction
 
 ### 4. [Components](04-components/) 🧩
-Detailed component documentation
-- [Core](04-components/core/) - Agent Orchestrator, Conversation Manager
-- [LLM](04-components/llm/) - Provider abstractions and implementations
-- [Tools](04-components/tools/) - MCP client, tool registry, UI control tools
-- [Infrastructure](04-components/infrastructure/) - Config, auth, transparency
-- [UI](04-components/ui/) - Blazor components and state management
+Detailed component documentation (**✅ Complete - 30 docs**)
+- **[Overview](04-components/README.md)** - Complete catalog of all components
+- [Core](04-components/core/) - Agent Orchestrator, Conversation Manager, Message Pipeline (3 docs)
+- [LLM](04-components/llm/) - Provider abstractions, Anthropic, Azure OpenAI, Streaming (5 docs)
+- [Tools](04-components/tools/) - MCP Tools, Built-in Tools, Tool Manager (11 docs)
+- [Infrastructure](04-components/infrastructure/) - Config, Auth, Transparency, Serialization (5 docs)
+- [UI](04-components/ui/) - Blazor architecture, services, components (3 docs)
 
 ### 5. [Guides](05-guides/) 📖
 Step-by-step how-to documentation

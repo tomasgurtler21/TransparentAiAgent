@@ -1,6 +1,11 @@
 # Component Overview
 
+**Last Updated**: 2025-11-08
+**Status**: Active - Complete Catalog
+
 This document provides a high-level overview of all major components in the TransparentAiAgent system.
+
+---
 
 ## Component Organization
 
@@ -9,259 +14,240 @@ Components are organized into logical layers following Clean Architecture princi
 ```
 ┌─────────────────────────────────────────────┐
 │         UI/Presentation Layer               │
-│  (Blazor Components, State Management)      │
+│  (Blazor Server, UI Services, Components)   │
 └─────────────────┬───────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────┐
 │           Application Layer                  │
-│  (Agent Orchestrator, Message Pipeline)     │
+│  (Agent Orchestrator, Conversation, Tools)  │
 └─────────────────┬───────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────┐
 │            Domain Layer                      │
-│  (Conversation, Tools, Transparency)        │
+│  (Models, Interfaces, Business Rules)       │
 └─────────────────┬───────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────┐
 │         Infrastructure Layer                 │
-│  (LLM Providers, MCP Client, Config, Auth)  │
+│  (LLM Providers, MCP, Config, Auth, etc.)   │
 └─────────────────────────────────────────────┘
 ```
 
+---
+
 ## Component Categories
 
-### 1. Core Domain Components
-Core business logic and domain models.
+### 1. [Core Application Components](core/)
+**Layer**: Application
+**Files**: 3 component docs
 
-- **Agent Orchestrator** → [components/core/AgentOrchestrator.md](components/core/AgentOrchestrator.md)
-- **Conversation Manager** → [components/core/ConversationManager.md](components/core/ConversationManager.md)
-- **Message Pipeline** → [components/core/MessagePipeline.md](components/core/MessagePipeline.md)
+Coordinate agent behavior and conversation flow.
 
-### 2. LLM Integration Layer
-Abstractions and implementations for LLM providers.
+- **[Agent Orchestrator](core/agent-orchestrator.md)** - Main entry point, tool loop coordination
+- **[Conversation Manager](core/conversation-manager.md)** - Conversation history and context
+- **[Message Pipeline](core/message-pipeline.md)** - Domain/LLM message transformation
 
-- **LLM Provider Abstraction** → [components/llm/ProviderAbstraction.md](components/llm/ProviderAbstraction.md)
-- **Azure OpenAI Provider** → [components/llm/AzureOpenAIProvider.md](components/llm/AzureOpenAIProvider.md)
-- **Anthropic Provider** → [components/llm/AnthropicProvider.md](components/llm/AnthropicProvider.md)
-- **Streaming Handler** → [components/llm/StreamingHandler.md](components/llm/StreamingHandler.md)
-- **Token Counter** → [components/llm/TokenCounter.md](components/llm/TokenCounter.md)
+**Key Feature**: Tool call loop with depth protection (max 10 iterations)
 
-### 3. Tool Management Layer (NEW - Phase 5)
-Source-agnostic tool system with routing and execution.
+---
 
-**Domain Models** (Phase 5 Refactoring - Steps 15-22):
-- **ToolCall** → Value object representing a single tool call request
-  - Contains: Id, Name, Arguments
-  - Immutable after creation
-  - Used by AssistantToolCallMessage
-- **AssistantToolCallMessage** → Derived from AssistantMessage
-  - Represents assistant message that requests one or more tool calls
-  - Replaces obsolete ToolCallMessage
-  - Supports multiple parallel tool calls in single message
-  - Follows Azure/OpenAI message structure requirements
+### 2. [LLM Integration Components](llm/)
+**Layer**: Domain + Infrastructure
+**Files**: 5 component docs
 
-**Domain Abstractions**:
-- **ITool Interface** → Tool definition abstraction (name, description, schema, source type)
-- **IToolExecutor Interface** → Tool execution abstraction (executes tools for specific source type)
-- **IToolRegistry Interface** → Tool discovery and management abstraction
-- **IToolManager Interface** → High-level tool orchestration and routing
+Provider-agnostic LLM abstraction with multiple implementations.
+
+- **[Provider Abstraction](llm/provider-abstraction.md)** - ILLMProvider interface + domain models
+- **[Anthropic Provider](llm/anthropic-provider.md)** - Claude API implementation
+- **[Azure OpenAI Provider](llm/azure-openai-provider.md)** - Azure OpenAI with OAuth support
+- **[Streaming Utilities](llm/streaming.md)** - Markdown buffering for streaming
+
+**Key Features**:
+- Swappable providers via configuration
+- Streaming and non-streaming support
+- Tool calling abstraction
+- Multiple auth modes (API key, OAuth)
+
+---
+
+### 3. [Tool System](tools/)
+**Layer**: Domain + Application + Infrastructure
+**Files**: 11 component docs (MCP: 5, Built-in: 2, Application: 1, Overview: 3)
+
+Source-agnostic tool system with MCP and built-in implementations.
 
 **Application Layer**:
-- **Tool Manager** → [components/tools/ToolManager.md](components/tools/ToolManager.md)
-  - Routes tool calls by source type
-  - Orchestrates tool execution
-  - Integrates with Transparency System
+- **[Tool Manager](tools/tool-manager.md)** - Routes tool calls, logs to transparency
 
-**Infrastructure Layer - MCP Implementation**:
-- **MCP Client Wrapper** → [components/tools/mcp/MCPClientWrapper.md](components/tools/mcp/MCPClientWrapper.md)
-  - Wraps C# MCP SDK
-  - Manages MCP server connections
-- **MCP Tool Discovery** → [components/tools/mcp/MCPToolDiscovery.md](components/tools/mcp/MCPToolDiscovery.md)
-  - Discovers tools from MCP servers
-  - Converts to ITool format
-- **MCP Tool Executor** → [components/tools/mcp/MCPToolExecutor.md](components/tools/mcp/MCPToolExecutor.md)
-  - Executes MCP tool calls
-  - Implements IToolExecutor for SourceType.MCP
-- **MCP Tool Registry** → [components/tools/mcp/MCPToolRegistry.md](components/tools/mcp/MCPToolRegistry.md)
-  - Manages MCP tool catalog
-  - Implements IToolRegistry
+**MCP Tools** ([mcp/](tools/mcp/)):
+- **[MCP Client Wrapper](tools/mcp/mcp-client-wrapper.md)** - MCP SDK wrapper
+- **[MCP Tool Registry](tools/mcp/mcp-tool-registry.md)** - Tool caching
+- **[MCP Tool Executor](tools/mcp/mcp-tool-executor.md)** - MCP execution
+- **[MCP Tool Discovery](tools/mcp/mcp-tool-discovery.md)** - Tool discovery
 
-**Infrastructure Layer - Composite**:
-- **Tool Registry Composite** → [components/tools/ToolRegistryComposite.md](components/tools/ToolRegistryComposite.md)
-  - Aggregates all tool sources (MCP, built-in, future)
-  - Implements Composite pattern
+**Built-in Tools** ([builtin/](tools/builtin/)):
+- **[UI Control Tools](tools/builtin/ui-control-tools.md)** - Dynamic UI manipulation (7 tools)
 
-**Integration Points for Future Tool Sources**:
-- **Built-In Tools** (Future) → See [TOOL_INTEGRATION_POINTS.md](TOOL_INTEGRATION_POINTS.md)
-  - BuiltInToolExecutor (implements IToolExecutor for SourceType.BuiltIn)
-  - BuiltInToolRegistry (implements IToolRegistry)
-  - Examples: reset_conversation, export_conversation, get_system_info
+**Key Features**:
+- Composite pattern for multiple tool sources
+- Tool routing by SourceType
+- Teaching Mode enablement via UI control
 
-### 4. Infrastructure Components
-Cross-cutting infrastructure concerns.
-
-- **Configuration Manager** → [components/infrastructure/ConfigurationManager.md](components/infrastructure/ConfigurationManager.md)
-- **Authentication Manager** → [components/infrastructure/AuthenticationManager.md](components/infrastructure/AuthenticationManager.md)
-- **Transparency System** → [components/infrastructure/TransparencySystem.md](components/infrastructure/TransparencySystem.md)
-- **Serialization Service** → [components/infrastructure/SerializationService.md](components/infrastructure/SerializationService.md)
-
-### 5. UI/Presentation Layer
-Blazor components and UI logic.
-
-- **Chat Component** → [components/ui/ChatComponent.md](components/ui/ChatComponent.md)
-- **Configuration Component** → [components/ui/ConfigurationComponent.md](components/ui/ConfigurationComponent.md)
-- **Tools Overview Component** → [components/ui/ToolsOverviewComponent.md](components/ui/ToolsOverviewComponent.md)
-- **Transparency Viewer** → [components/ui/TransparencyViewer.md](components/ui/TransparencyViewer.md)
-- **State Management** → [components/ui/StateManagement.md](components/ui/StateManagement.md)
-
-## Component Interaction Flow
-
-### Typical Request Flow
-
-```
-User Input → Chat Component
-             ↓
-          State Management
-             ↓
-       Agent Orchestrator
-             ↓
-       Conversation Manager (adds to context)
-             ↓
-       Message Pipeline (prepares request)
-             ↓
-       LLM Provider (streams response)
-             ↓
-       Streaming Handler
-             ↓
-       Transparency System (logs everything)
-             ↓
-       Chat Component (displays streaming response)
-```
-
-### Tool Call Flow (Updated for Phase 5)
-
-```
-LLM Response with Tool Call(s)
-             ↓
-       Agent Orchestrator (detects tool calls)
-             ↓
-       Tool Manager
-             ↓
-   ┌─────────┴──────────────────┐
-   │  Routing Logic:            │
-   │  1. Lookup tool by name    │
-   │  2. Check SourceType       │
-   │  3. Find executor          │
-   │  4. Log to Transparency    │
-   └─────────┬──────────────────┘
-             ↓
-    ┌────────┴─────────┐
-    │                  │
-    ▼                  ▼
-MCP Tool Executor   Built-In Executor (future)
-    │
-    ├─→ MCP Client (calls MCP server)
-    │
-    ├─→ Tool Result
-    │
-    └─→ Transparency System (logs execution)
-             ↓
-       Agent Orchestrator
-             ↓
-       Conversation Manager (adds ToolResultMessage)
-             ↓
-       LLM Provider (continues with tool results)
-             ↓
-       LLM Response (final answer or more tool calls)
-```
-
-**Tool Call Loop** (Sequential in Phase 5):
-- Agent checks for tool calls in LLM response
-- If found: Execute tools → Add results → Call LLM again
-- If not found: Conversation complete
-- Maximum depth: 10 iterations (prevents infinite loops)
-
-## Component Documentation
-
-Each component has its own detailed documentation file (to be created as needed):
-- Responsibilities
-- Interfaces/Contracts
-- Dependencies
-- Implementation notes
-- Testing strategy
-
-**Note**: Component detail docs will be created during implementation phase. This overview provides the structure and relationships.
+**Cross-Reference**: See `docs/03-concepts/teaching-mode/` for Teaching Mode concept
 
 ---
 
-## Tool System Component Details (Phase 5)
+### 4. [Infrastructure Components](infrastructure/)
+**Layer**: Infrastructure
+**Files**: 5 component docs
 
-### Key Interfaces
+Cross-cutting concerns and external integrations.
 
-**ITool** - Tool definition abstraction:
-- `string Name` - Unique tool name
-- `string Description` - Human-readable description
-- `string ParametersSchema` - JSON Schema for parameters
-- `ToolSourceType SourceType` - Source type (MCP, BuiltIn, etc.)
-- `IReadOnlyDictionary<string, string> Metadata` - Source-specific metadata
+- **[Configuration Service](infrastructure/configuration-service.md)** - Config loading/saving
+- **[Authentication](infrastructure/authentication.md)** - API credentials provider
+- **[Transparency Service](infrastructure/transparency-service.md)** - Event logging
+- **[Serialization Service](infrastructure/serialization-service.md)** - JSON handling
 
-**IToolExecutor** - Execution abstraction:
-- `ToolSourceType SourceType` - What source type this executor handles
-- `Task<ToolExecutionResult> ExecuteAsync(ITool tool, string arguments, CancellationToken ct)`
-
-**IToolRegistry** - Discovery and management:
-- `IReadOnlyList<ITool> GetAllTools()` - Get all registered tools
-- `ITool? GetTool(string toolName)` - Get tool by name
-- `bool HasTool(string toolName)` - Check if tool exists
-- `Task RefreshAsync(CancellationToken ct)` - Re-discover tools
-
-**IToolManager** - High-level orchestration:
-- `IToolRegistry Registry` - Access to tool registry
-- `Task<ToolExecutionResult> ExecuteToolCallAsync(LLMToolCall toolCall, CancellationToken ct)` - Execute a tool call
-- `List<LLMTool> GetLLMToolDefinitions()` - Get tools in LLM format
-
-### Component Responsibilities
-
-**ToolManager** (Application Layer):
-- Routes tool calls to appropriate executor based on SourceType
-- Coordinates between registry and executors
-- Logs all tool operations to Transparency System
-- Handles errors and timeouts
-- Returns standardized ToolExecutionResult
-
-**MCPClientWrapper** (Infrastructure):
-- Thin wrapper around C# MCP SDK
-- Manages MCP server connections (stdio transport)
-- Handles server lifecycle (start, stop, health check)
-- Provides clean interface to MCP operations
-
-**MCPToolDiscovery** (Infrastructure):
-- Connects to MCP servers from configuration
-- Sends tools/list request
-- Parses tool definitions
-- Converts to ITool instances with SourceType=MCP
-- Includes metadata (server name, etc.)
-
-**MCPToolExecutor** (Infrastructure):
-- Implements IToolExecutor for SourceType.MCP
-- Validates tool is from MCP source
-- Sends tools/call request to MCP server
-- Handles timeout (180 seconds default)
-- Parses and returns result
-
-**MCPToolRegistry** (Infrastructure):
-- Implements IToolRegistry for MCP tools
-- Caches discovered tools
-- Supports refresh on demand
-- Tracks server connection status
-
-**ToolRegistryComposite** (Infrastructure):
-- Aggregates multiple IToolRegistry implementations
-- Uses Composite pattern
-- Provides unified view of all tools
-- Routes queries to appropriate registry
+**Key Features**:
+- Centralized configuration management
+- Multiple auth modes
+- Real-time transparency events
+- Standardized JSON serialization
 
 ---
 
-**Status**: Component structure updated for Phase 5 - Tool Integration
-**Last Updated**: 2025-11-01
+### 5. [UI/Presentation Layer](ui/)
+**Layer**: Presentation
+**Files**: 3 docs (architecture + overview + old)
+
+Blazor Server web interface with SignalR real-time communication.
+
+- **[UI Architecture](ui/architecture.md)** - Complete UI architecture, services, state
+- **[UI README](ui/README.md)** - Component categories and overview
+
+**Services**:
+- ConversationUIService - UI/Agent bridge
+- UIControlService - Dynamic UI state management
+
+**Component Categories**:
+- Pages (Home, Configuration, Tools, Transparency)
+- Chat Components (Input, List, Display, Filters)
+- Tool Components (Overview, Card, Modal)
+- Transparency Components (Viewer, Event Display)
+
+**Key Feature**: Agent-driven UI control via UIControlService (Teaching Mode)
+
+---
+
+## Complete Component Catalog
+
+### Domain Layer
+- **Models**: IMessage (+ 5 implementations), LLMRequest, LLMResponse, ToolCall, etc.
+- **Interfaces**: ILLMProvider, ITool, IToolRegistry, IToolExecutor, IToolManager, IUIControlService, IAuthenticationProvider
+- **Configuration**: AppConfiguration hierarchy (Agent, LLM, MCP)
+- **Enums**: MessageRole, ToolSourceType, TransparencyEventType
+
+### Application Layer
+- **Agent Orchestrator** (`core/agent-orchestrator.md`)
+- **Conversation Manager** (`core/conversation-manager.md`)
+- **Message Pipeline** (`core/message-pipeline.md`)
+- **Tool Manager** (`tools/tool-manager.md`)
+
+### Infrastructure Layer
+- **LLM Providers** (`llm/anthropic-provider.md`, `llm/azure-openai-provider.md`)
+- **MCP Tools** (`tools/mcp/*` - 4 components)
+- **Built-in Tools** (`tools/builtin/*` - 2 components)
+- **Configuration** (`infrastructure/configuration-service.md`)
+- **Authentication** (`infrastructure/authentication.md`)
+- **Transparency** (`infrastructure/transparency-service.md`)
+- **Serialization** (`infrastructure/serialization-service.md`)
+
+### Presentation Layer
+- **UI Services** (ConversationUIService, UIControlService)
+- **Blazor Components** (23 Razor components across 4 categories)
+- **UI State** (UIState domain model)
+
+---
+
+## Component Interaction Flows
+
+### User Message Processing
+
+```
+User Input → ChatInput (UI)
+    ↓
+ConversationUIService
+    ↓
+AgentOrchestrator.ProcessUserInputAsync()
+    ├─ Add to ConversationManager
+    ├─ Build LLMRequest via MessagePipeline
+    ├─ Send to ILLMProvider
+    ├─ Handle Response:
+    │  ├─ If tool calls → ToolManager → Executors → Results
+    │  └─ If content → Parse message
+    ├─ Log to TransparencyService
+    └─ Return AssistantMessage
+    ↓
+UI updates via SignalR
+```
+
+### Tool Execution
+
+```
+LLM Response with ToolCalls
+    ↓
+AgentOrchestrator detects tool calls
+    ↓
+ToolManager.ExecuteToolCallAsync()
+    ├─ Get tool from Registry (composite)
+    ├─ Match executor by SourceType
+    ├─ Execute:
+    │  ├─ MCPToolExecutor → MCP server
+    │  └─ UIControlToolExecutor → UIControlService
+    └─ Return ToolExecutionResult
+    ↓
+Add ToolResultMessage to conversation
+    ↓
+Continue conversation with results
+```
+
+---
+
+## Statistics
+
+**Total Documentation Files**: ~30 component docs
+**Layers**: 4 (Domain, Application, Infrastructure, Presentation)
+**Component Groups**: 5 major categories
+**Files Documented**: 106 source files analyzed
+
+---
+
+## Navigation
+
+**By Layer**:
+- [Core (Application)](core/) - 3 docs
+- [LLM](llm/) - 5 docs
+- [Tools](tools/) - 11 docs
+- [Infrastructure](infrastructure/) - 5 docs
+- [UI](ui/) - 3 docs
+
+**By Feature**:
+- [Conversation Flow](core/agent-orchestrator.md)
+- [LLM Integration](llm/)
+- [Tool Execution](tools/)
+- [Teaching Mode](tools/builtin/ui-control-tools.md) + `docs/03-concepts/teaching-mode/`
+- [Transparency](infrastructure/transparency-service.md)
+
+---
+
+## Related Documentation
+
+- [Architecture Overview](../02-architecture/overview.md) - System design
+- [Concepts](../03-concepts/) - Cross-cutting features
+- [Guides](../05-guides/) - How-to documentation
+- [Reference](../06-reference/) - API references
+
+---
+
+**Status**: Component catalog complete. All major components documented.
+**Documentation Design**: Follows two-phase approach (components first, architecture last) to avoid circular dependency.
