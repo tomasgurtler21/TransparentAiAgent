@@ -1,5 +1,8 @@
 using Bunit;
 using Moq;
+using Moq.Protected;
+using System.Net;
+using System.Net.Http;
 using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentGui.Components.Pages;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,20 +18,37 @@ namespace TransparentAiAgentGui_Tests.Components.Pages;
 public class ConfigurationTests : Bunit.TestContext
 {
     private Mock<IUIControlService> _mockUIControlService = null!;
-    private Mock<HttpClient> _mockHttpClient = null!;
+    private HttpClient _httpClient = null!;
 
     [TestInitialize]
     public void Setup()
     {
         _mockUIControlService = new Mock<IUIControlService>();
-        _mockHttpClient = new Mock<HttpClient>();
+
+        // Setup mock HTTP client with proper response
+        Mock<HttpMessageHandler> mockHttpHandler = new Mock<HttpMessageHandler>();
+        mockHttpHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"agent\":{\"systemPrompt\":\"test\",\"contextWindowSize\":20},\"llm\":{\"temperature\":0.7,\"maxTokens\":1000,\"topP\":1.0}}")
+            });
+
+        _httpClient = new HttpClient(mockHttpHandler.Object)
+        {
+            BaseAddress = new Uri("http://localhost/")
+        };
 
         // Setup default behavior
         _mockUIControlService.Setup(s => s.GetCurrentState())
             .Returns(UIState.DefaultNormalMode());
 
         Services.AddSingleton(_mockUIControlService.Object);
-        Services.AddSingleton(_mockHttpClient.Object);
+        Services.AddSingleton(_httpClient);
     }
 
     /// <summary>
@@ -55,7 +75,7 @@ public class ConfigurationTests : Bunit.TestContext
     /// This test will FAIL until Configuration.razor implements section highlighting.
     /// </summary>
     [TestMethod]
-    public void Configuration_WhenSectionHighlighted_AppliesHighlightClass()
+    public async Task Configuration_WhenSectionHighlighted_AppliesHighlightClass()
     {
         // Arrange
         UIState highlightedState = UIState.DefaultNormalMode() with
@@ -71,6 +91,10 @@ public class ConfigurationTests : Bunit.TestContext
         // Act
         IRenderedComponent<Configuration> cut = RenderComponent<Configuration>();
 
+        // Wait for async initialization to complete
+        await Task.Delay(100);
+        cut.Render();
+
         // Assert - Should have highlighted class on the section
         Assert.IsTrue(cut.Markup.Contains("highlighted"),
             "Configuration should apply 'highlighted' class when section is specified");
@@ -81,7 +105,7 @@ public class ConfigurationTests : Bunit.TestContext
     /// This test will FAIL until Configuration.razor handles UIStateChanged.
     /// </summary>
     [TestMethod]
-    public void Configuration_OnUIStateChanged_UpdatesHighlighting()
+    public async Task Configuration_OnUIStateChanged_UpdatesHighlighting()
     {
         // Arrange
         EventHandler<UIState>? capturedHandler = null;
@@ -92,6 +116,10 @@ public class ConfigurationTests : Bunit.TestContext
         _mockUIControlService.Setup(s => s.GetCurrentState()).Returns(initialState);
 
         IRenderedComponent<Configuration> cut = RenderComponent<Configuration>();
+
+        // Wait for async initialization
+        await Task.Delay(100);
+        cut.Render();
 
         // Initially no highlighting
         Assert.IsFalse(cut.Markup.Contains("highlighted"), "Should not be highlighted initially");
@@ -108,6 +136,9 @@ public class ConfigurationTests : Bunit.TestContext
 
         Assert.IsNotNull(capturedHandler, "Should have captured event handler");
         capturedHandler?.Invoke(_mockUIControlService.Object, newState);
+
+        // Wait for state update
+        await Task.Delay(50);
         cut.Render();
 
         // Assert - Should now have highlighting
