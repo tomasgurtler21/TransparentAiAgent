@@ -1,47 +1,93 @@
-# Core Components
+# Core Application Components
 
-This directory contains documentation for core domain and application logic components.
+**Last Updated**: 2025-11-08
+**Status**: Active
+**Layer**: Application
+
+---
+
+## Overview
+
+Core Application components coordinate agent behavior and conversation flow. They orchestrate interactions between domain models, infrastructure services, and the LLM.
 
 ## Components
 
-### Agent Orchestrator
-**File**: `AgentOrchestrator.md` (to be created during implementation)
+### [Agent Orchestrator](agent-orchestrator.md)
+Main entry point for agent interactions.
 
-Main coordination component that orchestrates the agent's behavior.
+**Responsibilities**:
+- Process user input
+- Coordinate LLM requests
+- Execute tool call loops
+- Integrate all subsystems
 
-**Key Responsibilities**:
-- Coordinate conversation flow
-- Manage agent lifecycle
-- Integrate LLM, MCP, and transparency systems
-- Handle user requests and responses
-
----
-
-### Conversation Manager
-**File**: `ConversationManager.md` (to be created during implementation)
-
-Manages conversation history and context.
-
-**Key Responsibilities**:
-- Maintain conversation history
-- Manage context window
-- Handle context summarization
-- Track conversation state
+**Key Features**:
+- Tool loop with depth protection (max 10)
+- Transparency logging
+- Error handling
 
 ---
 
-### Message Pipeline
-**File**: `MessagePipeline.md` (to be created during implementation)
+### [Conversation Manager](conversation-manager.md)
+Manages conversation history and context window.
 
-Processes and transforms messages.
+**Responsibilities**:
+- Maintain message history
+- Track in-context vs archived messages
+- Provide message retrieval
 
-**Key Responsibilities**:
-- Validate messages
-- Transform messages for LLM consumption
-- Format responses for UI
-- Apply message filters/transformations
+**Key Features**:
+- Chronological message storage
+- Context status events
+- Future: Context summarization
 
 ---
 
-**Status**: Structure defined - detailed docs to be created during implementation
-**Last Updated**: 2025-10-28
+### [Message Pipeline](message-pipeline.md)
+Transforms messages between domain and LLM formats.
+
+**Responsibilities**:
+- Convert IMessage to LLMMessage
+- Handle all message types
+- Standardize format for providers
+
+**Key Features**:
+- Type-safe conversions
+- Support for all message types (user, assistant, system, tool)
+
+---
+
+## Interaction Flow
+
+```
+User Input → Agent Orchestrator
+    ├─ Add to Conversation Manager
+    ├─ Get messages from Conversation Manager
+    ├─ Convert via Message Pipeline
+    ├─ Send to LLM Provider
+    ├─ Handle response:
+    │  ├─ If tool calls → Execute tools → Loop
+    │  └─ If content → Add to Conversation Manager → Return
+    └─ Log to Transparency Service
+```
+
+---
+
+## Testing
+
+**Files**:
+- `TransparentAiAgentCore_Tests/Application/Agent/AgentOrchestratorTests.cs`
+- `TransparentAiAgentCore_Tests/Application/Conversation/ConversationManagerTests.cs`
+- `TransparentAiAgentCore_Tests/Application/Pipeline/MessagePipelineTests.cs`
+
+---
+
+## Related Documentation
+
+- [LLM Providers](../llm/README.md) - LLM integration
+- [Tools](../tools/README.md) - Tool execution
+- [Infrastructure](../infrastructure/README.md) - Supporting services
+
+---
+
+**See Also**: [Component Overview](../README.md)
