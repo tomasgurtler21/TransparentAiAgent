@@ -1,5 +1,8 @@
 @using TransparentAiAgentGui.Models
 @using TransparentAiAgentGui.Components.Chat
+@using TransparentAiAgentCore.Domain.UIControl
+@implements IDisposable
+@inject IUIControlService UIControlService
 
 <div class="message @Message.CssClass" title="@Message.ContextStatusTooltip">
     <div class="message-header">
@@ -12,7 +15,12 @@
         {
             <span class="tool-result-indicator">@(Message.ToolResultSuccess ? "✅" : "❌")</span>
         }
-        <span class="message-context-status">@Message.ContextStatusIcon</span>
+        @if (_uiState.ContextIndicators.Visible)
+        {
+            <span class="message-context-status @(_uiState.ContextIndicators.Highlighted ? "highlighted" : "")">
+                @Message.ContextStatusIcon
+            </span>
+        }
         <span class="message-timestamp">@Message.Timestamp.ToString("HH:mm:ss")</span>
     </div>
     <div class="message-content">
@@ -54,13 +62,38 @@
 </div>
 
 @code {
+    /// <summary>
+    /// The message to display.
+    /// </summary>
     [Parameter, EditorRequired]
     public UIMessage Message { get; set; } = null!;
+
+    private UIState _uiState = UIState.DefaultNormalMode();
+
+    protected override void OnInitialized()
+    {
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
+    }
 
     private string GetRoleDisplayName()
     {
         if (Message.IsToolCall) return "Tool Call";
         if (Message.IsToolResult) return "Tool Result";
         return Message.Role.ToString();
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
     }
 }
