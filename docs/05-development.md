@@ -50,21 +50,34 @@ See `.claude/skills/tdd/` directory for complete TDD guidelines.
 
 **Workflow:**
 1. **Claude reads TDD skill manually** from `.claude/skills/tdd/` directory
-2. **Claude writes batch of tests** following Lean TDD principles
-3. **Claude writes implementations** to satisfy tests
-4. **Claude commits & pushes** (frequent commits for crash resistance)
-5. **User runs tests** via `dotnet test` and provides feedback
-6. **Claude fixes failures** based on test results
+2. **RED Phase - Claude writes batch of tests**
+   - Write multiple tests that compile successfully
+   - Tests should FAIL when run (no implementation yet)
+   - Commit & push the failing tests
+3. **User runs tests** - Validates RED phase (tests fail as expected)
+4. **GREEN Phase - Claude writes implementations**
+   - Write minimal code to make tests pass
+   - Commit & push the implementations
+5. **User runs tests** - Validates GREEN phase (tests pass)
+6. **Claude fixes failures** if any tests still fail
 7. **Repeat** for next component
 
 **Key Differences from CLI:**
 - ❌ No automated RED-GREEN-REFACTOR cycle
 - ❌ Claude cannot run tests or verify compilation
 - ✅ User must be in the loop to run tests
-- ✅ Tests written first, but verified later
-- ✅ Larger batches to reduce token costs
+- ✅ Tests written first in RED phase, implementation in GREEN phase
+- ✅ Larger batches within each phase to reduce token costs
 
-**Cost Consideration**: To minimize token usage, batch multiple tests together rather than micro-commits per test. Balance crash resistance (frequent commits) with cost efficiency (larger batches).
+**CRITICAL - What "Batching" Means:**
+- ✅ **Correct**: Write multiple tests in RED phase, THEN multiple implementations in GREEN phase
+  - Example: Write 5 tests → commit → user validates they fail → write 5 implementations → commit → user validates they pass
+- ❌ **WRONG**: Write tests + implementations together in one batch
+  - This skips RED phase and defeats TDD's purpose of preventing false positives
+- **Balance**: Batch size vs crash resistance
+  - Small batches (1-3 tests): More resistant to crashes, higher token cost
+  - Large batches (5-10 tests): Lower token cost, more work lost if crash
+  - Recommended: 3-5 tests per batch for balance
 
 **Critical**: Claude must read and follow `.claude/skills/tdd/SKILL.md` for Lean TDD principles even without test execution capability.
 
