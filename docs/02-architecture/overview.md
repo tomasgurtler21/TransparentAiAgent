@@ -112,7 +112,45 @@ The system follows Clean Architecture principles with clear dependency rules:
 
 ## Core Component Details
 
-For detailed component documentation, see [COMPONENTS.md](COMPONENTS.md)
+For detailed component documentation, see [Component Overview](../04-components/README.md)
+
+### Component Documentation Mapping
+
+The architecture components map to detailed documentation as follows:
+
+**Application Layer**:
+- Agent Orchestrator → [docs/04-components/core/agent-orchestrator.md](../04-components/core/agent-orchestrator.md)
+- Conversation Manager → [docs/04-components/core/conversation-manager.md](../04-components/core/conversation-manager.md)
+- Message Pipeline → [docs/04-components/core/message-pipeline.md](../04-components/core/message-pipeline.md)
+- Tool Manager → [docs/04-components/tools/tool-manager.md](../04-components/tools/tool-manager.md)
+
+**Domain Layer** (Interfaces & Models):
+- ILLMProvider → [docs/04-components/llm/provider-abstraction.md](../04-components/llm/provider-abstraction.md)
+- ITool, IToolRegistry, IToolExecutor → [docs/04-components/tools/README.md](../04-components/tools/README.md)
+- IMessage Models → Domain layer (see component docs)
+
+**Infrastructure Layer**:
+- LLM Providers:
+  - Anthropic Provider → [docs/04-components/llm/anthropic-provider.md](../04-components/llm/anthropic-provider.md)
+  - Azure OpenAI Provider → [docs/04-components/llm/azure-openai-provider.md](../04-components/llm/azure-openai-provider.md)
+  - Streaming → [docs/04-components/llm/streaming.md](../04-components/llm/streaming.md)
+- Tool System:
+  - MCP Tools → [docs/04-components/tools/mcp/README.md](../04-components/tools/mcp/README.md)
+    - MCP Client → [docs/04-components/tools/mcp/mcp-client-wrapper.md](../04-components/tools/mcp/mcp-client-wrapper.md)
+    - MCP Registry → [docs/04-components/tools/mcp/mcp-tool-registry.md](../04-components/tools/mcp/mcp-tool-registry.md)
+    - MCP Executor → [docs/04-components/tools/mcp/mcp-tool-executor.md](../04-components/tools/mcp/mcp-tool-executor.md)
+    - MCP Discovery → [docs/04-components/tools/mcp/mcp-tool-discovery.md](../04-components/tools/mcp/mcp-tool-discovery.md)
+  - Built-in Tools → [docs/04-components/tools/builtin/README.md](../04-components/tools/builtin/README.md)
+    - UI Control Tools → [docs/04-components/tools/builtin/ui-control-tools.md](../04-components/tools/builtin/ui-control-tools.md)
+- Infrastructure Services:
+  - Configuration → [docs/04-components/infrastructure/configuration-service.md](../04-components/infrastructure/configuration-service.md)
+  - Authentication → [docs/04-components/infrastructure/authentication.md](../04-components/infrastructure/authentication.md)
+  - Transparency → [docs/04-components/infrastructure/transparency-service.md](../04-components/infrastructure/transparency-service.md)
+  - Serialization → [docs/04-components/infrastructure/serialization-service.md](../04-components/infrastructure/serialization-service.md)
+
+**Presentation Layer**:
+- UI Architecture → [docs/04-components/ui/architecture.md](../04-components/ui/architecture.md)
+- UI Components → [docs/04-components/ui/README.md](../04-components/ui/README.md)
 
 ### Key Components Summary
 
