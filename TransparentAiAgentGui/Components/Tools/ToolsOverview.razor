@@ -1,8 +1,13 @@
 @using TransparentAiAgentCore.Domain.Tools
+@using TransparentAiAgentCore.Domain.UIControl
 @using TransparentAiAgentCore.Infrastructure.Tools
+@implements IDisposable
 @inject IToolRegistry ToolRegistry
 @inject IToolUsageStatistics ToolUsageStatistics
+@inject IUIControlService UIControlService
 
+@if (_uiState.ToolsPanel.Visible)
+{
 <div class="tools-overview">
     <div class="overview-header">
         <h3>Available Tools</h3>
@@ -35,11 +40,16 @@
         }
         else
         {
-            @foreach (var tool in FilteredTools)
+            @foreach (ITool tool in FilteredTools)
             {
-                var stats = ToolUsageStatistics.GetToolStats(tool.Name);
+                ToolStats? stats = ToolUsageStatistics.GetToolStats(tool.Name);
+                bool isHighlighted = _uiState.ToolsPanel.HighlightedTool == tool.Name;
+                bool isExpanded = _uiState.ToolsPanel.ExpandedTools.Contains(tool.Name);
+
                 <ToolCard Tool="tool"
                          Stats="stats"
+                         IsHighlighted="@isHighlighted"
+                         IsExpanded="@isExpanded"
                          OnToolClick="OnToolCardClick" />
             }
         }
@@ -52,8 +62,10 @@
                      Stats="ToolUsageStatistics.GetToolStats(SelectedTool.Name)"
                      OnClose="CloseDetailsModal" />
 }
+}
 
 @code {
+    private UIState _uiState = UIState.DefaultNormalMode();
     private List<ITool> AllTools { get; set; } = new();
     private string SearchQuery { get; set; } = string.Empty;
     private string SourceFilter { get; set; } = string.Empty;
@@ -72,6 +84,19 @@
     protected override void OnInitialized()
     {
         AllTools = ToolRegistry.GetAllTools().ToList();
+
+        // Subscribe to UI state changes
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
     }
 
     private void OnToolCardClick(ITool tool)
@@ -91,5 +116,10 @@
             ToolSourceType.MCP => "MCP",
             _ => "Built-in"
         };
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
     }
 }
