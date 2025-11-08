@@ -1,0 +1,52 @@
+.configuration-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #ffffff;
+    padding: 0;
+}
+
+.config-header {
+    padding: 16px;
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.config-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.config-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+    padding: 0;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+}
+
+.config-close-btn:hover {
+    color: #212529;
+}
+
+.configuration-section {
+    padding: 20px;
+    transition: background-color 0.3s;
+}
+
+.configuration-section.highlighted {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 4px;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}

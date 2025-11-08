@@ -19,12 +19,6 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="configuration">
-                <span class="bi bi-gear-fill" aria-hidden="true"></span> Configuration
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
             <NavLink class="nav-link" href="counter">
                 <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
             </NavLink>
@@ -60,6 +54,15 @@
                 <span class="toggle-indicator">@(_uiState.ToolsPanel.Visible ? "▼" : "▶")</span>
             </button>
         </div>
+
+        <div class="nav-item px-3">
+            <button class="nav-link overlay-toggle @(_uiState.ConfigurationPage.Visible ? "active" : "")"
+                    @onclick="ToggleConfiguration"
+                    @onclick:stopPropagation="true">
+                <span class="bi bi-gear-fill" aria-hidden="true"></span> Configuration
+                <span class="toggle-indicator">@(_uiState.ConfigurationPage.Visible ? "▼" : "▶")</span>
+            </button>
+        </div>
     </nav>
 </div>
 
@@ -89,6 +92,11 @@
     private void ToggleToolsPanel()
     {
         UIControlService.UpdateToolsPanel(visible: !_uiState.ToolsPanel.Visible);
+    }
+
+    private void ToggleConfiguration()
+    {
+        UIControlService.UpdateConfigurationPage(visible: !_uiState.ConfigurationPage.Visible);
     }
 
     public void Dispose()

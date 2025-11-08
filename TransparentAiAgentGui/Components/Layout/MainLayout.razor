@@ -1,5 +1,6 @@
 ﻿@using TransparentAiAgentGui.Components.Transparency
 @using TransparentAiAgentGui.Components.Tools
+@using TransparentAiAgentGui.Components.Pages
 @using TransparentAiAgentCore.Domain.UIControl
 @using Microsoft.JSInterop
 @inject IUIControlService UIControlService
@@ -34,6 +35,12 @@
         <div class="overlay-panel overlay-panel-right @(GetToolsOverlayVisibilityClass())">
             <div class="overlay-resize-handle"></div>
             <ToolsOverview />
+        </div>
+
+        <!-- Configuration as overlay -->
+        <div class="overlay-panel overlay-panel-right @(GetConfigurationOverlayVisibilityClass())">
+            <div class="overlay-resize-handle"></div>
+            <Configuration />
         </div>
     </div>
 </div>
@@ -85,6 +92,11 @@
     private string GetToolsOverlayVisibilityClass()
     {
         return _uiState.ToolsPanel.Visible ? "visible" : "";
+    }
+
+    private string GetConfigurationOverlayVisibilityClass()
+    {
+        return _uiState.ConfigurationPage.Visible ? "visible" : "";
     }
 
     public void Dispose()
