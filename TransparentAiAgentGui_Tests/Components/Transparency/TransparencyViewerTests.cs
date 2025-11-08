@@ -13,7 +13,7 @@ namespace TransparentAiAgentGui_Tests.Components.Transparency;
 /// Following Lean TDD - testing meaningful behavior (UIControl integration).
 /// </summary>
 [TestClass]
-public class TransparencyViewerTests : TestContext
+public class TransparencyViewerTests : Bunit.TestContext
 {
     private Mock<ITransparencyService> _mockTransparencyService = null!;
     private Mock<IUIControlService> _mockUIControlService = null!;
