@@ -1,4 +1,8 @@
-﻿@inherits LayoutComponentBase
+﻿@using TransparentAiAgentGui.Components.Transparency
+@using TransparentAiAgentCore.Domain.UIControl
+@inject IUIControlService UIControlService
+@inherits LayoutComponentBase
+@implements IDisposable
 
 <div class="page">
     <div class="sidebar">
@@ -14,6 +18,14 @@
             @Body
         </article>
     </main>
+
+    <!-- Overlay System -->
+    <div class="overlay-container">
+        <!-- TransparencyViewer as overlay -->
+        <div class="overlay-panel overlay-panel-right @(GetOverlayVisibilityClass())">
+            <TransparencyViewer />
+        </div>
+    </div>
 </div>
 
 <div id="blazor-error-ui">
@@ -21,3 +33,32 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private UIState _uiState = UIState.DefaultNormalMode();
+
+    protected override void OnInitialized()
+    {
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
+    }
+
+    private string GetOverlayVisibilityClass()
+    {
+        return _uiState.TransparencyViewer.Visible ? "visible" : "";
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
+    }
+}
