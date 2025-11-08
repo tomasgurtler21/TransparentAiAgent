@@ -155,12 +155,19 @@ public class ConfigurationTests : Bunit.TestContext
     {
         // Arrange
         bool eventUnsubscribed = false;
+
+        // Track both subscription and unsubscription
+        _mockUIControlService.SetupAdd(s => s.UIStateChanged += It.IsAny<EventHandler<UIState>>())
+            .Callback(() => { /* Subscribed */ });
+
         _mockUIControlService.SetupRemove(s => s.UIStateChanged -= It.IsAny<EventHandler<UIState>>())
             .Callback(() => eventUnsubscribed = true);
 
         // Act
         IRenderedComponent<Configuration> cut = RenderComponent<Configuration>();
-        cut.Dispose();
+
+        // Explicitly dispose the component (bUnit may not call IDisposable automatically)
+        (cut.Instance as IDisposable)?.Dispose();
 
         // Assert - Should unsubscribe from UIStateChanged event
         Assert.IsTrue(eventUnsubscribed, "Configuration should unsubscribe from UIStateChanged on disposal");
