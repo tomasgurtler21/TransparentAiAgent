@@ -12,11 +12,11 @@
         <p class="tool-description">@Tool.Description</p>
     }
 
-    @if (IsExpanded && Tool.InputSchema != null)
+    @if (IsExpanded && !string.IsNullOrEmpty(Tool.ParametersSchema))
     {
         <div class="tool-schema">
-            <h5>Input Schema:</h5>
-            <pre><code>@System.Text.Json.JsonSerializer.Serialize(Tool.InputSchema, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })</code></pre>
+            <h5>Parameters Schema:</h5>
+            <pre><code>@Tool.ParametersSchema</code></pre>
         </div>
     }
 
