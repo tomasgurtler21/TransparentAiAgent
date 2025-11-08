@@ -94,7 +94,7 @@ public class ToolsOverviewTests : Bunit.TestContext
     {
         // Arrange
         EventHandler<UIState>? capturedHandler = null;
-        _mockUIControlService.Setup(s => s.UIStateChanged += It.IsAny<EventHandler<UIState>>())
+        _mockUIControlService.SetupAdd(s => s.UIStateChanged += It.IsAny<EventHandler<UIState>>())
             .Callback<EventHandler<UIState>>(handler => capturedHandler = handler);
 
         UIState initialState = UIState.DefaultNormalMode();

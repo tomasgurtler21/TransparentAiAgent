@@ -93,7 +93,7 @@ public class TransparencyViewerTests : Bunit.TestContext
         // Arrange
         List<TransparencyEvent> testEvents = new List<TransparencyEvent>
         {
-            new TransparencyEvent(TransparencyEventType.AgentStarted, "data", "Test event")
+            new TransparencyEvent(TransparencyEventType.SystemState, "data", "Test event")
         };
         _mockTransparencyService.Setup(s => s.GetRecentEvents(It.IsAny<int>()))
             .Returns(testEvents);
@@ -125,7 +125,7 @@ public class TransparencyViewerTests : Bunit.TestContext
         // Arrange
         List<TransparencyEvent> testEvents = new List<TransparencyEvent>
         {
-            new TransparencyEvent(TransparencyEventType.AgentStarted, "data", "Test event")
+            new TransparencyEvent(TransparencyEventType.SystemState, "data", "Test event")
         };
         _mockTransparencyService.Setup(s => s.GetRecentEvents(It.IsAny<int>()))
             .Returns(testEvents);
@@ -157,9 +157,9 @@ public class TransparencyViewerTests : Bunit.TestContext
         // Arrange
         List<TransparencyEvent> testEvents = new List<TransparencyEvent>
         {
-            new TransparencyEvent(TransparencyEventType.AgentStarted, "data1", "Event 1"),
-            new TransparencyEvent(TransparencyEventType.ToolExecuted, "data2", "Event 2"),
-            new TransparencyEvent(TransparencyEventType.LLMRequest, "data3", "Event 3")
+            new TransparencyEvent(TransparencyEventType.SystemState, "data1", "Event 1"),
+            new TransparencyEvent(TransparencyEventType.ToolCallCompleted, "data2", "Event 2"),
+            new TransparencyEvent(TransparencyEventType.RawLLMRequest, "data3", "Event 3")
         };
         _mockTransparencyService.Setup(s => s.GetRecentEvents(It.IsAny<int>()))
             .Returns(testEvents);
@@ -170,7 +170,7 @@ public class TransparencyViewerTests : Bunit.TestContext
             {
                 Visible = true,
                 ShowTimestamps = true,
-                EventTypeFilters = new List<string> { "AgentStarted", "ToolExecuted" }
+                EventTypeFilters = new List<string> { "SystemState", "ToolCallCompleted" }
             }
         };
         _mockUIControlService.Setup(s => s.GetCurrentState()).Returns(filteredState);
@@ -192,7 +192,7 @@ public class TransparencyViewerTests : Bunit.TestContext
     {
         // Arrange
         EventHandler<UIState>? capturedHandler = null;
-        _mockUIControlService.Setup(s => s.UIStateChanged += It.IsAny<EventHandler<UIState>>())
+        _mockUIControlService.SetupAdd(s => s.UIStateChanged += It.IsAny<EventHandler<UIState>>())
             .Callback<EventHandler<UIState>>(handler => capturedHandler = handler);
 
         UIState initialState = UIState.DefaultNormalMode();
