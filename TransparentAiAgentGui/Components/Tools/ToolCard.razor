@@ -1,7 +1,7 @@
 @using TransparentAiAgentCore.Domain.Tools
 @using TransparentAiAgentCore.Infrastructure.Tools
 
-<div class="tool-card" @onclick="OnClick">
+<div class="tool-card @(IsHighlighted ? "highlighted" : "") @(IsExpanded ? "expanded" : "")" @onclick="OnClick">
     <div class="tool-header">
         <h4 class="tool-name">@Tool.Name</h4>
         <span class="tool-source">@GetSourceBadge()</span>
@@ -10,6 +10,14 @@
     @if (!string.IsNullOrEmpty(Tool.Description))
     {
         <p class="tool-description">@Tool.Description</p>
+    }
+
+    @if (IsExpanded && !string.IsNullOrEmpty(Tool.ParametersSchema))
+    {
+        <div class="tool-schema">
+            <h5>Parameters Schema:</h5>
+            <pre><code>@Tool.ParametersSchema</code></pre>
+        </div>
     }
 
     @if (Stats != null && Stats.CallCount > 0)
@@ -32,12 +40,35 @@
 </div>
 
 @code {
+    /// <summary>
+    /// The tool to display.
+    /// </summary>
     [Parameter, EditorRequired]
     public ITool Tool { get; set; } = null!;
 
+    /// <summary>
+    /// Usage statistics for this tool.
+    /// </summary>
     [Parameter]
     public ToolStats? Stats { get; set; }
 
+    /// <summary>
+    /// Whether this tool is highlighted by the agent.
+    /// Controlled by UI state from teaching mode.
+    /// </summary>
+    [Parameter]
+    public bool IsHighlighted { get; set; }
+
+    /// <summary>
+    /// Whether this tool is expanded to show its schema.
+    /// Controlled by UI state from teaching mode.
+    /// </summary>
+    [Parameter]
+    public bool IsExpanded { get; set; }
+
+    /// <summary>
+    /// Callback when tool card is clicked.
+    /// </summary>
     [Parameter]
     public EventCallback<ITool> OnToolClick { get; set; }
 
@@ -51,13 +82,14 @@
         return Tool.SourceType switch
         {
             ToolSourceType.MCP => "MCP",
+            ToolSourceType.BuiltInUIControl => "UI Control",
             _ => "Built-in"
         };
     }
 
     private string FormatTimeAgo(DateTime timestamp)
     {
-        var diff = DateTime.UtcNow - timestamp;
+        TimeSpan diff = DateTime.UtcNow - timestamp;
         if (diff.TotalSeconds < 60) return $"{(int)diff.TotalSeconds}s ago";
         if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
         if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";

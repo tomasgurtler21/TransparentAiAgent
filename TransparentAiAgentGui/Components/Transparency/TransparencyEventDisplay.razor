@@ -4,7 +4,10 @@
     <div class="event-header" @onclick="ToggleExpanded">
         <span class="event-icon">@GetEventIcon()</span>
         <span class="event-type">@Event.EventType</span>
-        <span class="event-timestamp">@Event.Timestamp.ToString("HH:mm:ss.fff")</span>
+        @if (ShowTimestamp)
+        {
+            <span class="event-timestamp">@Event.Timestamp.ToString("HH:mm:ss.fff")</span>
+        }
         @if (!string.IsNullOrEmpty(Event.AdditionalInfo))
         {
             <span class="event-context">@Event.AdditionalInfo</span>
@@ -21,8 +24,18 @@
 </div>
 
 @code {
+    /// <summary>
+    /// The transparency event to display.
+    /// </summary>
     [Parameter, EditorRequired]
     public TransparencyEvent Event { get; set; } = null!;
+
+    /// <summary>
+    /// Whether to show the timestamp for this event.
+    /// Controlled by UI state from agent or user settings.
+    /// </summary>
+    [Parameter]
+    public bool ShowTimestamp { get; set; } = true;
 
     private bool IsExpanded { get; set; }
 

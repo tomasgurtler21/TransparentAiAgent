@@ -1,10 +1,14 @@
 @using TransparentAiAgentCore.Domain.Transparency
 @using TransparentAiAgentCore.Infrastructure.Transparency
+@using TransparentAiAgentCore.Domain.UIControl
 @using Microsoft.JSInterop
 @implements IDisposable
 @inject ITransparencyService TransparencyService
+@inject IUIControlService UIControlService
 @inject IJSRuntime JSRuntime
 
+@if (_uiState.TransparencyViewer.Visible)
+{
 <div class="transparency-viewer">
     <div class="viewer-header">
         <h3>Transparency Events</h3>
@@ -17,7 +21,7 @@
 
             <select class="filter-select" @bind="SelectedEventType">
                 <option value="">All Events</option>
-                @foreach (var eventType in Enum.GetValues<TransparencyEventType>())
+                @foreach (TransparencyEventType eventType in Enum.GetValues<TransparencyEventType>())
                 {
                     <option value="@eventType">@eventType</option>
                 }
@@ -48,30 +52,47 @@
         }
         else
         {
-            @foreach (var ev in FilteredEvents)
+            @foreach (TransparencyEvent ev in FilteredEvents)
             {
-                <TransparencyEventDisplay @key="ev.Id" Event="ev" />
+                <TransparencyEventDisplay @key="ev.Id" Event="ev" ShowTimestamp="@_uiState.TransparencyViewer.ShowTimestamps" />
             }
         }
     </div>
 </div>
+}
 
 @code {
+    private UIState _uiState = UIState.DefaultNormalMode();
     private List<TransparencyEvent> Events { get; set; } = new();
     private string SearchQuery { get; set; } = string.Empty;
     private string SelectedEventType { get; set; } = string.Empty;
     private bool AutoScroll { get; set; } = true;
     private ElementReference ViewerContentRef;
 
-    private List<TransparencyEvent> FilteredEvents =>
-        Events
-            .Where(e =>
+    private List<TransparencyEvent> FilteredEvents
+    {
+        get
+        {
+            IEnumerable<TransparencyEvent> filtered = Events;
+
+            // Apply UI state event type filters if any
+            if (_uiState.TransparencyViewer.EventTypeFilters.Any())
+            {
+                filtered = filtered.Where(e =>
+                    _uiState.TransparencyViewer.EventTypeFilters.Contains(e.EventType.ToString()));
+            }
+
+            // Apply user search/filter
+            filtered = filtered.Where(e =>
                 (string.IsNullOrEmpty(SelectedEventType) || e.EventType.ToString() == SelectedEventType) &&
                 (string.IsNullOrEmpty(SearchQuery) ||
                  e.EventType.ToString().Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
                  e.AdditionalInfo?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true ||
-                 e.Data?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true))
-            .ToList();
+                 e.Data?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true));
+
+            return filtered.ToList();
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -80,6 +101,19 @@
 
         // Subscribe to new events
         TransparencyService.EventLogged += OnEventLogged;
+
+        // Subscribe to UI state changes
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
     }
 
     private async void OnEventLogged(object? sender, TransparencyEvent e)
@@ -125,5 +159,6 @@
     public void Dispose()
     {
         TransparencyService.EventLogged -= OnEventLogged;
+        UIControlService.UIStateChanged -= OnUIStateChanged;
     }
 }

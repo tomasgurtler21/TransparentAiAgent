@@ -28,9 +28,9 @@ We follow **Lean Test-Driven Development (TDD)** principles:
 - Avoid over-testing implementation details
 - Focus on behavior, not internals
 
-### For Claude Code Users
+### For Claude Code CLI Users
 
-When working with Claude, use the **TDD skill** for automated test-driven workflows:
+When working with Claude Code CLI, use the **TDD skill** for automated test-driven workflows:
 
 ```
 Use .claude/skills/tdd/ skill
@@ -42,7 +42,44 @@ This skill provides:
 - Red-Green-Refactor cycles
 - Test running and feedback
 
-See `.claude/skills/tdd/README.md` for details.
+See `.claude/skills/tdd/` directory for complete TDD guidelines.
+
+### For Claude Code Web Users
+
+**Claude Code Web cannot compile or run tests**, which requires a modified TDD workflow:
+
+**Workflow:**
+1. **Claude reads TDD skill manually** from `.claude/skills/tdd/` directory
+2. **RED Phase - Claude writes batch of tests**
+   - Write multiple tests that compile successfully
+   - Tests should FAIL when run (no implementation yet)
+   - Commit & push the failing tests
+3. **User runs tests** - Validates RED phase (tests fail as expected)
+4. **GREEN Phase - Claude writes implementations**
+   - Write minimal code to make tests pass
+   - Commit & push the implementations
+5. **User runs tests** - Validates GREEN phase (tests pass)
+6. **Claude fixes failures** if any tests still fail
+7. **Repeat** for next component
+
+**Key Differences from CLI:**
+- ❌ No automated RED-GREEN-REFACTOR cycle
+- ❌ Claude cannot run tests or verify compilation
+- ✅ User must be in the loop to run tests
+- ✅ Tests written first in RED phase, implementation in GREEN phase
+- ✅ Larger batches within each phase to reduce token costs
+
+**CRITICAL - What "Batching" Means:**
+- ✅ **Correct**: Write multiple tests in RED phase, THEN multiple implementations in GREEN phase
+  - Example: Write 5 tests → commit → user validates they fail → write 5 implementations → commit → user validates they pass
+- ❌ **WRONG**: Write tests + implementations together in one batch
+  - This skips RED phase and defeats TDD's purpose of preventing false positives
+- **Balance**: Batch size vs crash resistance
+  - Small batches (1-3 tests): More resistant to crashes, higher token cost
+  - Large batches (5-10 tests): Lower token cost, more work lost if crash
+  - Recommended: 3-5 tests per batch for balance
+
+**Critical**: Claude must read and follow `.claude/skills/tdd/SKILL.md` for Lean TDD principles even without test execution capability.
 
 ---
 
@@ -78,5 +115,41 @@ These docs are **NOT** bound to current code state:
 
 ## 🎯 Additional Development Practices
 
-*(To be expanded as project matures)*
+### Code Style Standards
+
+**Type Declarations**
+- ❌ **No `var` keyword** - Always use concrete types in implementation
+- ✅ Example: `IConfigurationService service = new ConfigurationService();`
+- ❌ Example: `var service = new ConfigurationService();`
+
+**XML Documentation**
+- ✅ **Every class and method must have XML documentation summary**
+- Required for all public classes, methods, and properties
+- Example:
+  ```csharp
+  /// <summary>
+  /// Manages conversation state and message history.
+  /// </summary>
+  public class ConversationManager
+  {
+      /// <summary>
+      /// Adds a new message to the conversation history.
+      /// </summary>
+      /// <param name="message">The message to add.</param>
+      public void AddMessage(IMessage message)
+      {
+          // Implementation
+      }
+  }
+  ```
+
+### Development Philosophy
+
+**Rapid Prototyping**
+- This is a rapid prototype / "vibe coding" project
+- Focus on working functionality over perfect formatting
+- Don't slow down for formatting nitpicks or elaborate deployment configurations
+- **However: TDD is non-negotiable** - it keeps AI agents in check and prevents regressions
+
+**Note**: Many existing files in the codebase violate these standards - that's a known issue. New code should follow these practices.
 
