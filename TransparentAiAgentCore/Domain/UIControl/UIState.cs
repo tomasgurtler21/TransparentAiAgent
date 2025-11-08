@@ -53,13 +53,13 @@ public record UIState
         },
         TransparencyViewer = new TransparencyViewerState
         {
-            Visible = true,
+            Visible = false,
             ShowTimestamps = true,
             EventTypeFilters = new List<string>()
         },
         ToolsPanel = new ToolsPanelState
         {
-            Visible = true,
+            Visible = false,
             ExpandedTools = new List<string>(),
             HighlightedTool = null
         },
@@ -93,13 +93,13 @@ public record UIState
         },
         TransparencyViewer = new TransparencyViewerState
         {
-            Visible = true,
+            Visible = false,
             ShowTimestamps = true,
             EventTypeFilters = new List<string>()
         },
         ToolsPanel = new ToolsPanelState
         {
-            Visible = true,
+            Visible = false,
             ExpandedTools = new List<string>(),
             HighlightedTool = null
         },
@@ -136,7 +136,7 @@ public record ChatFilterState
 /// </summary>
 public record TransparencyViewerState
 {
-    public bool Visible { get; init; } = true;
+    public bool Visible { get; init; } = false;
     public List<string> EventTypeFilters { get; init; } = new();
     public bool ShowTimestamps { get; init; } = true;
 }
@@ -146,7 +146,7 @@ public record TransparencyViewerState
 /// </summary>
 public record ToolsPanelState
 {
-    public bool Visible { get; init; } = true;
+    public bool Visible { get; init; } = false;
     public List<string> ExpandedTools { get; init; } = new();
     public string? HighlightedTool { get; init; } = null;
 }
