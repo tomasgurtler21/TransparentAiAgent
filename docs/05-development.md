@@ -28,9 +28,9 @@ We follow **Lean Test-Driven Development (TDD)** principles:
 - Avoid over-testing implementation details
 - Focus on behavior, not internals
 
-### For Claude Code Users
+### For Claude Code CLI Users
 
-When working with Claude, use the **TDD skill** for automated test-driven workflows:
+When working with Claude Code CLI, use the **TDD skill** for automated test-driven workflows:
 
 ```
 Use .claude/skills/tdd/ skill
@@ -42,7 +42,31 @@ This skill provides:
 - Red-Green-Refactor cycles
 - Test running and feedback
 
-See `.claude/skills/tdd/README.md` for details.
+See `.claude/skills/tdd/` directory for complete TDD guidelines.
+
+### For Claude Code Web Users
+
+**Claude Code Web cannot compile or run tests**, which requires a modified TDD workflow:
+
+**Workflow:**
+1. **Claude reads TDD skill manually** from `.claude/skills/tdd/` directory
+2. **Claude writes batch of tests** following Lean TDD principles
+3. **Claude writes implementations** to satisfy tests
+4. **Claude commits & pushes** (frequent commits for crash resistance)
+5. **User runs tests** via `dotnet test` and provides feedback
+6. **Claude fixes failures** based on test results
+7. **Repeat** for next component
+
+**Key Differences from CLI:**
+- ❌ No automated RED-GREEN-REFACTOR cycle
+- ❌ Claude cannot run tests or verify compilation
+- ✅ User must be in the loop to run tests
+- ✅ Tests written first, but verified later
+- ✅ Larger batches to reduce token costs
+
+**Cost Consideration**: To minimize token usage, batch multiple tests together rather than micro-commits per test. Balance crash resistance (frequent commits) with cost efficiency (larger batches).
+
+**Critical**: Claude must read and follow `.claude/skills/tdd/SKILL.md` for Lean TDD principles even without test execution capability.
 
 ---
 
