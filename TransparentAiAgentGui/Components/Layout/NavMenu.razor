@@ -1,4 +1,9 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+@using TransparentAiAgentCore.Domain.UIControl
+@implements IDisposable
+@inject IUIControlService UIControlService
+@rendermode InteractiveServer
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">TransparentAiAgentGui</a>
     </div>
@@ -15,24 +20,6 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="transparency">
-                <span class="bi bi-eye-fill" aria-hidden="true"></span> Transparency
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="tools">
-                <span class="bi bi-tools" aria-hidden="true"></span> Tools
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="configuration">
-                <span class="bi bi-gear-fill" aria-hidden="true"></span> Configuration
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
             <NavLink class="nav-link" href="counter">
                 <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
             </NavLink>
@@ -43,6 +30,78 @@
                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
             </NavLink>
         </div>
+
+        <!-- Overlay Controls Section -->
+        <hr class="nav-divider" />
+
+        <div class="nav-section-header px-3">
+            <small class="text-muted">OVERLAYS</small>
+        </div>
+
+        <div class="nav-item px-3">
+            <button class="nav-link overlay-toggle @(_uiState.TransparencyViewer.Visible ? "active" : "")"
+                    @onclick="ToggleTransparencyViewer"
+                    @onclick:stopPropagation="true">
+                <span class="bi bi-eye-fill" aria-hidden="true"></span> Transparency
+                <span class="toggle-indicator">@(_uiState.TransparencyViewer.Visible ? "▼" : "▶")</span>
+            </button>
+        </div>
+
+        <div class="nav-item px-3">
+            <button class="nav-link overlay-toggle @(_uiState.ToolsPanel.Visible ? "active" : "")"
+                    @onclick="ToggleToolsPanel"
+                    @onclick:stopPropagation="true">
+                <span class="bi bi-tools" aria-hidden="true"></span> Tools
+                <span class="toggle-indicator">@(_uiState.ToolsPanel.Visible ? "▼" : "▶")</span>
+            </button>
+        </div>
+
+        <div class="nav-item px-3">
+            <button class="nav-link overlay-toggle @(_uiState.ConfigurationPage.Visible ? "active" : "")"
+                    @onclick="ToggleConfiguration"
+                    @onclick:stopPropagation="true">
+                <span class="bi bi-gear-fill" aria-hidden="true"></span> Configuration
+                <span class="toggle-indicator">@(_uiState.ConfigurationPage.Visible ? "▼" : "▶")</span>
+            </button>
+        </div>
     </nav>
 </div>
 
+@code {
+    private UIState _uiState = UIState.DefaultNormalMode();
+
+    protected override void OnInitialized()
+    {
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
+    }
+
+    private void ToggleTransparencyViewer()
+    {
+        UIControlService.UpdateTransparencyViewer(visible: !_uiState.TransparencyViewer.Visible);
+    }
+
+    private void ToggleToolsPanel()
+    {
+        UIControlService.UpdateToolsPanel(visible: !_uiState.ToolsPanel.Visible);
+    }
+
+    private void ToggleConfiguration()
+    {
+        UIControlService.UpdateConfigurationPage(visible: !_uiState.ConfigurationPage.Visible);
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
+    }
+}

@@ -70,6 +70,7 @@ public record UIState
         },
         ConfigurationPage = new ConfigurationPageState
         {
+            Visible = true,
             NavigateRequested = false,
             HighlightedSection = null
         },
@@ -93,13 +94,13 @@ public record UIState
         },
         TransparencyViewer = new TransparencyViewerState
         {
-            Visible = true,
+            Visible = false,
             ShowTimestamps = true,
             EventTypeFilters = new List<string>()
         },
         ToolsPanel = new ToolsPanelState
         {
-            Visible = true,
+            Visible = false,
             ExpandedTools = new List<string>(),
             HighlightedTool = null
         },
@@ -110,6 +111,7 @@ public record UIState
         },
         ConfigurationPage = new ConfigurationPageState
         {
+            Visible = false,
             NavigateRequested = false,
             HighlightedSection = null
         },
@@ -165,6 +167,7 @@ public record ContextIndicatorsState
 /// </summary>
 public record ConfigurationPageState
 {
+    public bool Visible { get; init; } = true;
     public bool NavigateRequested { get; init; } = false;
     public string? HighlightedSection { get; init; } = null;
 }

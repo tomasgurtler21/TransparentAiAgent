@@ -5,12 +5,16 @@
 @inject IToolRegistry ToolRegistry
 @inject IToolUsageStatistics ToolUsageStatistics
 @inject IUIControlService UIControlService
+@rendermode InteractiveServer
 
 @if (_uiState.ToolsPanel.Visible)
 {
 <div class="tools-overview">
     <div class="overview-header">
-        <h3>Available Tools</h3>
+        <div class="overview-header-top">
+            <h3>Available Tools</h3>
+            <button class="overview-close-btn" @onclick="HandleClose">×</button>
+        </div>
         <div class="overview-controls">
             <input type="text"
                    class="search-input"
@@ -31,7 +35,8 @@
         <span>Filtered: @FilteredTools.Count</span>
     </div>
 
-    <div class="tools-grid">
+    <div class="overview-content">
+        <div class="tools-grid">
         @if (!FilteredTools.Any())
         {
             <div class="no-tools">
@@ -53,6 +58,7 @@
                          OnToolClick="OnToolCardClick" />
             }
         }
+        </div>
     </div>
 </div>
 
@@ -116,6 +122,13 @@
             ToolSourceType.MCP => "MCP",
             _ => "Built-in"
         };
+    }
+
+    private async Task HandleClose()
+    {
+        // Close via UIControlService
+        await Task.Run(() =>
+            UIControlService.UpdateToolsPanel(visible: false));
     }
 
     public void Dispose()

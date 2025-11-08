@@ -191,6 +191,7 @@ public class UIControlService : IUIControlService
     }
 
     public Result<UIState> UpdateConfigurationPage(
+        bool? visible = null,
         bool? navigate = null,
         string? highlightSection = null)
     {
@@ -198,6 +199,7 @@ public class UIControlService : IUIControlService
         {
             var newConfigPage = _currentState.ConfigurationPage with
             {
+                Visible = visible ?? _currentState.ConfigurationPage.Visible,
                 NavigateRequested = navigate ?? _currentState.ConfigurationPage.NavigateRequested,
                 HighlightedSection = highlightSection ?? _currentState.ConfigurationPage.HighlightedSection
             };
@@ -206,6 +208,7 @@ public class UIControlService : IUIControlService
 
             LogUIControlEvent("ConfigurationPageUpdated", new
             {
+                newConfigPage.Visible,
                 newConfigPage.NavigateRequested,
                 newConfigPage.HighlightedSection
             });

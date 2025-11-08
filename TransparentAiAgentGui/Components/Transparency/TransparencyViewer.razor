@@ -6,12 +6,16 @@
 @inject ITransparencyService TransparencyService
 @inject IUIControlService UIControlService
 @inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
 
 @if (_uiState.TransparencyViewer.Visible)
 {
 <div class="transparency-viewer">
     <div class="viewer-header">
-        <h3>Transparency Events</h3>
+        <div class="viewer-header-top">
+            <h3>Transparency Events</h3>
+            <button class="viewer-close-btn" @onclick="HandleClose">×</button>
+        </div>
         <div class="viewer-controls">
             <input type="text"
                    class="search-input"
@@ -154,6 +158,13 @@
     {
         Events.Clear();
         StateHasChanged();
+    }
+
+    private async Task HandleClose()
+    {
+        // Close via UIControlService
+        await Task.Run(() =>
+            UIControlService.UpdateTransparencyViewer(visible: false));
     }
 
     public void Dispose()

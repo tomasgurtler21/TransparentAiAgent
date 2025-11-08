@@ -1,9 +1,9 @@
 .transparency-viewer {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
+    min-height: 100vh;
+    border: none;
+    border-radius: 0;
     background-color: #ffffff;
 }
 
@@ -11,11 +11,39 @@
     padding: 16px;
     border-bottom: 1px solid #dee2e6;
     background-color: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.viewer-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
 .viewer-header h3 {
-    margin: 0 0 12px 0;
+    margin: 0;
     font-size: 18px;
+}
+
+.viewer-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+    padding: 0;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+}
+
+.viewer-close-btn:hover {
+    color: #212529;
 }
 
 .viewer-controls {
