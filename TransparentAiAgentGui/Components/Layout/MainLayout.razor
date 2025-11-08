@@ -1,7 +1,9 @@
 ﻿@using TransparentAiAgentGui.Components.Transparency
 @using TransparentAiAgentGui.Components.Tools
 @using TransparentAiAgentCore.Domain.UIControl
+@using Microsoft.JSInterop
 @inject IUIControlService UIControlService
+@inject IJSRuntime JSRuntime
 @inherits LayoutComponentBase
 @implements IDisposable
 
@@ -24,11 +26,13 @@
     <div class="overlay-container">
         <!-- TransparencyViewer as overlay -->
         <div class="overlay-panel overlay-panel-right @(GetTransparencyOverlayVisibilityClass())">
+            <div class="overlay-resize-handle"></div>
             <TransparencyViewer />
         </div>
 
         <!-- ToolsOverview as overlay -->
         <div class="overlay-panel overlay-panel-right @(GetToolsOverlayVisibilityClass())">
+            <div class="overlay-resize-handle"></div>
             <ToolsOverview />
         </div>
     </div>
@@ -47,6 +51,21 @@
     {
         UIControlService.UIStateChanged += OnUIStateChanged;
         _uiState = UIControlService.GetCurrentState();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("overlayResize.init");
+            }
+            catch (Exception)
+            {
+                // Ignore JS errors during initialization
+            }
+        }
     }
 
     private void OnUIStateChanged(object? sender, UIState newState)
