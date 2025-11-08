@@ -1,4 +1,5 @@
 ﻿@using TransparentAiAgentGui.Components.Transparency
+@using TransparentAiAgentGui.Components.Tools
 @using TransparentAiAgentCore.Domain.UIControl
 @inject IUIControlService UIControlService
 @inherits LayoutComponentBase
@@ -22,8 +23,13 @@
     <!-- Overlay System -->
     <div class="overlay-container">
         <!-- TransparencyViewer as overlay -->
-        <div class="overlay-panel overlay-panel-right @(GetOverlayVisibilityClass())">
+        <div class="overlay-panel overlay-panel-right @(GetTransparencyOverlayVisibilityClass())">
             <TransparencyViewer />
+        </div>
+
+        <!-- ToolsOverview as overlay -->
+        <div class="overlay-panel overlay-panel-right @(GetToolsOverlayVisibilityClass())">
+            <ToolsOverview />
         </div>
     </div>
 </div>
@@ -52,9 +58,14 @@
         });
     }
 
-    private string GetOverlayVisibilityClass()
+    private string GetTransparencyOverlayVisibilityClass()
     {
         return _uiState.TransparencyViewer.Visible ? "visible" : "";
+    }
+
+    private string GetToolsOverlayVisibilityClass()
+    {
+        return _uiState.ToolsPanel.Visible ? "visible" : "";
     }
 
     public void Dispose()
