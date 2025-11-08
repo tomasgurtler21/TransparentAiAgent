@@ -1,8 +1,23 @@
 # Documentation Design Proposal
 
 **Created**: 2025-11-08
-**Status**: Awaiting Review & Approval
+**Last Updated**: 2025-11-08
+**Status**: ✅ Approved with Refinements
 **Purpose**: Reorganize project documentation for clarity, maintainability, and scalability
+
+---
+
+## Approval Status
+
+**Approved Decisions**:
+- ✅ Use numbering for top-level directories only (`01-getting-started/`, not subdirectories)
+- ✅ Concepts folder for cross-cutting features (Teaching Mode belongs here)
+- ✅ Archive session docs immediately (Option A)
+- ✅ Remove TDD guide (covered by `.claude/skills/tdd/`)
+- ✅ **Add clear scope headers to all files** (prevent AI agents from misusing docs)
+
+**Pending**:
+- ⏳ Component documentation timing (details to be provided later)
 
 ---
 
@@ -11,7 +26,7 @@
 This proposal redesigns the TransparentAiAgent documentation structure to address current pain points: chaotic organization, unclear hierarchy, difficulty updating, and poor support for cross-cutting concepts like Teaching Mode.
 
 **Current State**: 19 files at root level, unclear categorization, mix of architecture/guides/session notes
-**Proposed State**: Hierarchical structure with 9 categories, clear navigation, templates and style guide
+**Proposed State**: Hierarchical structure with 9 categories, clear navigation, templates, style guide, and **scope headers**
 
 ---
 
@@ -51,6 +66,14 @@ This proposal redesigns the TransparentAiAgent documentation structure to addres
 - No templates for different doc types
 - No style guide
 - Inconsistent formatting and structure
+
+### 8. No Scope Boundaries (AI Agent Problem) ⚠️
+- **Critical Issue**: AI agents put content in wrong places
+  - Code snippets in architecture docs
+  - Session notes in guides
+  - Implementation details in overview docs
+- No clear "what belongs here" statement at file headers
+- Leads to documentation decay and confusion
 
 ---
 
@@ -124,11 +147,11 @@ docs/
 │   ├── README.md
 │   ├── development/
 │   │   ├── README.md
-│   │   ├── tdd-workflow.md
 │   │   ├── adding-llm-provider.md
 │   │   ├── adding-component.md
 │   │   ├── testing-strategy.md
 │   │   └── debugging-tips.md
+│   │   # Note: TDD workflow covered by .claude/skills/tdd/
 │   ├── deployment/
 │   │   ├── README.md
 │   │   ├── local-deployment.md
@@ -357,7 +380,7 @@ docs/
 
 ### Every Document Should Have
 
-1. **Front Matter**:
+1. **Front Matter with Scope Header** ⭐ **CRITICAL**:
    ```markdown
    # Document Title
 
@@ -366,7 +389,31 @@ docs/
    **Audience**: Developers | Users | All
 
    ---
+
+   ## 📋 Document Scope
+
+   **What belongs in this document**:
+   - Specific type of content (e.g., "Architecture diagrams and layer descriptions")
+   - Specific level of detail (e.g., "High-level overviews, not implementation code")
+   - Examples of appropriate content
+
+   **What does NOT belong here**:
+   - ❌ Code snippets (→ belongs in component docs or guides)
+   - ❌ Session notes (→ belongs in archive)
+   - ❌ Implementation details (→ belongs in component docs)
+
+   **Purpose**: This scope header prevents documentation decay by clearly defining boundaries.
+   AI agents and human contributors should verify content matches the scope before adding.
+
+   ---
    ```
+
+   **Why This Matters**: Without clear scope boundaries, AI agents will put:
+   - Code snippets in architecture docs
+   - Session summaries in guides
+   - Implementation details in overviews
+
+   This leads to documentation chaos. **Every document must have a scope header.**
 
 2. **Table of Contents** (for docs >3 sections):
    ```markdown
@@ -413,6 +460,25 @@ Located at: `08-contributing/templates/component-template.md`
 **Status**: Active
 **Phase**: Phase X
 **Layer**: Domain | Application | Infrastructure | Presentation
+
+---
+
+## 📋 Document Scope
+
+**What belongs in this document**:
+- Detailed documentation for the [Component Name] component
+- Purpose, responsibilities, and architecture
+- Interface definitions and contracts
+- Dependencies and relationships with other components
+- Implementation notes and design patterns
+- Testing strategies specific to this component
+- Usage examples with code
+
+**What does NOT belong here**:
+- ❌ General architecture overviews (→ belongs in 02-architecture/)
+- ❌ Cross-cutting concepts (→ belongs in 03-concepts/)
+- ❌ Step-by-step guides (→ belongs in 05-guides/)
+- ❌ Session notes or temporary fixes (→ belongs in 09-archive/)
 
 ---
 
@@ -501,6 +567,24 @@ Located at: `08-contributing/templates/concept-template.md`
 
 ---
 
+## 📋 Document Scope
+
+**What belongs in this document**:
+- Explanation of the [Concept Name] concept
+- High-level philosophy and principles
+- How the concept works across multiple components
+- Use cases and examples
+- Best practices and common pitfalls
+- Related documentation links
+
+**What does NOT belong here**:
+- ❌ Component-specific implementation details (→ belongs in 04-components/)
+- ❌ Step-by-step how-to guides (→ belongs in 05-guides/)
+- ❌ Code snippets (→ belongs in component docs or guides)
+- ❌ Architecture diagrams (→ belongs in 02-architecture/)
+
+---
+
 ## What is [Concept]?
 
 High-level explanation in simple terms.
@@ -570,6 +654,24 @@ Located at: `08-contributing/templates/guide-template.md`
 
 ---
 
+## 📋 Document Scope
+
+**What belongs in this document**:
+- Step-by-step instructions for completing [Task Name]
+- Prerequisites and setup
+- Detailed steps with code/commands
+- Verification procedures
+- Troubleshooting for this specific task
+- Links to related guides
+
+**What does NOT belong here**:
+- ❌ Conceptual explanations (→ belongs in 03-concepts/)
+- ❌ Component architecture (→ belongs in 04-components/)
+- ❌ General architecture (→ belongs in 02-architecture/)
+- ❌ API reference (→ belongs in 06-reference/)
+
+---
+
 ## Prerequisites
 
 - Prerequisite 1
@@ -630,6 +732,14 @@ Where to go from here.
 ### Design Decision Template
 
 Located at: `08-contributing/templates/decision-template.md`
+
+**Note**: Design decisions are logged in `02-architecture/design-decisions.md` as sections, not separate files.
+
+**File Scope** (for design-decisions.md):
+- ✅ Architectural and technical decisions with rationale
+- ✅ Context, options considered, consequences
+- ❌ Implementation code (→ belongs in components)
+- ❌ Session notes (→ belongs in archive)
 
 ```markdown
 ### DD-XXX: [Decision Title]
@@ -825,35 +935,39 @@ graph TD
 
 ---
 
-## Open Questions for Review
+## Decisions Made (Previously Open Questions)
 
-### 1. Directory Numbering
-Should we prefix directories with numbers (`01-getting-started`) or not?
-- **Pro**: Enforces reading order, clear hierarchy
-- **Con**: More rigid, renaming is harder
+### 1. Directory Numbering ✅ APPROVED
+**Decision**: Use numbers for top-level directories only (`01-getting-started/`), not subdirectories.
+- ✅ Enforces reading order
+- ✅ Clear hierarchy
+- Subdirectories use descriptive names without numbers
 
-**Recommendation**: Use numbers for top-level only, not subdirectories.
+### 2. Component Documentation Timing ⏳ PENDING
+**Status**: Details to be provided later
+- Will be specified when ready to proceed with component doc expansion
 
-### 2. Component Documentation Timing
-When should detailed component docs be created?
-- **Option A**: Now (using templates, even if components not fully implemented)
-- **Option B**: During/after Phase 9 implementation
-- **Option C**: As-needed when someone asks
+### 3. Teaching Mode Documentation Location ✅ APPROVED
+**Decision**: Place in `03-concepts/teaching-mode/`
+- ✅ It's a cross-cutting concept, not a single component
+- ✅ Unifies 3 previously scattered docs in one logical place
 
-**Recommendation**: Option A for existing components, Option B for new ones.
+### 4. Archive Policy ✅ APPROVED
+**Decision**: Archive all session docs immediately (Option A)
+- ✅ Keep root clean
+- Session docs go to `09-archive/sessions/YYYY-MM-DD-session-summary.md`
+- Implementation notes go to `09-archive/implementation-notes/`
 
-### 3. Teaching Mode Documentation Location
-Is `03-concepts/teaching-mode/` the right place?
-- **Alternative**: Keep at root as it's a major feature
+### 5. TDD Documentation ✅ APPROVED
+**Decision**: No TDD guide in docs (covered by `.claude/skills/tdd/`)
+- Removed `tdd-workflow.md` from development guides
+- TDD skill has comprehensive coverage (SKILL.md, examples.md, reference.md)
 
-**Recommendation**: Concepts folder—it's cross-cutting and conceptual.
-
-### 4. Archive Policy
-Should we archive session summaries immediately or keep recent ones at root?
-- **Option A**: Archive all session docs immediately
-- **Option B**: Keep last 3 sessions at root, archive older
-
-**Recommendation**: Option A—keep root clean.
+### 6. Scope Headers ✅ APPROVED
+**Decision**: Every document must have a clear scope header
+- Prevents AI agents from putting content in wrong places
+- Added to all templates (component, concept, guide, decision)
+- Critical for maintaining documentation quality
 
 ---
 
@@ -889,27 +1003,32 @@ Should we archive session summaries immediately or keep recent ones at root?
 
 ## Next Steps
 
-1. **Review this proposal**: Feedback on structure, naming, categories
-2. **Approve or iterate**: Make changes based on your feedback
-3. **Execute migration**: Follow migration plan
-4. **Create templates**: Set up template files
-5. **Write style guide**: Document standards
-6. **Migrate content**: Move and reorganize files
-7. **Validate**: Test navigation and cross-references
-8. **Maintain**: Use templates going forward
+### ✅ Completed
+1. ✅ **Review this proposal** - Completed, feedback received
+2. ✅ **Approve core decisions** - Approved with refinements
+
+### 🚀 Ready to Execute
+3. **Execute migration** - Ready to proceed with Phase 1
+   - Create new directory structure
+   - Create template files with scope headers
+   - Move existing files to new locations
+   - Update cross-references
+   - Archive session docs
+
+4. **Component documentation timing** - Awaiting user specification
+   - Will be determined when ready to expand component docs
 
 ---
 
-**Questions? Concerns? Suggestions?**
+**Status**: ✅ **APPROVED - Ready to Proceed with Migration**
 
-Please review this proposal and provide feedback on:
-- Overall structure
-- Category names and purposes
-- File naming conventions
-- Template structure
-- Migration approach
-- Any missing considerations
+**Key Approvals**:
+- ✅ 9-category structure
+- ✅ Numbering top-level directories only
+- ✅ Concepts folder for Teaching Mode
+- ✅ Archive session docs immediately
+- ✅ Scope headers in all documents (critical for AI agent usage)
+- ✅ Remove TDD guide (covered by skill)
 
----
-
-**Status**: Awaiting approval to proceed with migration
+**Pending**:
+- ⏳ Component documentation timing (details to come)
