@@ -78,5 +78,41 @@ These docs are **NOT** bound to current code state:
 
 ## 🎯 Additional Development Practices
 
-*(To be expanded as project matures)*
+### Code Style Standards
+
+**Type Declarations**
+- ❌ **No `var` keyword** - Always use concrete types in implementation
+- ✅ Example: `IConfigurationService service = new ConfigurationService();`
+- ❌ Example: `var service = new ConfigurationService();`
+
+**XML Documentation**
+- ✅ **Every class and method must have XML documentation summary**
+- Required for all public classes, methods, and properties
+- Example:
+  ```csharp
+  /// <summary>
+  /// Manages conversation state and message history.
+  /// </summary>
+  public class ConversationManager
+  {
+      /// <summary>
+      /// Adds a new message to the conversation history.
+      /// </summary>
+      /// <param name="message">The message to add.</param>
+      public void AddMessage(IMessage message)
+      {
+          // Implementation
+      }
+  }
+  ```
+
+### Development Philosophy
+
+**Rapid Prototyping**
+- This is a rapid prototype / "vibe coding" project
+- Focus on working functionality over perfect formatting
+- Don't slow down for formatting nitpicks or elaborate deployment configurations
+- **However: TDD is non-negotiable** - it keeps AI agents in check and prevents regressions
+
+**Note**: Many existing files in the codebase violate these standards - that's a known issue. New code should follow these practices.
 
