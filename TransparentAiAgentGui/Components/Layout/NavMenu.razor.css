@@ -89,6 +89,47 @@
     display: block;
 }
 
+/* Overlay Controls */
+.nav-divider {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 1rem 0;
+}
+
+.nav-section-header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.nav-section-header small {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.overlay-toggle {
+    cursor: pointer;
+    text-align: left;
+    padding-left: 0.75rem;
+    position: relative;
+}
+
+.overlay-toggle.active {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+}
+
+.toggle-indicator {
+    position: absolute;
+    right: 1rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.overlay-toggle.active .toggle-indicator {
+    color: white;
+}
+
 @media (min-width: 641px) {
     .navbar-toggler {
         display: none;
