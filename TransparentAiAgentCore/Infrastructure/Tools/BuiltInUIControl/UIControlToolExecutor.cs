@@ -220,6 +220,7 @@ public class UIControlToolExecutor : IToolExecutor
         var root = args.RootElement;
 
         return uiControlService.UpdateConfigurationPage(
+            visible: GetBoolProperty(root, "visible"),
             navigate: GetBoolProperty(root, "navigate"),
             highlightSection: GetStringProperty(root, "highlight_section"));
     }
