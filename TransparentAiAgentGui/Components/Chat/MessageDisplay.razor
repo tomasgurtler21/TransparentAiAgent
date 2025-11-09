@@ -35,14 +35,17 @@
                     </div>
                 }
 
-                @* Display tool call details *@
-                <div class="tool-call">
-                    <div class="tool-name">Tool: <strong>@Message.ToolName</strong></div>
-                    @if (!string.IsNullOrWhiteSpace(Message.ToolArguments))
-                    {
-                        <JsonDisplay Content="@Message.ToolArguments" Title="Arguments" InitiallyExpanded="false" />
-                    }
-                </div>
+                @* Display all tool calls *@
+                @foreach (var toolCall in Message.ToolCalls)
+                {
+                    <div class="tool-call">
+                        <div class="tool-name">Tool: <strong>@toolCall.Name</strong></div>
+                        @if (!string.IsNullOrWhiteSpace(toolCall.Arguments))
+                        {
+                            <JsonDisplay Content="@toolCall.Arguments" Title="Arguments" InitiallyExpanded="false" />
+                        }
+                    </div>
+                }
             </div>
         }
         else if (Message.IsToolResult)
