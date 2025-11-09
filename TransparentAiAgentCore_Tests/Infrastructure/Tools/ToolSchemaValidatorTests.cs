@@ -160,4 +160,136 @@ public class ToolSchemaValidatorTests
         Assert.IsFalse(result.IsValid);
         Assert.IsTrue(result.ErrorMessage.Contains("JSON") || result.ErrorMessage.Contains("parse"));
     }
+
+    // Phase 3: Type Validation Tests
+    [TestMethod]
+    public void ValidateArguments_WrongTypeString_ReturnsFailure()
+    {
+        // Arrange
+        var validator = new ToolSchemaValidator();
+        var schema = """
+            {
+                "type": "object",
+                "properties": {
+                    "age": {
+                        "type": "number"
+                    }
+                },
+                "required": ["age"]
+            }
+            """;
+        var arguments = """{"age": "not a number"}"""; // Wrong type
+
+        // Act
+        var result = validator.ValidateArguments(schema, arguments);
+
+        // Assert
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.ErrorMessage.Contains("age") && result.ErrorMessage.Contains("type"));
+    }
+
+    [TestMethod]
+    public void ValidateArguments_CorrectTypeNumber_ReturnsSuccess()
+    {
+        // Arrange
+        var validator = new ToolSchemaValidator();
+        var schema = """
+            {
+                "type": "object",
+                "properties": {
+                    "age": {
+                        "type": "number"
+                    }
+                },
+                "required": ["age"]
+            }
+            """;
+        var arguments = """{"age": 25}""";
+
+        // Act
+        var result = validator.ValidateArguments(schema, arguments);
+
+        // Assert
+        Assert.IsTrue(result.IsValid);
+    }
+
+    [TestMethod]
+    public void ValidateArguments_WrongTypeBoolean_ReturnsFailure()
+    {
+        // Arrange
+        var validator = new ToolSchemaValidator();
+        var schema = """
+            {
+                "type": "object",
+                "properties": {
+                    "isActive": {
+                        "type": "boolean"
+                    }
+                },
+                "required": ["isActive"]
+            }
+            """;
+        var arguments = """{"isActive": "yes"}"""; // Wrong type
+
+        // Act
+        var result = validator.ValidateArguments(schema, arguments);
+
+        // Assert
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.ErrorMessage.Contains("isActive") && result.ErrorMessage.Contains("type"));
+    }
+
+    // Phase 3: Enum Validation Tests
+    [TestMethod]
+    public void ValidateArguments_InvalidEnumValue_ReturnsFailure()
+    {
+        // Arrange
+        var validator = new ToolSchemaValidator();
+        var schema = """
+            {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": ["active", "inactive", "pending"]
+                    }
+                },
+                "required": ["status"]
+            }
+            """;
+        var arguments = """{"status": "deleted"}"""; // Not in enum
+
+        // Act
+        var result = validator.ValidateArguments(schema, arguments);
+
+        // Assert
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.ErrorMessage.Contains("status") && result.ErrorMessage.Contains("enum"));
+    }
+
+    [TestMethod]
+    public void ValidateArguments_ValidEnumValue_ReturnsSuccess()
+    {
+        // Arrange
+        var validator = new ToolSchemaValidator();
+        var schema = """
+            {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": ["active", "inactive", "pending"]
+                    }
+                },
+                "required": ["status"]
+            }
+            """;
+        var arguments = """{"status": "active"}"""; // Valid enum value
+
+        // Act
+        var result = validator.ValidateArguments(schema, arguments);
+
+        // Assert
+        Assert.IsTrue(result.IsValid);
+    }
 }
