@@ -87,17 +87,23 @@
 
     private void ToggleTransparencyViewer()
     {
-        UIControlService.UpdateTransparencyViewer(visible: !_uiState.TransparencyViewer.Visible);
+        Console.WriteLine($"ToggleTransparencyViewer called. Current visible: {_uiState.TransparencyViewer.Visible}");
+        var result = UIControlService.UpdateTransparencyViewer(visible: !_uiState.TransparencyViewer.Visible);
+        Console.WriteLine($"UpdateTransparencyViewer result: {result.IsSuccess}");
     }
 
     private void ToggleToolsPanel()
     {
-        UIControlService.UpdateToolsPanel(visible: !_uiState.ToolsPanel.Visible);
+        Console.WriteLine($"ToggleToolsPanel called. Current visible: {_uiState.ToolsPanel.Visible}");
+        var result = UIControlService.UpdateToolsPanel(visible: !_uiState.ToolsPanel.Visible);
+        Console.WriteLine($"UpdateToolsPanel result: {result.IsSuccess}");
     }
 
     private void ToggleConfiguration()
     {
-        UIControlService.UpdateConfigurationPage(visible: !_uiState.ConfigurationPage.Visible);
+        Console.WriteLine($"ToggleConfiguration called. Current visible: {_uiState.ConfigurationPage.Visible}");
+        var result = UIControlService.UpdateConfigurationPage(visible: !_uiState.ConfigurationPage.Visible);
+        Console.WriteLine($"UpdateConfigurationPage result: {result.IsSuccess}");
     }
 
     public void Dispose()

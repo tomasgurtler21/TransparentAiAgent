@@ -77,6 +77,7 @@
 
     private void OnUIStateChanged(object? sender, UIState newState)
     {
+        Console.WriteLine($"MainLayout: OnUIStateChanged - Transparency: {newState.TransparencyViewer.Visible}, Tools: {newState.ToolsPanel.Visible}, Config: {newState.ConfigurationPage.Visible}");
         InvokeAsync(() =>
         {
             _uiState = newState;
@@ -86,17 +87,23 @@
 
     private string GetTransparencyOverlayVisibilityClass()
     {
-        return _uiState.TransparencyViewer.Visible ? "visible" : "";
+        var result = _uiState.TransparencyViewer.Visible ? "visible" : "";
+        Console.WriteLine($"GetTransparencyOverlayVisibilityClass: {result}");
+        return result;
     }
 
     private string GetToolsOverlayVisibilityClass()
     {
-        return _uiState.ToolsPanel.Visible ? "visible" : "";
+        var result = _uiState.ToolsPanel.Visible ? "visible" : "";
+        Console.WriteLine($"GetToolsOverlayVisibilityClass: {result}");
+        return result;
     }
 
     private string GetConfigurationOverlayVisibilityClass()
     {
-        return _uiState.ConfigurationPage.Visible ? "visible" : "";
+        var result = _uiState.ConfigurationPage.Visible ? "visible" : "";
+        Console.WriteLine($"GetConfigurationOverlayVisibilityClass: {result}");
+        return result;
     }
 
     public void Dispose()
