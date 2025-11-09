@@ -17,6 +17,7 @@ using TransparentAiAgentCore.Application.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools.MCP;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
+using TransparentAiAgentCore.Infrastructure.Tools.Validation;
 using TransparentAiAgentCore.Domain.UIControl;
 
 // Force InvariantCulture for the entire application to avoid locale-specific number parsing issues
@@ -40,6 +41,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<ITransparencyService, TransparencyService>();
 builder.Services.AddSingleton<ISerializationService, SerializationService>();
 builder.Services.AddSingleton<IToolUsageStatistics, ToolUsageStatistics>();
+builder.Services.AddSingleton<ToolSchemaValidator>();
 
 // Load configuration
 var configService = new ConfigurationService();
@@ -141,6 +143,9 @@ if (appConfig.Agent.EnableTools)
             // Get tool usage statistics service
             var statistics = sp.GetRequiredService<IToolUsageStatistics>();
 
+            // Get tool schema validator service (Phase 9b - Tool Execution Safety)
+            var validator = sp.GetRequiredService<ToolSchemaValidator>();
+
             // Build list of executors
             var executors = new List<IToolExecutor> { uiControlExecutor };
 
@@ -166,7 +171,8 @@ if (appConfig.Agent.EnableTools)
                 toolRegistry,
                 executors,
                 transparencyService,
-                statistics);
+                statistics,
+                validator);
 
             return toolManager;
         }

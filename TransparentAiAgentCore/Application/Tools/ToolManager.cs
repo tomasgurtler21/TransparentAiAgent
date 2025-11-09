@@ -5,6 +5,7 @@ using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.Transparency;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Infrastructure.Tools;
+using TransparentAiAgentCore.Infrastructure.Tools.Validation;
 
 namespace TransparentAiAgentCore.Application.Tools;
 
@@ -18,17 +19,20 @@ public class ToolManager : IToolManager
     private readonly IEnumerable<IToolExecutor> _executors;
     private readonly ITransparencyService _transparencyService;
     private readonly IToolUsageStatistics _statistics;
+    private readonly ToolSchemaValidator _validator;
 
     public ToolManager(
         IToolRegistry registry,
         IEnumerable<IToolExecutor> executors,
         ITransparencyService transparencyService,
-        IToolUsageStatistics statistics)
+        IToolUsageStatistics statistics,
+        ToolSchemaValidator validator)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _executors = executors ?? throw new ArgumentNullException(nameof(executors));
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
         _statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
+        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
     }
 
     /// <summary>
@@ -81,6 +85,33 @@ public class ToolManager : IToolManager
                     CallId = toolCall.Id
                 })
             ));
+
+            // 3a. Validate arguments against schema BEFORE execution
+            var validationResult = _validator.ValidateArguments(tool.ParametersSchema, toolCall.Arguments);
+            if (!validationResult.IsValid)
+            {
+                stopwatch.Stop();
+
+                // Log validation failure to Transparency System
+                _transparencyService.LogEvent(new TransparencyEvent(
+                    TransparencyEventType.ToolArgumentValidationFailed,
+                    JsonSerializer.Serialize(new
+                    {
+                        ToolName = tool.Name,
+                        Arguments = toolCall.Arguments,
+                        Schema = tool.ParametersSchema,
+                        ValidationError = validationResult.ErrorMessage,
+                        CallId = toolCall.Id
+                    }),
+                    $"Schema validation failed for tool '{tool.Name}'"));
+
+                // Record statistics for failed validation
+                _statistics.RecordToolCall(tool.Name, false, stopwatch.Elapsed);
+
+                return ToolExecutionResult.Failure(
+                    $"Schema validation failed: {validationResult.ErrorMessage}",
+                    stopwatch.Elapsed);
+            }
 
             // 4. Execute tool
             var result = await executor.ExecuteAsync(tool, toolCall.Arguments, cancellationToken);

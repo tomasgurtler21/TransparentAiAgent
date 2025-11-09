@@ -49,8 +49,25 @@ Coordinates tool execution. Routes LLM tool calls to appropriate executors based
 
 **Key Features**:
 - Tool routing by SourceType
+- Schema validation before execution
 - Transparency logging
 - Usage statistics tracking
+
+---
+
+### [Tool Schema Validator](tool-schema-validator.md)
+**Layer**: Infrastructure
+**Phase**: Phase 9b (Tool Execution Safety)
+
+Validates tool arguments against JSON Schema before execution to prevent unsafe tool calls.
+
+**Key Features**:
+- Required field validation
+- Type validation (string, number, boolean, etc.)
+- Enum validation
+- Clear error messages for LLM to retry
+
+**Purpose**: Critical safety layer ensuring no tool executes with invalid arguments.
 
 ---
 
@@ -107,9 +124,11 @@ Tools implemented directly in the agent codebase.
    b. Lookup tool in registry
    c. Match executor by SourceType
    d. Log tool call to transparency
-   e. Execute via executor
-   f. Log result to transparency
-   g. Return ToolExecutionResult
+   e. **Validate arguments against schema (Phase 9b)**
+      - If validation fails → Return error to LLM
+   f. Execute via executor
+   g. Log result to transparency
+   h. Return ToolExecutionResult
 4. Add tool results to conversation
 5. Send follow-up request to LLM with results
 6. LLM generates final response
@@ -242,6 +261,9 @@ To add a new tool source (e.g., database tools, API tools):
 **Application**:
 - `TransparentAiAgentCore_Tests/Application/Tools/ToolManagerTests.cs`
 
+**Infrastructure (Validation)**:
+- `TransparentAiAgentCore_Tests/Infrastructure/Tools/ToolSchemaValidatorTests.cs` (13 tests)
+
 **Infrastructure (MCP)**:
 - `TransparentAiAgentCore_Tests/Infrastructure/Tools/MCP/MCPToolDiscoveryIntegrationTests.cs`
 
@@ -271,8 +293,10 @@ UI Control Tools enable **Teaching Mode** - a core differentiating feature where
 - [MCP Tools](mcp/README.md) - External tool subsystem
 - [Built-in Tools](builtin/README.md) - Internal tool subsystem
 - [Tool Manager](tool-manager.md) - Application orchestrator
+- [Tool Schema Validator](tool-schema-validator.md) - Safety and validation
 - [Agent Orchestrator](../core/agent-orchestrator.md) - Main tool consumer
 - [Teaching Mode Concept](../../03-concepts/teaching-mode/) - Motivation and vision
+- [Tool Execution Safety Plan](../../TOOL_EXECUTION_SAFETY_PLAN.md) - Implementation details
 
 ---
 
