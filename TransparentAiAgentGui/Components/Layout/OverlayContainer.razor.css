@@ -1,0 +1,59 @@
+/* Overlay System */
+.overlay-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none; /* Allow clicks through when no overlays */
+    z-index: 100;
+}
+
+.overlay-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    background: white;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+    pointer-events: auto; /* Capture clicks on panel */
+    overflow-y: auto;
+}
+
+.overlay-panel-right {
+    width: 400px;
+    transform: translateX(100%);
+}
+
+.overlay-panel-right.visible {
+    transform: translateX(0);
+}
+
+/* Resize handle */
+.overlay-resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.05));
+    transition: background 0.2s;
+}
+
+.overlay-resize-handle:hover {
+    background: linear-gradient(to right, transparent, rgba(0, 0, 255, 0.15));
+}
+
+/* Responsive */
+@media (max-width: 640.98px) {
+    .overlay-panel-right {
+        width: 90vw;
+    }
+
+    /* Disable resize on mobile */
+    .overlay-resize-handle {
+        display: none;
+    }
+}
