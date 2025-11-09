@@ -1,0 +1,74 @@
+@using TransparentAiAgentCore.Application.Scenarios
+@inject IScenarioExecutor ScenarioExecutor
+@implements IDisposable
+
+@if (ScenarioExecutor.IsExecuting && ScenarioExecutor.CurrentScenario != null)
+{
+    <div class="scenario-indicator">
+        <div class="indicator-content">
+            <span class="indicator-icon">🎬</span>
+            <div class="indicator-info">
+                <strong>@ScenarioExecutor.CurrentScenario.Name</strong>
+                <span class="text-muted">
+                    Step @currentStepNumber/@totalSteps
+                </span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int currentStepNumber = 0;
+    private int totalSteps = 0;
+
+    protected override void OnInitialized()
+    {
+        ScenarioExecutor.ScenarioStarted += OnScenarioStarted;
+        ScenarioExecutor.StepExecuted += OnStepExecuted;
+        ScenarioExecutor.ScenarioCompleted += OnScenarioCompleted;
+
+        UpdateStepInfo();
+    }
+
+    private void OnScenarioStarted(object? sender, ScenarioExecutionEventArgs e)
+    {
+        UpdateStepInfo();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnStepExecuted(object? sender, ScenarioStepEventArgs e)
+    {
+        UpdateStepInfo();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnScenarioCompleted(object? sender, ScenarioExecutionEventArgs e)
+    {
+        UpdateStepInfo();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateStepInfo()
+    {
+        if (ScenarioExecutor.CurrentScenario != null)
+        {
+            currentStepNumber = ScenarioExecutor.CurrentStepIndex + 1;
+            totalSteps = ScenarioExecutor.CurrentScenario.Steps.Count;
+        }
+        else
+        {
+            currentStepNumber = 0;
+            totalSteps = 0;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (ScenarioExecutor != null)
+        {
+            ScenarioExecutor.ScenarioStarted -= OnScenarioStarted;
+            ScenarioExecutor.StepExecuted -= OnStepExecuted;
+            ScenarioExecutor.ScenarioCompleted -= OnScenarioCompleted;
+        }
+    }
+}

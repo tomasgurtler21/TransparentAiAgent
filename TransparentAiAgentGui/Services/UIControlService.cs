@@ -264,6 +264,36 @@ public class UIControlService : IUIControlService
         }
     }
 
+    public Result<UIState> UpdateScenarioSelector(bool? visible = null)
+    {
+        try
+        {
+            lock (_stateLock)
+            {
+                var newSelector = _currentState.ScenarioSelector with
+                {
+                    Visible = visible ?? _currentState.ScenarioSelector.Visible
+                };
+
+                _currentState = _currentState with { ScenarioSelector = newSelector };
+
+                LogUIControlEvent("ScenarioSelectorUpdated", new
+                {
+                    newSelector.Visible
+                });
+
+                UIStateChanged?.Invoke(this, _currentState);
+
+                return Result<UIState>.Ok(_currentState);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update scenario selector");
+            return Result<UIState>.Fail($"Failed to update scenario selector: {ex.Message}");
+        }
+    }
+
     public Result<UIState> ResetToDefaults()
     {
         try

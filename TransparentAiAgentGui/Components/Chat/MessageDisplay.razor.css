@@ -43,7 +43,7 @@
 }
 
 /* Tool-specific styling */
-.tool-indicator, .tool-result-indicator {
+.tool-indicator, .tool-result-indicator, .auto-message-indicator {
     font-size: 1rem;
 }
 

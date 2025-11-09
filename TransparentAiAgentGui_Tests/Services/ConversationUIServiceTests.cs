@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using TransparentAiAgentCore.Application.Agent;
 using TransparentAiAgentCore.Application.Conversation;
+using TransparentAiAgentCore.Application.Scenarios;
 using TransparentAiAgentCore.Domain.Enums;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentGui.Services;
@@ -13,6 +14,7 @@ public class ConversationUIServiceTests
 {
     private Mock<IAgentOrchestrator> _mockOrchestrator = null!;
     private Mock<IConversationManager> _mockConversationManager = null!;
+    private Mock<IScenarioExecutor> _mockScenarioExecutor = null!;
     private ConversationUIService _service = null!;
 
     [TestInitialize]
@@ -20,12 +22,13 @@ public class ConversationUIServiceTests
     {
         _mockOrchestrator = new Mock<IAgentOrchestrator>();
         _mockConversationManager = new Mock<IConversationManager>();
+        _mockScenarioExecutor = new Mock<IScenarioExecutor>();
 
         // Setup default return for GetAllMessages
         _mockConversationManager.Setup(x => x.GetAllMessages())
             .Returns(new List<IMessage>().AsReadOnly());
 
-        _service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object);
+        _service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object);
     }
 
     [TestMethod]
@@ -36,7 +39,7 @@ public class ConversationUIServiceTests
 
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(null!, _mockConversationManager.Object));
+            new ConversationUIService(null!, _mockConversationManager.Object, _mockScenarioExecutor.Object));
     }
 
     [TestMethod]
@@ -44,7 +47,7 @@ public class ConversationUIServiceTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(_mockOrchestrator.Object, null!));
+            new ConversationUIService(_mockOrchestrator.Object, null!, _mockScenarioExecutor.Object));
     }
 
     [TestMethod]
@@ -135,7 +138,7 @@ public class ConversationUIServiceTests
             .Returns(messages.AsReadOnly());
 
         // Create new service to pick up the message
-        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object);
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object);
         Assert.AreEqual(1, service.Messages.Count); // Verify message was loaded
 
         var eventRaised = false;
@@ -171,7 +174,7 @@ public class ConversationUIServiceTests
             .Returns(messages.AsReadOnly());
 
         // Act
-        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object);
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object);
 
         // Assert
         Assert.AreEqual(2, service.Messages.Count);

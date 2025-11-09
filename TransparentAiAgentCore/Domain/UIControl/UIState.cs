@@ -32,6 +32,11 @@ public record UIState
     public ConfigurationPageState ConfigurationPage { get; init; } = new();
 
     /// <summary>
+    /// Configuration for the scenario selector overlay.
+    /// </summary>
+    public ScenarioSelectorState ScenarioSelector { get; init; } = new();
+
+    /// <summary>
     /// Current application mode (Normal or Teaching).
     /// </summary>
     public AppMode CurrentMode { get; init; } = AppMode.Normal;
@@ -74,6 +79,10 @@ public record UIState
             NavigateRequested = false,
             HighlightedSection = null
         },
+        ScenarioSelector = new ScenarioSelectorState
+        {
+            Visible = false
+        },
         CurrentMode = AppMode.Normal
     };
 
@@ -114,6 +123,10 @@ public record UIState
             Visible = false,
             NavigateRequested = false,
             HighlightedSection = null
+        },
+        ScenarioSelector = new ScenarioSelectorState
+        {
+            Visible = false
         },
         CurrentMode = AppMode.Teaching
     };
@@ -170,6 +183,14 @@ public record ConfigurationPageState
     public bool Visible { get; init; } = true;
     public bool NavigateRequested { get; init; } = false;
     public string? HighlightedSection { get; init; } = null;
+}
+
+/// <summary>
+/// Scenario selector overlay state.
+/// </summary>
+public record ScenarioSelectorState
+{
+    public bool Visible { get; init; } = false;
 }
 
 /// <summary>

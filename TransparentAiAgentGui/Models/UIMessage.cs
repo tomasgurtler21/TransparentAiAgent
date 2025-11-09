@@ -22,6 +22,9 @@ public class UIMessage
     public bool ToolResultSuccess { get; set; }
     public string? ToolErrorMessage { get; set; }
 
+    // Scenario-specific properties
+    public bool IsAutoMessage { get; set; }
+
     /// <summary>
     /// Represents a single tool call in the UI
     /// </summary>

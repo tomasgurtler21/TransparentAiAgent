@@ -2,7 +2,10 @@
 @using TransparentAiAgentGui.Services
 @using TransparentAiAgentGui.Models
 @using TransparentAiAgentGui.Components.Chat
+@using TransparentAiAgentGui.Components.Scenarios
+@using TransparentAiAgentCore.Domain.UIControl
 @inject IConversationUIService ConversationService
+@inject IAppModeService AppModeService
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -11,6 +14,10 @@
 <div class="chat-container">
     <div class="chat-header">
         <h1>Transparent AI Agent</h1>
+        @if (AppModeService.CurrentMode == AppMode.Teaching)
+        {
+            <ScenarioIndicator />
+        }
         <button @onclick="HandleClearClick" class="clear-button">Clear Conversation</button>
     </div>
 

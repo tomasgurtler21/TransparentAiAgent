@@ -1,8 +1,8 @@
 # Teaching Mode Documentation
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-09
 **Status**: Active
-**Phase**: Phase 9
+**Phase**: Phase 9 (Core) / Phase 10 (Future Enhancements)
 
 ---
 
@@ -52,14 +52,45 @@ Phase-by-phase implementation plan:
 - Phase 9d: Teaching Mode System
 - Phase 9e: Polish & Documentation
 
+### [future-enhancements.md](future-enhancements.md)
+Planned enhancements for Phase 10 and beyond:
+- **Enhancement 1**: Basic Scenarios/Scripts System
+- **Enhancement 1b**: Advanced Scenarios with Environment Manipulation
+- **Enhancement 2**: Knowledge Library
+- Implementation priorities and success metrics
+
+### [scenario-schema.md](scenario-schema.md)
+Complete JSON schema for teaching scenarios:
+- Basic and advanced step types
+- Scenario definition format
+- Validation rules and extensibility
+- Example scenarios
+
+### [config-overlay-service.md](config-overlay-service.md)
+Config Overlay Service API design:
+- Stack-based temporary configuration overrides
+- Usage patterns and integration points
+- High-level interface design (detailed implementation TBD)
+
+### [reference-scenarios/](reference-scenarios/)
+Reference scenario implementations:
+- **[context-limits-advanced.md](reference-scenarios/context-limits-advanced.md)**: Complete example of advanced scenario with environment manipulation
+
 ---
 
 ## Quick Links
 
+**Core Teaching Mode (Phase 9):**
 - [What is Teaching Mode?](vision.md#what-is-teaching-mode)
 - [Key Use Cases](vision.md#use-cases--user-journeys)
-- [Architecture Overview](architecture.md#architecture-extension)
+- [Architecture Overview](architecture.md#system-overview)
 - [Implementation Plan](implementation-roadmap.md#implementation-overview)
+
+**Future Enhancements (Phase 10):**
+- [Advanced Scenarios Concept](future-enhancements.md#enhancement-1b-advanced-scenarios-with-environment-manipulation)
+- [Scenario JSON Schema](scenario-schema.md#schema-version)
+- [Config Overlay API](config-overlay-service.md#api-design-high-level)
+- [Context Limits Reference Scenario](reference-scenarios/context-limits-advanced.md)
 
 ---
 

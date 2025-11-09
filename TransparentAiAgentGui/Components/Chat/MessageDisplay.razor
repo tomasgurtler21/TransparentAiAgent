@@ -15,6 +15,10 @@
         {
             <span class="tool-result-indicator">@(Message.ToolResultSuccess ? "✅" : "❌")</span>
         }
+        @if (Message.IsAutoMessage)
+        {
+            <span class="auto-message-indicator" title="Auto-sent by scenario">🎬</span>
+        }
         @if (_uiState.ContextIndicators.Visible)
         {
             <span class="message-context-status @(_uiState.ContextIndicators.Highlighted ? "highlighted" : "")">

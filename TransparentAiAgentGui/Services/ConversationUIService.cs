@@ -1,5 +1,6 @@
 using TransparentAiAgentCore.Application.Agent;
 using TransparentAiAgentCore.Application.Conversation;
+using TransparentAiAgentCore.Application.Scenarios;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Infrastructure.Streaming;
 using TransparentAiAgentGui.Models;
@@ -10,10 +11,13 @@ public class ConversationUIService : IConversationUIService
 {
     private readonly IAgentOrchestrator _orchestrator;
     private readonly IConversationManager _conversationManager;
+    private readonly IScenarioExecutor _scenarioExecutor;
     private readonly List<UIMessage> _messages = new();
     private bool _isProcessing;
     private UIMessage? _currentStreamingMessage;
     private readonly object _streamingLock = new();
+    private readonly HashSet<string> _pendingAutoMessages = new();
+    private readonly object _autoMessageLock = new();
 
     public IReadOnlyList<UIMessage> Messages => _messages.AsReadOnly();
     public bool IsProcessing => _isProcessing;
@@ -24,13 +28,18 @@ public class ConversationUIService : IConversationUIService
 
     public ConversationUIService(
         IAgentOrchestrator orchestrator,
-        IConversationManager conversationManager)
+        IConversationManager conversationManager,
+        IScenarioExecutor scenarioExecutor)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
+        _scenarioExecutor = scenarioExecutor ?? throw new ArgumentNullException(nameof(scenarioExecutor));
 
         // Subscribe to context status changes
         _conversationManager.ContextStatusChanged += OnContextStatusChanged;
+
+        // Subscribe to scenario auto-message events
+        _scenarioExecutor.AutoMessageSent += OnAutoMessageSent;
 
         // Load existing messages if any
         RefreshMessages();
@@ -71,6 +80,17 @@ public class ConversationUIService : IConversationUIService
 
         try
         {
+            // Check if this is an auto-message
+            bool isAutoMessage = false;
+            lock (_autoMessageLock)
+            {
+                if (_pendingAutoMessages.Contains(content))
+                {
+                    isAutoMessage = true;
+                    _pendingAutoMessages.Remove(content);
+                }
+            }
+
             // Add user message to UI immediately for instant feedback
             var userMessage = new UIMessage
             {
@@ -78,7 +98,8 @@ public class ConversationUIService : IConversationUIService
                 Role = TransparentAiAgentCore.Domain.Enums.MessageRole.User,
                 Content = content,
                 Timestamp = DateTime.UtcNow,
-                ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext
+                ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext,
+                IsAutoMessage = isAutoMessage
             };
             _messages.Add(userMessage);
             OnMessagesChanged();
@@ -206,7 +227,22 @@ public class ConversationUIService : IConversationUIService
         var domainMessages = _conversationManager.GetAllMessages();
         foreach (var domainMessage in domainMessages)
         {
-            _messages.Add(UIMessage.FromDomainMessage(domainMessage));
+            var uiMessage = UIMessage.FromDomainMessage(domainMessage);
+
+            // Check if this user message is an auto-message
+            if (uiMessage.Role == TransparentAiAgentCore.Domain.Enums.MessageRole.User)
+            {
+                lock (_autoMessageLock)
+                {
+                    if (_pendingAutoMessages.Contains(uiMessage.Content))
+                    {
+                        uiMessage.IsAutoMessage = true;
+                        _pendingAutoMessages.Remove(uiMessage.Content);
+                    }
+                }
+            }
+
+            _messages.Add(uiMessage);
         }
         OnMessagesChanged();
     }
@@ -229,5 +265,14 @@ public class ConversationUIService : IConversationUIService
     private void OnMessagesChanged()
     {
         MessagesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnAutoMessageSent(object? sender, AutoMessageSentEventArgs e)
+    {
+        // Track this message content as an auto-message
+        lock (_autoMessageLock)
+        {
+            _pendingAutoMessages.Add(e.MessageContent);
+        }
     }
 }

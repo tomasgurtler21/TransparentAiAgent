@@ -200,6 +200,249 @@ public interface IScenarioExecutor
 
 ---
 
+## Enhancement 1b: Advanced Scenarios with Environment Manipulation
+
+### Concept
+
+While basic scenarios (Enhancement 1) use scripted message flows, **advanced scenarios** go further by manipulating the actual system environment to create genuine teaching moments. Instead of just sending pre-written messages, these scenarios temporarily change configuration, limits, or state to let users *experience* concepts firsthand.
+
+**Key Difference:**
+- **Basic Scenario**: "Let me tell you about context limits" (scripted explanation)
+- **Advanced Scenario**: "Experience context limits" (genuinely reduce message limit, user sees real truncation)
+
+### Why Advanced Scenarios?
+
+**Learning by Experience:**
+- Users don't just hear about features—they experience them
+- Model genuinely encounters the limitation (not simulated)
+- Creates "aha moments" through authentic demonstration
+- More memorable and impactful than explanations alone
+
+**Example Use Cases:**
+1. **Context Limits**: Temporarily reduce message limit to demonstrate truncation in real-time
+2. **Rate Limiting**: Introduce artificial delays to show token rate limits
+3. **Tool Failures**: Temporarily make a tool return errors to teach error handling
+4. **Privacy Controls**: Temporarily redact certain information to demonstrate privacy features
+
+### Architecture: Three Core Systems
+
+Advanced scenarios require three new capabilities beyond basic scenarios:
+
+#### 1. Config Overlay System
+
+**Purpose:** Temporarily override system configuration during scenarios
+
+**Concept:**
+```
+Normal Config (base)
+  ↓
++ Scenario Overlay (temporary changes)
+  ↓
+= Effective Config (what system actually uses)
+```
+
+**Key Features:**
+- Stack-based overlays (can layer multiple)
+- Automatic restoration when scenario ends
+- Thread-safe for per-user scenarios
+- Can override: message limits, system prompt additions, tool availability, etc.
+
+**Example:**
+```csharp
+// Scenario starts
+ConfigOverlayService.PushOverlay(new ConfigOverlay {
+    MessageLimit = 10,  // Reduce from default (e.g., 50)
+    SystemPromptAddition = "Note: You are experiencing a teaching scenario."
+});
+
+// ... scenario runs with limited context ...
+
+// Scenario ends
+ConfigOverlayService.PopOverlay();  // Restores normal limits
+```
+
+See [config-overlay-service.md](config-overlay-service.md) for API details.
+
+#### 2. Scenario Message Types
+
+**Purpose:** Distinguish scenario-generated messages from real user messages in the UI
+
+**New Message Roles:**
+- `ScenarioUser`: Message sent by scenario, but treated as user message by model
+- `ScenarioSystem`: Hidden system message to trigger teaching (model sees, user doesn't—or vice versa)
+
+**UI Rendering:**
+Scenario messages render differently for the observing user:
+- Icon: 🎬 (indicates scenario-generated)
+- Color: Slightly lighter shade than normal user messages
+- Expandable annotation: Shows explanation visible only to real user
+
+**Example:**
+```json
+{
+  "type": "scenario_user_message",
+  "content": "Hi, my name is John Doe.",
+  "annotation": "Note to observer: The model will remember this name for now, but it will be truncated from context in a few steps.",
+  "delay": 1000
+}
+```
+
+**To the model:** Appears as normal `User` role message
+**To the real user:** Shows annotation explaining what's happening
+
+#### 3. Conditional Execution & Environment Control
+
+**Purpose:** Scenarios can react to model behavior and manipulate environment dynamically
+
+**New Capabilities:**
+- **Wait for condition**: Pause scenario until model response matches criteria
+- **Apply environment changes**: Modify config, limits, tool availability mid-scenario
+- **Restore environment**: Undo changes at appropriate moment
+- **Enable/disable user input**: Control when real user can interact
+
+**Example:**
+```json
+{
+  "type": "wait_for_condition",
+  "condition": "response_contains",
+  "parameters": {
+    "keywords": ["don't know", "cannot recall", "didn't tell"],
+    "timeout": 30000
+  },
+  "annotation": "Waiting for model to indicate it doesn't know the name..."
+}
+```
+
+This allows scenarios to adapt: if model doesn't respond as expected, scenario can adjust.
+
+### Reference Scenario: Context Limits (Advanced)
+
+For a complete, detailed example of an advanced scenario, see:
+**[reference-scenarios/context-limits-advanced.md](reference-scenarios/context-limits-advanced.md)**
+
+**High-Level Flow:**
+1. User selects "Context Limits (Advanced)" scenario
+2. Scenario reduces message limit to 10 (via config overlay)
+3. Scenario sends auto-messages including user's name
+4. Context fills up, early messages (including name) genuinely truncate
+5. Scenario asks model for the name—model truly doesn't know (not simulated!)
+6. User sees 🎬-marked messages with annotations explaining what's happening
+7. After model expresses confusion, limits restored
+8. System message triggers teaching: "Explain what happened, show context indicators"
+9. Model teaches about context windows using UI control tools
+10. Scenario completes, user can continue exploring
+
+**Key Innovation:** The model genuinely loses the information (message truncated), creating an authentic demonstration of context limits.
+
+### JSON Schema for Advanced Scenarios
+
+For complete JSON schema documentation, see:
+**[scenario-schema.md](scenario-schema.md)**
+
+**New Step Types:**
+- `apply_config_overlay`: Push temporary config changes
+- `restore_config_overlay`: Remove overlay, restore previous config
+- `scenario_user_message`: Auto-message with annotation
+- `scenario_system_message`: System message with visibility control
+- `wait_for_condition`: Pause until condition met
+- `enable_user_input` / `disable_user_input`: Control real user interaction
+
+### Design Philosophy: Experimentation-Friendly
+
+**Important:** Advanced scenarios are experimental by nature. We don't know exactly what will work best, so the design prioritizes:
+
+✅ **Flexibility:** JSON-driven configuration, easy to change scenarios without code changes
+✅ **Extensibility:** Easy to add new step types, conditions, config overlay options
+✅ **Observable:** Clear UI indicators, annotations visible to user
+✅ **Recoverable:** Automatic cleanup if scenario fails or is aborted
+✅ **Iterative:** Quick to test variations (e.g., when to restore message limits)
+
+**Open Questions to Explore During Implementation:**
+- **Restoration Timing**: Should message limits auto-restore after model confusion, or require user action to see correct message status icons first?
+- **System Prompt Hints**: How explicit should the "you're in a scenario" hint be? Too explicit = less genuine. Too subtle = model might not teach correctly.
+- **User Control**: Should users be able to pause/resume/skip scenario steps?
+- **Failure Handling**: What if model doesn't respond as expected? Timeout and fallback? Let user manually trigger next step?
+
+These questions will be resolved through experimentation, which the flexible JSON schema enables.
+
+### Technical Design Notes
+
+**Config Overlay Service:**
+- Simple interface (see [config-overlay-service.md](config-overlay-service.md))
+- Detailed implementation deferred to implementation phase
+- Focus: stack-based overrides, automatic cleanup
+
+**Scenario Executor:**
+- Extends basic scenario executor (Enhancement 1)
+- Adds environment manipulation capabilities
+- Conditional execution engine
+- State management for complex scenarios
+
+**Message Rendering:**
+- Modify `MessageDisplay.razor` to handle scenario message types
+- Add annotation expansion UI
+- Icon + color coding for scenario messages
+
+**Integration Points:**
+- `ConversationManager`: Use `GetEffectiveConfig()` instead of base config
+- `AgentOrchestrator`: Respect config overlays for message limits
+- `UIControlService`: May be used by scenarios to pre-configure UI state
+
+### Implementation Priority
+
+**Phase:** 10b (Post-Demo, after basic scenarios in 10a)
+**Estimated Effort:** 6-10 days
+**Dependencies:**
+- Basic scenarios system (Enhancement 1) implemented
+- UI control tools (Phase 9d) working
+
+**Rationale for Sequencing:**
+1. Basic scenarios (10a) prove the JSON schema and executor pattern
+2. Advanced scenarios (10b) extend proven foundation
+3. Lessons from basic scenarios inform advanced implementation
+4. Lower risk: can ship basic scenarios alone if advanced proves too complex
+
+### Success Criteria
+
+**Functional:**
+✅ Config overlay system works reliably
+✅ Message limits can be temporarily changed and restored
+✅ Scenario messages render distinctly in UI
+✅ Annotations visible to user, not model
+✅ Conditional execution (wait for response keywords) works
+✅ Context limits scenario demonstrates genuine truncation
+✅ Teaching trigger reliably prompts model to teach
+
+**User Experience:**
+✅ Scenarios feel authentic, not scripted
+✅ UI clearly indicates scenario vs. normal mode
+✅ User understands what's happening via annotations
+✅ "Aha moment" when experiencing concept firsthand
+✅ Model teaches effectively after scenario
+
+**Technical:**
+✅ No config leakage between users (scoped properly)
+✅ Automatic cleanup if scenario fails
+✅ Performance acceptable (no noticeable lag)
+✅ Easy to create new scenarios (JSON editing)
+
+### Comparison: Basic vs Advanced Scenarios
+
+| Aspect | Basic Scenarios (1) | Advanced Scenarios (1b) |
+|--------|---------------------|-------------------------|
+| **Complexity** | Low | Medium-High |
+| **Setup Effort** | Simple JSON | JSON + environment design |
+| **Teaching Method** | Tell (scripted messages) | Show (genuine experience) |
+| **Model Awareness** | Fully aware, follows script | Genuine experience + teaching trigger |
+| **Environment Changes** | None | Config overlays, state manipulation |
+| **Implementation Risk** | Low | Medium |
+| **Learning Impact** | Good | Excellent (experiential) |
+| **Use Cases** | Explanatory topics | Demonstrable concepts |
+
+**Recommendation:** Implement basic scenarios first to validate patterns, then extend to advanced scenarios for high-impact teaching moments like context limits.
+
+---
+
 ## Enhancement 2: Knowledge Library
 
 ### Concept

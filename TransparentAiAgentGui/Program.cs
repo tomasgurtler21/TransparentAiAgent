@@ -19,6 +19,9 @@ using TransparentAiAgentCore.Infrastructure.Tools.MCP;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
 using TransparentAiAgentCore.Infrastructure.Tools.Validation;
 using TransparentAiAgentCore.Domain.UIControl;
+using TransparentAiAgentCore.Domain.Scenarios;
+using TransparentAiAgentCore.Application.Scenarios;
+using TransparentAiAgentCore.Infrastructure.Scenarios;
 
 // Force InvariantCulture for the entire application to avoid locale-specific number parsing issues
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -240,10 +243,60 @@ builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to work with sco
 // Register App Mode service (Phase 9d - Teaching Mode System)
 builder.Services.AddScoped<IAppModeService, AppModeService>();  // Scoped to match ConversationManager lifetime
 
+// Register Scenario services (Phase 10a/10b - Teaching Mode Scenarios)
+builder.Services.AddSingleton<IScenarioRegistry, ScenarioRegistry>();
+builder.Services.AddScoped<IConfigurationOverlay>(sp =>
+{
+    // Initialize with empty base configuration - could be expanded to load from appsettings if needed
+    var baseConfig = new Dictionary<string, object>();
+    return new ConfigurationOverlayService(baseConfig);
+});
+builder.Services.AddScoped<IScenarioExecutor, ScenarioExecutor>();
+
 // Register HttpClient for API calls
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5001") });
 
 var app = builder.Build();
+
+// Load scenarios from JSON files (Phase 10a - Teaching Mode Scenarios)
+try
+{
+    var scenariosPath = Path.Combine(builder.Environment.WebRootPath, "scenarios");
+
+    if (Directory.Exists(scenariosPath))
+    {
+        Console.WriteLine($"⏳ Loading teaching scenarios from {scenariosPath}...");
+
+        var scenarioLoader = new JsonScenarioLoader();
+        var scenarios = await scenarioLoader.LoadAllFromDirectoryAsync(scenariosPath);
+
+        var scenarioRegistry = app.Services.GetRequiredService<IScenarioRegistry>();
+        foreach (var scenario in scenarios)
+        {
+            scenarioRegistry.AddScenario(scenario);
+        }
+
+        Console.WriteLine($"✓ Loaded {scenarios.Count} teaching scenario(s)");
+        if (scenarios.Count > 0)
+        {
+            Console.WriteLine("   Scenarios:");
+            foreach (var scenario in scenarios.OrderBy(s => s.Name))
+            {
+                Console.WriteLine($"     - {scenario.Name} ({scenario.Steps.Count} steps)");
+            }
+        }
+    }
+    else
+    {
+        Console.WriteLine($"⚠ Scenarios directory not found: {scenariosPath}");
+        Console.WriteLine("   No teaching scenarios will be available.");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"⚠ Failed to load teaching scenarios: {ex.Message}");
+    Console.WriteLine("   The app will start but teaching scenarios will not be available.");
+}
 
 // CRITICAL FIX: Discover tools synchronously BEFORE accepting requests
 // This prevents race condition where tools aren't available on first request

@@ -5,6 +5,7 @@ using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.Transparency;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Infrastructure.Tools;
+using TransparentAiAgentCore.Infrastructure.Tools.Validation;
 
 namespace TransparentAiAgentCore_Tests.Application.Tools;
 
@@ -14,6 +15,7 @@ public class ToolManagerTests
     private Mock<IToolRegistry> _mockRegistry = null!;
     private Mock<ITransparencyService> _mockTransparency = null!;
     private Mock<IToolUsageStatistics> _mockStatistics = null!;
+    private Mock<ToolSchemaValidator> _mockValidator = null!;
     private List<IToolExecutor> _executors = null!;
     private ToolManager _toolManager = null!;
 
@@ -23,8 +25,9 @@ public class ToolManagerTests
         _mockRegistry = new Mock<IToolRegistry>();
         _mockTransparency = new Mock<ITransparencyService>();
         _mockStatistics = new Mock<IToolUsageStatistics>();
+        _mockValidator = new Mock<ToolSchemaValidator>();
         _executors = new List<IToolExecutor>();
-        _toolManager = new ToolManager(_mockRegistry.Object, _executors, _mockTransparency.Object, _mockStatistics.Object);
+        _toolManager = new ToolManager(_mockRegistry.Object, _executors, _mockTransparency.Object, _mockStatistics.Object, _mockValidator.Object);
     }
 
     [TestMethod]

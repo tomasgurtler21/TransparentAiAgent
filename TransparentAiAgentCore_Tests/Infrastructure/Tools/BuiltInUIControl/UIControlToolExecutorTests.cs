@@ -219,7 +219,7 @@ public class UIControlToolExecutorTests
         });
 
         _mockUIControlService
-            .Setup(s => s.UpdateConfigurationPage(true, "system-prompt"))
+            .Setup(s => s.UpdateConfigurationPage(true, null, "system-prompt"))
             .Returns(Result<UIState>.Ok(UIState.DefaultNormalMode()));
 
         // Act
@@ -228,7 +228,7 @@ public class UIControlToolExecutorTests
         // Assert
         Assert.IsTrue(result.IsSuccess);
         _mockUIControlService.Verify(s => s.UpdateConfigurationPage(
-            true, "system-prompt"), Times.Once);
+            true, null, "system-prompt"), Times.Once);
     }
 
     [TestMethod]

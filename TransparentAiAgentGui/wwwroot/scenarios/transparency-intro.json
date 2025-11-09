@@ -1,0 +1,43 @@
+{
+  "id": "transparency-intro",
+  "name": "Introduction to Transparency",
+  "description": "Learn about transparent AI agents and how they differ from traditional black-box AI systems.",
+  "category": "basics",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 120,
+  "steps": [
+    {
+      "type": "auto_message",
+      "content": "Welcome to the Transparent AI Agent teaching mode! I'm here to help you understand how transparent AI systems work.",
+      "delayMs": 1000
+    },
+    {
+      "type": "auto_message",
+      "content": "Unlike traditional AI agents that operate as 'black boxes', transparent agents expose their decision-making process, reasoning, and internal state.",
+      "delayMs": 2000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "agent_prompt",
+      "content": "Explain the concept of transparency in AI agents. Discuss why transparency is important for trust, debugging, and understanding AI behavior. Mention the transparency log and system message visibility features."
+    },
+    {
+      "type": "auto_message",
+      "content": "Try exploring the transparency features:\n- Check the transparency log to see my internal reasoning\n- Toggle system message visibility to see hidden prompts\n- Observe how every decision is auditable",
+      "delayMs": 1000,
+      "config_overlay": {
+        "TransparencyViewerVisible": true,
+        "ShowSystemMessages": true
+      }
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "completion_message",
+      "content": "Great! You've completed the transparency introduction. You now understand the core concept of transparent AI systems. Feel free to explore the other teaching scenarios!"
+    }
+  ]
+}

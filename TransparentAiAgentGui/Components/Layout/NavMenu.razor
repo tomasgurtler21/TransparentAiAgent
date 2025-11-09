@@ -91,6 +91,18 @@
                 <span class="toggle-indicator">@(_uiState.ConfigurationPage.Visible ? "▼" : "▶")</span>
             </button>
         </div>
+
+        @if (_uiState.CurrentMode == AppMode.Teaching)
+        {
+            <div class="nav-item px-3">
+                <button class="nav-link overlay-toggle @(_uiState.ScenarioSelector.Visible ? "active" : "")"
+                        @onclick="ToggleScenarioSelector"
+                        @onclick:stopPropagation="true">
+                    <span class="bi bi-book" aria-hidden="true"></span> Scenarios
+                    <span class="toggle-indicator">@(_uiState.ScenarioSelector.Visible ? "▼" : "▶")</span>
+                </button>
+            </div>
+        }
     </nav>
 </div>
 
@@ -157,6 +169,11 @@
     private void ToggleConfiguration()
     {
         UIControlService.UpdateConfigurationPage(visible: !_uiState.ConfigurationPage.Visible);
+    }
+
+    private void ToggleScenarioSelector()
+    {
+        UIControlService.UpdateScenarioSelector(visible: !_uiState.ScenarioSelector.Visible);
     }
 
     public void Dispose()

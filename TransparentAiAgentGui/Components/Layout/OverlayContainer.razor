@@ -1,6 +1,7 @@
 @using TransparentAiAgentGui.Components.Transparency
 @using TransparentAiAgentGui.Components.Tools
 @using TransparentAiAgentGui.Components.Pages
+@using TransparentAiAgentGui.Components.Scenarios
 @using TransparentAiAgentCore.Domain.UIControl
 @using Microsoft.JSInterop
 @inject IUIControlService UIControlService
@@ -26,6 +27,12 @@
     <div class="overlay-panel overlay-panel-right @(GetConfigurationOverlayVisibilityClass())">
         <div class="overlay-resize-handle"></div>
         <Configuration />
+    </div>
+
+    <!-- ScenarioSelector as overlay -->
+    <div class="overlay-panel overlay-panel-right @(GetScenarioSelectorOverlayVisibilityClass())">
+        <div class="overlay-resize-handle"></div>
+        <ScenarioSelector />
     </div>
 </div>
 
@@ -75,6 +82,11 @@
     private string GetConfigurationOverlayVisibilityClass()
     {
         return _uiState.ConfigurationPage.Visible ? "visible" : "";
+    }
+
+    private string GetScenarioSelectorOverlayVisibilityClass()
+    {
+        return _uiState.ScenarioSelector.Visible ? "visible" : "";
     }
 
     public void Dispose()

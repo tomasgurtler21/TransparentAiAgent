@@ -1,0 +1,176 @@
+@using TransparentAiAgentCore.Domain.Scenarios
+@using TransparentAiAgentCore.Application.Scenarios
+@using TransparentAiAgentCore.Domain.UIControl
+@implements IDisposable
+@inject IScenarioRegistry ScenarioRegistry
+@inject IScenarioExecutor ScenarioExecutor
+@inject IUIControlService UIControlService
+@rendermode InteractiveServer
+
+<div class="scenario-selector-overlay">
+    <div class="selector-header">
+        <div class="selector-header-top">
+            <h3>Teaching Scenarios</h3>
+            <button class="selector-close-btn" @onclick="HandleClose">×</button>
+        </div>
+    </div>
+
+    @if (scenarios == null || !scenarios.Any())
+    {
+        <div class="no-scenarios">
+            <p class="text-muted">No scenarios available</p>
+        </div>
+    }
+    else
+    {
+        <div class="selector-content">
+            <div class="scenario-filters">
+                <select class="form-select form-select-sm" @bind="selectedCategory" @bind:after="FilterScenarios">
+                    <option value="">All Categories</option>
+                    @foreach (var category in categories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+
+                <select class="form-select form-select-sm mt-2" @bind="selectedDifficulty" @bind:after="FilterScenarios">
+                    <option value="">All Difficulties</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+            </div>
+
+            <div class="scenario-list">
+                @foreach (var scenario in filteredScenarios)
+                {
+                    <div class="scenario-card @(IsScenarioActive(scenario.Id) ? "active" : "")"
+                         @onclick="() => StartScenario(scenario)">
+                        <div class="scenario-header">
+                            <strong>@scenario.Name</strong>
+                            @if (!string.IsNullOrEmpty(scenario.Difficulty))
+                            {
+                                <span class="badge bg-secondary">@scenario.Difficulty</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(scenario.Description))
+                        {
+                            <p class="scenario-description">@scenario.Description</p>
+                        }
+                        <div class="scenario-meta">
+                            @if (!string.IsNullOrEmpty(scenario.Category))
+                            {
+                                <span class="text-muted">📚 @scenario.Category</span>
+                            }
+                            @if (scenario.EstimatedDurationSeconds.HasValue)
+                            {
+                                <span class="text-muted">⏱️ ~@FormatDuration(scenario.EstimatedDurationSeconds.Value)</span>
+                            }
+                            <span class="text-muted">📝 @scenario.Steps.Count steps</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private UIState _uiState = UIState.DefaultNormalMode();
+    private List<ScenarioDefinition> scenarios = new();
+    private List<ScenarioDefinition> filteredScenarios = new();
+    private List<string> categories = new();
+    private string selectedCategory = "";
+    private string selectedDifficulty = "";
+
+    protected override void OnInitialized()
+    {
+        LoadScenarios();
+
+        // Subscribe to UI state changes
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
+    }
+
+    private void LoadScenarios()
+    {
+        scenarios = ScenarioRegistry.GetAllScenarios().OrderBy(s => s.Name).ToList();
+        categories = scenarios
+            .Where(s => !string.IsNullOrEmpty(s.Category))
+            .Select(s => s.Category!)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+
+        FilterScenarios();
+    }
+
+    private void FilterScenarios()
+    {
+        filteredScenarios = scenarios;
+
+        if (!string.IsNullOrEmpty(selectedCategory))
+        {
+            filteredScenarios = filteredScenarios
+                .Where(s => s.Category == selectedCategory)
+                .ToList();
+        }
+
+        if (!string.IsNullOrEmpty(selectedDifficulty))
+        {
+            filteredScenarios = filteredScenarios
+                .Where(s => s.Difficulty == selectedDifficulty)
+                .ToList();
+        }
+    }
+
+    private bool IsScenarioActive(string scenarioId)
+    {
+        return ScenarioExecutor.IsExecuting &&
+               ScenarioExecutor.CurrentScenario?.Id == scenarioId;
+    }
+
+    private async Task StartScenario(ScenarioDefinition scenario)
+    {
+        if (ScenarioExecutor.IsExecuting)
+        {
+            ScenarioExecutor.StopScenario();
+        }
+
+        await ScenarioExecutor.ExecuteScenarioAsync(scenario, CancellationToken.None);
+    }
+
+    private string FormatDuration(int seconds)
+    {
+        if (seconds < 60)
+            return $"{seconds}s";
+
+        int minutes = seconds / 60;
+        int remainingSeconds = seconds % 60;
+
+        if (remainingSeconds == 0)
+            return $"{minutes}m";
+
+        return $"{minutes}m {remainingSeconds}s";
+    }
+
+    private async Task HandleClose()
+    {
+        await Task.Run(() =>
+            UIControlService.UpdateScenarioSelector(visible: false));
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
+    }
+}

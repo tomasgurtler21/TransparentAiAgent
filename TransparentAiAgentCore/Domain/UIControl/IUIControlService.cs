@@ -90,6 +90,13 @@ public interface IUIControlService
         string? highlightSection = null);
 
     /// <summary>
+    /// Updates scenario selector overlay configuration.
+    /// </summary>
+    /// <param name="visible">Show or hide the scenario selector overlay.</param>
+    /// <returns>Success result with updated state, or failure with error message.</returns>
+    Result<UIState> UpdateScenarioSelector(bool? visible = null);
+
+    /// <summary>
     /// Resets UI state to defaults based on current mode.
     /// </summary>
     /// <returns>Success result with reset state, or failure with error message.</returns>

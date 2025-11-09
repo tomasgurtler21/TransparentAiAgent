@@ -1,0 +1,51 @@
+{
+  "id": "context-limits-basic",
+  "name": "Understanding Context Limits",
+  "description": "Learn about context windows, token limits, and how AI agents manage conversation history.",
+  "category": "basics",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 150,
+  "steps": [
+    {
+      "type": "auto_message",
+      "content": "Let's talk about context limits - one of the most important concepts in understanding AI agent behavior!",
+      "delayMs": 1000
+    },
+    {
+      "type": "auto_message",
+      "content": "AI language models have a 'context window' - a limit on how much text they can process at once. This affects how much conversation history I can remember.",
+      "delayMs": 2000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "agent_prompt",
+      "content": "Explain what a context window is in simple terms. Discuss tokens, typical context window sizes (e.g., 8K, 32K, 200K tokens), and why this limit exists. Use an analogy to make it easier to understand."
+    },
+    {
+      "type": "auto_message",
+      "content": "When the context limit is reached, the agent must decide what to keep and what to forget. Different strategies include:\n- Sliding window (keep recent messages)\n- Summary-based (summarize old messages)\n- Important message retention (keep critical context)",
+      "delayMs": 1500
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "agent_prompt",
+      "content": "Explain why context management is particularly important in transparent AI systems. How does transparency help users understand when context limits are affecting agent behavior?"
+    },
+    {
+      "type": "auto_message",
+      "content": "In this transparent agent:\n- You can see the current context usage\n- The system shows which messages are in/out of context\n- Context management decisions are visible and auditable",
+      "delayMs": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "completion_message",
+      "content": "Perfect! You now understand context limits and how transparent agents help you track context usage. This knowledge will help you use AI agents more effectively!"
+    }
+  ]
+}
