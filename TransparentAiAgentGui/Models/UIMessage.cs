@@ -17,10 +17,20 @@ public class UIMessage
     // Tool-specific properties
     public bool IsToolCall { get; set; }
     public bool IsToolResult { get; set; }
-    public string? ToolName { get; set; }
-    public string? ToolArguments { get; set; }
+    public string? ToolName { get; set; } // Used for tool results
+    public List<UIToolCall> ToolCalls { get; set; } = new(); // Used for tool calls
     public bool ToolResultSuccess { get; set; }
     public string? ToolErrorMessage { get; set; }
+
+    /// <summary>
+    /// Represents a single tool call in the UI
+    /// </summary>
+    public class UIToolCall
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Arguments { get; set; } = string.Empty;
+    }
 
     /// <summary>
     /// CSS class for styling based on role
@@ -76,19 +86,15 @@ public class UIMessage
         {
             uiMessage.IsToolCall = true;
 
-            // For UI simplicity, show first tool call details
-            var firstToolCall = toolCallMsg.ToolCalls[0];
-            uiMessage.ToolName = firstToolCall.Name;
-            uiMessage.ToolArguments = firstToolCall.Arguments;
-
-            // If multiple tool calls, indicate in content
-            if (toolCallMsg.ToolCalls.Count > 1)
-            {
-                var contentPrefix = string.IsNullOrEmpty(toolCallMsg.Content)
-                    ? $"[Calling {toolCallMsg.ToolCalls.Count} tools]"
-                    : $"{toolCallMsg.Content}\n[Calling {toolCallMsg.ToolCalls.Count} tools]";
-                uiMessage.Content = contentPrefix;
-            }
+            // Convert all tool calls to UI model
+            uiMessage.ToolCalls = toolCallMsg.ToolCalls
+                .Select(tc => new UIToolCall
+                {
+                    Id = tc.Id,
+                    Name = tc.Name,
+                    Arguments = tc.Arguments
+                })
+                .ToList();
         }
         else if (message is ToolResultMessage toolResult)
         {
