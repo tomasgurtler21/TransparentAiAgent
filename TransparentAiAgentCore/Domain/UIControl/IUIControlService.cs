@@ -2,7 +2,7 @@ namespace TransparentAiAgentCore.Domain.UIControl;
 
 /// <summary>
 /// Service for managing UI state and handling agent-driven UI control.
-/// Scoped per user session (SignalR connection).
+/// Registered as Singleton (shared across all render contexts in the app).
 /// </summary>
 public interface IUIControlService
 {

@@ -127,49 +127,55 @@ if (appConfig.Agent.EnableTools)
         }
     });
 
-    // Register IToolManager only if we have servers configured - Scoped to support scoped executors
-    if (appConfig.MCP.Servers.Count > 0)
+    // Register IToolManager - always register when tools are enabled (UI control tools work without MCP)
+    builder.Services.AddScoped<IToolManager>(sp =>
     {
-        builder.Services.AddScoped<IToolManager>(sp =>
+        try
         {
-            try
-            {
-                var transparencyService = sp.GetRequiredService<ITransparencyService>();
-                var toolRegistry = sp.GetRequiredService<IToolRegistry>();
+            var transparencyService = sp.GetRequiredService<ITransparencyService>();
+            var toolRegistry = sp.GetRequiredService<IToolRegistry>();
 
+            // Create UI Control Tool Executor (Phase 9) - always available
+            var uiControlExecutor = sp.GetRequiredService<UIControlToolExecutor>();
+
+            // Get tool usage statistics service
+            var statistics = sp.GetRequiredService<IToolUsageStatistics>();
+
+            // Build list of executors
+            var executors = new List<IToolExecutor> { uiControlExecutor };
+
+            // Add MCP executor only if MCP servers are configured
+            if (appConfig.MCP.Servers.Count > 0)
+            {
                 // Create MCP Tool Discovery
                 var mcpDiscovery = new MCPToolDiscovery(appConfig.MCP);
 
                 // Create MCP Tool Executor
                 var mcpExecutor = new MCPToolExecutor(mcpDiscovery);
+                executors.Add(mcpExecutor);
 
-                // Create UI Control Tool Executor (Phase 9)
-                var uiControlExecutor = sp.GetRequiredService<UIControlToolExecutor>();
-
-                // Get tool usage statistics service
-                var statistics = sp.GetRequiredService<IToolUsageStatistics>();
-
-                // Create Tool Manager with both MCP and UI Control executors
-                var toolManager = new ToolManager(
-                    toolRegistry,
-                    new IToolExecutor[] { mcpExecutor, uiControlExecutor },
-                    transparencyService,
-                    statistics);
-
-                Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s)");
-                return toolManager;
+                Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s) + UI control tools");
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"⚠ Failed to initialize tool manager: {ex.Message}");
-                throw;
+                Console.WriteLine("✓ Tool system enabled with UI control tools only (no MCP servers configured)");
             }
-        });
-    }
-    else
-    {
-        Console.WriteLine("⚠ Tools enabled but no MCP servers configured - IToolRegistry available but no IToolManager");
-    }
+
+            // Create Tool Manager with all available executors
+            var toolManager = new ToolManager(
+                toolRegistry,
+                executors,
+                transparencyService,
+                statistics);
+
+            return toolManager;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠ Failed to initialize tool manager: {ex.Message}");
+            throw;
+        }
+    });
 }
 
 // Conditionally register LLM services based on configuration validity
@@ -223,7 +229,7 @@ builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
 // Register UI Control services (Phase 9 - Teaching Mode)
 builder.Services.AddSingleton<IUIControlService, UIControlService>();  // Singleton to share across all render contexts
 builder.Services.AddSingleton<BuiltInUIControlToolRegistry>();
-builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to share IUIControlService instance with UI components
+builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to work with scoped IToolManager
 
 // Register HttpClient for API calls
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5001") });

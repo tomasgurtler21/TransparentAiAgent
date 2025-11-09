@@ -9,7 +9,7 @@ namespace TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
 /// <summary>
 /// Executes built-in UI control tools by routing to IUIControlService.
 /// Parses JSON arguments and converts Result&lt;UIState&gt; to ToolExecutionResult.
-/// Registered as Scoped to share the same IUIControlService instance with UI components.
+/// Registered as Scoped to work with scoped IToolManager (accesses singleton IUIControlService).
 /// </summary>
 public class UIControlToolExecutor : IToolExecutor
 {
@@ -31,7 +31,7 @@ public class UIControlToolExecutor : IToolExecutor
 
     /// <summary>
     /// Executes a UI control tool by routing to the appropriate IUIControlService method.
-    /// Uses the injected scoped IUIControlService instance to support per-connection UI state.
+    /// Uses the injected singleton IUIControlService instance shared across all contexts.
     /// </summary>
     public Task<ToolExecutionResult> ExecuteAsync(
         ITool tool,
@@ -42,7 +42,7 @@ public class UIControlToolExecutor : IToolExecutor
 
         try
         {
-            _logger.LogDebug("Executing UI control tool: {ToolName}", tool.Name);
+            _logger.LogInformation("Executing UI control tool: {ToolName} with arguments: {Arguments}", tool.Name, arguments);
 
             // Parse arguments - handle empty/null arguments for tools with optional parameters
             JsonDocument argsDoc;
@@ -56,6 +56,7 @@ public class UIControlToolExecutor : IToolExecutor
                 }
 
                 argsDoc = JsonDocument.Parse(arguments);
+                _logger.LogInformation("Successfully parsed JSON arguments for {ToolName}", tool.Name);
             }
             catch (JsonException ex)
             {
@@ -113,13 +114,25 @@ public class UIControlToolExecutor : IToolExecutor
     {
         var root = args.RootElement;
 
+        var showUser = GetBoolProperty(root, "show_user_messages");
+        var showAssistant = GetBoolProperty(root, "show_assistant_messages");
+        var showSystem = GetBoolProperty(root, "show_system_messages");
+        var showToolCalls = GetBoolProperty(root, "show_tool_calls");
+        var showToolResults = GetBoolProperty(root, "show_tool_results");
+        var showTruncated = GetBoolProperty(root, "show_truncated_messages");
+
+        _logger.LogInformation(
+            "ExecuteChatFilterTool: Parsed values - showUser={ShowUser}, showAssistant={ShowAssistant}, " +
+            "showSystem={ShowSystem}, showToolCalls={ShowToolCalls}, showToolResults={ShowToolResults}, showTruncated={ShowTruncated}",
+            showUser, showAssistant, showSystem, showToolCalls, showToolResults, showTruncated);
+
         return uiControlService.UpdateChatFilter(
-            showUserMessages: GetBoolProperty(root, "show_user_messages"),
-            showAssistantMessages: GetBoolProperty(root, "show_assistant_messages"),
-            showSystemMessages: GetBoolProperty(root, "show_system_messages"),
-            showToolCalls: GetBoolProperty(root, "show_tool_calls"),
-            showToolResults: GetBoolProperty(root, "show_tool_results"),
-            showTruncatedMessages: GetBoolProperty(root, "show_truncated_messages"));
+            showUserMessages: showUser,
+            showAssistantMessages: showAssistant,
+            showSystemMessages: showSystem,
+            showToolCalls: showToolCalls,
+            showToolResults: showToolResults,
+            showTruncatedMessages: showTruncated);
     }
 
     private Result<UIState> ExecuteFilterVisibilityTool(IUIControlService uiControlService, JsonDocument args)
