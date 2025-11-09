@@ -10,10 +10,12 @@ namespace TransparentAiAgentGui.Services;
 /// Implementation of UI control service managing UI state and events.
 /// Registered as Singleton service (shared across all render contexts in the app).
 /// Note: This means UI state is shared app-wide. For multi-user scenarios, this would need to be per-user.
+/// Thread-safe: Uses lock for state mutations and event invocation.
 /// </summary>
 public class UIControlService : IUIControlService
 {
     private UIState _currentState;
+    private readonly object _stateLock = new object();
     private readonly ITransparencyService _transparencyService;
     private readonly ILogger<UIControlService> _logger;
 
@@ -26,9 +28,17 @@ public class UIControlService : IUIControlService
         _transparencyService = transparencyService;
         _logger = logger;
         _currentState = UIState.DefaultNormalMode();
+
+        _logger.LogInformation("UIControlService created (Singleton)");
     }
 
-    public UIState GetCurrentState() => _currentState;
+    public UIState GetCurrentState()
+    {
+        lock (_stateLock)
+        {
+            return _currentState;
+        }
+    }
 
     public Result<UIState> UpdateChatFilter(
         bool? showUserMessages = null,
@@ -40,31 +50,41 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            var newChatFilter = _currentState.ChatFilter with
+            lock (_stateLock)
             {
-                ShowUserMessages = showUserMessages ?? _currentState.ChatFilter.ShowUserMessages,
-                ShowAssistantMessages = showAssistantMessages ?? _currentState.ChatFilter.ShowAssistantMessages,
-                ShowSystemMessages = showSystemMessages ?? _currentState.ChatFilter.ShowSystemMessages,
-                ShowToolCalls = showToolCalls ?? _currentState.ChatFilter.ShowToolCalls,
-                ShowToolResults = showToolResults ?? _currentState.ChatFilter.ShowToolResults,
-                ShowTruncatedMessages = showTruncatedMessages ?? _currentState.ChatFilter.ShowTruncatedMessages
-            };
+                var newChatFilter = _currentState.ChatFilter with
+                {
+                    ShowUserMessages = showUserMessages ?? _currentState.ChatFilter.ShowUserMessages,
+                    ShowAssistantMessages = showAssistantMessages ?? _currentState.ChatFilter.ShowAssistantMessages,
+                    ShowSystemMessages = showSystemMessages ?? _currentState.ChatFilter.ShowSystemMessages,
+                    ShowToolCalls = showToolCalls ?? _currentState.ChatFilter.ShowToolCalls,
+                    ShowToolResults = showToolResults ?? _currentState.ChatFilter.ShowToolResults,
+                    ShowTruncatedMessages = showTruncatedMessages ?? _currentState.ChatFilter.ShowTruncatedMessages
+                };
 
-            _currentState = _currentState with { ChatFilter = newChatFilter };
+                _currentState = _currentState with { ChatFilter = newChatFilter };
 
-            LogUIControlEvent("ChatFilterUpdated", new
-            {
-                newChatFilter.ShowUserMessages,
-                newChatFilter.ShowAssistantMessages,
-                newChatFilter.ShowSystemMessages,
-                newChatFilter.ShowToolCalls,
-                newChatFilter.ShowToolResults,
-                newChatFilter.ShowTruncatedMessages
-            });
+                LogUIControlEvent("ChatFilterUpdated", new
+                {
+                    newChatFilter.ShowUserMessages,
+                    newChatFilter.ShowAssistantMessages,
+                    newChatFilter.ShowSystemMessages,
+                    newChatFilter.ShowToolCalls,
+                    newChatFilter.ShowToolResults,
+                    newChatFilter.ShowTruncatedMessages
+                });
 
-            UIStateChanged?.Invoke(this, _currentState);
+                // DEBUG: Log event firing
+                var subscriberCount = UIStateChanged?.GetInvocationList().Length ?? 0;
+                _logger.LogInformation("UpdateChatFilter: Firing UIStateChanged event to {Count} subscribers on thread {ThreadId}",
+                    subscriberCount, Environment.CurrentManagedThreadId);
 
-            return Result<UIState>.Ok(_currentState);
+                UIStateChanged?.Invoke(this, _currentState);
+
+                _logger.LogInformation("UpdateChatFilter: Event invocation completed");
+
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {
@@ -77,13 +97,20 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            var newChatFilter = _currentState.ChatFilter with { FilterControlsVisible = visible };
-            _currentState = _currentState with { ChatFilter = newChatFilter };
+            lock (_stateLock)
+            {
+                var newChatFilter = _currentState.ChatFilter with { FilterControlsVisible = visible };
+                _currentState = _currentState with { ChatFilter = newChatFilter };
 
-            LogUIControlEvent("FilterControlVisibilityChanged", new { visible });
-            UIStateChanged?.Invoke(this, _currentState);
+                LogUIControlEvent("FilterControlVisibilityChanged", new { visible });
 
-            return Result<UIState>.Ok(_currentState);
+                var subscriberCount = UIStateChanged?.GetInvocationList().Length ?? 0;
+                _logger.LogInformation("UpdateFilterControlVisibility: Firing to {Count} subscribers", subscriberCount);
+
+                UIStateChanged?.Invoke(this, _currentState);
+
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {
@@ -99,25 +126,28 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            var newViewer = _currentState.TransparencyViewer with
+            lock (_stateLock)
             {
-                Visible = visible ?? _currentState.TransparencyViewer.Visible,
-                EventTypeFilters = eventTypeFilters ?? _currentState.TransparencyViewer.EventTypeFilters,
-                ShowTimestamps = showTimestamps ?? _currentState.TransparencyViewer.ShowTimestamps
-            };
+                var newViewer = _currentState.TransparencyViewer with
+                {
+                    Visible = visible ?? _currentState.TransparencyViewer.Visible,
+                    EventTypeFilters = eventTypeFilters ?? _currentState.TransparencyViewer.EventTypeFilters,
+                    ShowTimestamps = showTimestamps ?? _currentState.TransparencyViewer.ShowTimestamps
+                };
 
-            _currentState = _currentState with { TransparencyViewer = newViewer };
+                _currentState = _currentState with { TransparencyViewer = newViewer };
 
-            LogUIControlEvent("TransparencyViewerUpdated", new
-            {
-                newViewer.Visible,
-                EventTypeFilterCount = newViewer.EventTypeFilters.Count,
-                newViewer.ShowTimestamps
-            });
+                LogUIControlEvent("TransparencyViewerUpdated", new
+                {
+                    newViewer.Visible,
+                    EventTypeFilterCount = newViewer.EventTypeFilters.Count,
+                    newViewer.ShowTimestamps
+                });
 
-            UIStateChanged?.Invoke(this, _currentState);
+                UIStateChanged?.Invoke(this, _currentState);
 
-            return Result<UIState>.Ok(_currentState);
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {
@@ -133,25 +163,28 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            var newPanel = _currentState.ToolsPanel with
+            lock (_stateLock)
             {
-                Visible = visible ?? _currentState.ToolsPanel.Visible,
-                ExpandedTools = expandedTools ?? _currentState.ToolsPanel.ExpandedTools,
-                HighlightedTool = highlightedTool ?? _currentState.ToolsPanel.HighlightedTool
-            };
+                var newPanel = _currentState.ToolsPanel with
+                {
+                    Visible = visible ?? _currentState.ToolsPanel.Visible,
+                    ExpandedTools = expandedTools ?? _currentState.ToolsPanel.ExpandedTools,
+                    HighlightedTool = highlightedTool ?? _currentState.ToolsPanel.HighlightedTool
+                };
 
-            _currentState = _currentState with { ToolsPanel = newPanel };
+                _currentState = _currentState with { ToolsPanel = newPanel };
 
-            LogUIControlEvent("ToolsPanelUpdated", new
-            {
-                newPanel.Visible,
-                ExpandedToolsCount = newPanel.ExpandedTools.Count,
-                newPanel.HighlightedTool
-            });
+                LogUIControlEvent("ToolsPanelUpdated", new
+                {
+                    newPanel.Visible,
+                    ExpandedToolsCount = newPanel.ExpandedTools.Count,
+                    newPanel.HighlightedTool
+                });
 
-            UIStateChanged?.Invoke(this, _currentState);
+                UIStateChanged?.Invoke(this, _currentState);
 
-            return Result<UIState>.Ok(_currentState);
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {
@@ -166,23 +199,26 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            var newIndicators = _currentState.ContextIndicators with
+            lock (_stateLock)
             {
-                Visible = visible ?? _currentState.ContextIndicators.Visible,
-                Highlighted = highlighted ?? _currentState.ContextIndicators.Highlighted
-            };
+                var newIndicators = _currentState.ContextIndicators with
+                {
+                    Visible = visible ?? _currentState.ContextIndicators.Visible,
+                    Highlighted = highlighted ?? _currentState.ContextIndicators.Highlighted
+                };
 
-            _currentState = _currentState with { ContextIndicators = newIndicators };
+                _currentState = _currentState with { ContextIndicators = newIndicators };
 
-            LogUIControlEvent("ContextIndicatorsUpdated", new
-            {
-                newIndicators.Visible,
-                newIndicators.Highlighted
-            });
+                LogUIControlEvent("ContextIndicatorsUpdated", new
+                {
+                    newIndicators.Visible,
+                    newIndicators.Highlighted
+                });
 
-            UIStateChanged?.Invoke(this, _currentState);
+                UIStateChanged?.Invoke(this, _currentState);
 
-            return Result<UIState>.Ok(_currentState);
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {
@@ -198,25 +234,28 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            var newConfigPage = _currentState.ConfigurationPage with
+            lock (_stateLock)
             {
-                Visible = visible ?? _currentState.ConfigurationPage.Visible,
-                NavigateRequested = navigate ?? _currentState.ConfigurationPage.NavigateRequested,
-                HighlightedSection = highlightSection ?? _currentState.ConfigurationPage.HighlightedSection
-            };
+                var newConfigPage = _currentState.ConfigurationPage with
+                {
+                    Visible = visible ?? _currentState.ConfigurationPage.Visible,
+                    NavigateRequested = navigate ?? _currentState.ConfigurationPage.NavigateRequested,
+                    HighlightedSection = highlightSection ?? _currentState.ConfigurationPage.HighlightedSection
+                };
 
-            _currentState = _currentState with { ConfigurationPage = newConfigPage };
+                _currentState = _currentState with { ConfigurationPage = newConfigPage };
 
-            LogUIControlEvent("ConfigurationPageUpdated", new
-            {
-                newConfigPage.Visible,
-                newConfigPage.NavigateRequested,
-                newConfigPage.HighlightedSection
-            });
+                LogUIControlEvent("ConfigurationPageUpdated", new
+                {
+                    newConfigPage.Visible,
+                    newConfigPage.NavigateRequested,
+                    newConfigPage.HighlightedSection
+                });
 
-            UIStateChanged?.Invoke(this, _currentState);
+                UIStateChanged?.Invoke(this, _currentState);
 
-            return Result<UIState>.Ok(_currentState);
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {
@@ -229,15 +268,18 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            // Reset based on current mode
-            _currentState = _currentState.CurrentMode == AppMode.Teaching
-                ? UIState.DefaultTeachingMode()
-                : UIState.DefaultNormalMode();
+            lock (_stateLock)
+            {
+                // Reset based on current mode
+                _currentState = _currentState.CurrentMode == AppMode.Teaching
+                    ? UIState.DefaultTeachingMode()
+                    : UIState.DefaultNormalMode();
 
-            LogUIControlEvent("UIStateReset", new { Mode = _currentState.CurrentMode.ToString() });
-            UIStateChanged?.Invoke(this, _currentState);
+                LogUIControlEvent("UIStateReset", new { Mode = _currentState.CurrentMode.ToString() });
+                UIStateChanged?.Invoke(this, _currentState);
 
-            return Result<UIState>.Ok(_currentState);
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {
@@ -250,14 +292,17 @@ public class UIControlService : IUIControlService
     {
         try
         {
-            _currentState = newMode == AppMode.Teaching
-                ? UIState.DefaultTeachingMode()
-                : UIState.DefaultNormalMode();
+            lock (_stateLock)
+            {
+                _currentState = newMode == AppMode.Teaching
+                    ? UIState.DefaultTeachingMode()
+                    : UIState.DefaultNormalMode();
 
-            LogUIControlEvent("AppModeChanged", new { Mode = newMode.ToString() });
-            UIStateChanged?.Invoke(this, _currentState);
+                LogUIControlEvent("AppModeChanged", new { Mode = newMode.ToString() });
+                UIStateChanged?.Invoke(this, _currentState);
 
-            return Result<UIState>.Ok(_currentState);
+                return Result<UIState>.Ok(_currentState);
+            }
         }
         catch (Exception ex)
         {

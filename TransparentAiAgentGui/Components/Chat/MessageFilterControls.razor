@@ -1,5 +1,7 @@
 @using TransparentAiAgentCore.Domain.UIControl
+@using Microsoft.Extensions.Logging
 @inject IUIControlService UIControlService
+@inject ILogger<MessageFilterControls> Logger
 @implements IDisposable
 
 <div class="message-filter-controls">
@@ -55,16 +57,31 @@
 
     protected override void OnInitialized()
     {
+        Logger.LogInformation("MessageFilterControls: OnInitialized - Subscribing to UIStateChanged on thread {ThreadId}",
+            Environment.CurrentManagedThreadId);
+
         UIControlService.UIStateChanged += OnUIStateChanged;
         _currentFilter = UIControlService.GetCurrentState().ChatFilter;
+
+        Logger.LogInformation("MessageFilterControls: Subscribed. Initial state: ShowToolCalls={ShowToolCalls}",
+            _currentFilter.ShowToolCalls);
     }
 
     private void OnUIStateChanged(object? sender, UIState newState)
     {
+        Logger.LogInformation("MessageFilterControls: OnUIStateChanged received on thread {ThreadId}. ShowToolCalls changed from {Old} to {New}",
+            Environment.CurrentManagedThreadId, _currentFilter.ShowToolCalls, newState.ChatFilter.ShowToolCalls);
+
         InvokeAsync(() =>
         {
+            Logger.LogInformation("MessageFilterControls: InvokeAsync executing on thread {ThreadId}",
+                Environment.CurrentManagedThreadId);
+
             _currentFilter = newState.ChatFilter;
             StateHasChanged();
+
+            Logger.LogInformation("MessageFilterControls: StateHasChanged() called. New ShowToolCalls={ShowToolCalls}",
+                _currentFilter.ShowToolCalls);
         });
     }
 
@@ -76,6 +93,7 @@
         bool? showToolResults = null,
         bool? showTruncatedMessages = null)
     {
+        Logger.LogInformation("MessageFilterControls: User UpdateFilter called");
         UIControlService.UpdateChatFilter(
             showUserMessages,
             showAssistantMessages,
@@ -87,6 +105,7 @@
 
     public void Dispose()
     {
+        Logger.LogInformation("MessageFilterControls: Disposing - Unsubscribing from UIStateChanged");
         UIControlService.UIStateChanged -= OnUIStateChanged;
     }
 }
