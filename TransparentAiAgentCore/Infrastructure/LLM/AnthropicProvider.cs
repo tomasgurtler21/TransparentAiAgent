@@ -190,14 +190,14 @@ public class AnthropicProvider : ILLMProvider
                     // Accumulate tool call input JSON deltas
                     else
                     {
-                        // Try to extract input JSON delta - SDK uses TryPickInputJsonDelta
+                        // Try to extract input JSON delta - SDK uses TryPickInputJSON (all caps)
                         var deltaType = deltaEvent.Delta.GetType();
                         _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
                             Domain.Transparency.TransparencyEventType.Debug,
                             $"Processing delta of type: {deltaType.Name} for content block index {index}",
                             "Streaming Tool Input"));
 
-                        var tryPickMethod = deltaType.GetMethod("TryPickInputJsonDelta");
+                        var tryPickMethod = deltaType.GetMethod("TryPickInputJSON");
                         if (tryPickMethod != null)
                         {
                             var parameters = new object?[] { null };
@@ -205,7 +205,15 @@ public class AnthropicProvider : ILLMProvider
                             if (result == true && parameters[0] != null)
                             {
                                 var jsonDelta = parameters[0]!; // Already checked for null above
-                                var partialJsonProp = jsonDelta.GetType().GetProperty("PartialJson");
+                                var jsonDeltaType = jsonDelta.GetType();
+
+                                // Try common property names for the partial JSON
+                                var partialJsonProp = jsonDeltaType.GetProperty("PartialJson")
+                                    ?? jsonDeltaType.GetProperty("PartialJSON")
+                                    ?? jsonDeltaType.GetProperty("Input")
+                                    ?? jsonDeltaType.GetProperty("Json")
+                                    ?? jsonDeltaType.GetProperty("JSON");
+
                                 if (partialJsonProp != null && jsonAccumulators.ContainsKey(index))
                                 {
                                     var partialJson = partialJsonProp.GetValue(jsonDelta) as string;
@@ -218,6 +226,22 @@ public class AnthropicProvider : ILLMProvider
                                         jsonAccumulators[index].Append(partialJson);
                                     }
                                 }
+                                else if (!jsonAccumulators.ContainsKey(index))
+                                {
+                                    _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                                        Domain.Transparency.TransparencyEventType.Warning,
+                                        $"No accumulator found for index {index}",
+                                        "Streaming Tool Input"));
+                                }
+                                else
+                                {
+                                    // Log available properties to help diagnose
+                                    var props = string.Join(", ", jsonDeltaType.GetProperties().Select(p => p.Name));
+                                    _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                                        Domain.Transparency.TransparencyEventType.Warning,
+                                        $"PartialJson property not found on {jsonDeltaType.Name}. Available properties: {props}",
+                                        "Streaming Tool Input"));
+                                }
                             }
                         }
                         else
@@ -226,7 +250,7 @@ public class AnthropicProvider : ILLMProvider
                             var methods = string.Join(", ", deltaType.GetMethods().Select(m => m.Name).Distinct().OrderBy(n => n));
                             _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
                                 Domain.Transparency.TransparencyEventType.Warning,
-                                $"TryPickInputJsonDelta method not found on {deltaType.Name}. Available methods: {methods}",
+                                $"TryPickInputJSON method not found on {deltaType.Name}. Available methods: {methods}",
                                 "Streaming Tool Input"));
                         }
                     }
