@@ -26,12 +26,23 @@
     <div class="message-content">
         @if (Message.IsToolCall)
         {
-            <div class="tool-call">
-                <div class="tool-name">Tool: <strong>@Message.ToolName</strong></div>
-                @if (!string.IsNullOrWhiteSpace(Message.ToolArguments))
+            <div class="tool-call-container">
+                @* Display text content if present (Anthropic often sends text with tool calls) *@
+                @if (!string.IsNullOrWhiteSpace(Message.Content))
                 {
-                    <JsonDisplay Content="@Message.ToolArguments" Title="Arguments" InitiallyExpanded="false" />
+                    <div class="tool-call-content">
+                        <MarkdownDisplay Content="@Message.Content" />
+                    </div>
                 }
+
+                @* Display tool call details *@
+                <div class="tool-call">
+                    <div class="tool-name">Tool: <strong>@Message.ToolName</strong></div>
+                    @if (!string.IsNullOrWhiteSpace(Message.ToolArguments))
+                    {
+                        <JsonDisplay Content="@Message.ToolArguments" Title="Arguments" InitiallyExpanded="false" />
+                    }
+                </div>
             </div>
         }
         else if (Message.IsToolResult)
