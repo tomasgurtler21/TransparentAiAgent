@@ -271,9 +271,10 @@ public class AnthropicProvider : ILLMProvider
                             if (string.IsNullOrWhiteSpace(jsonString))
                             {
                                 _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
-                                    Domain.Transparency.TransparencyEventType.Error,
-                                    $"Tool call '{name}' arguments empty - JSON accumulation failed during streaming. Defaulting to {{}}. If tool has required parameters, execution will fail during validation.",
-                                    "Tool Call Argument Failure"));
+                                    Domain.Transparency.TransparencyEventType.ToolStreamingDataCorrupted,
+                                    $"Tool call '{name}' JSON accumulation failed during streaming. Arguments will be empty {{\u007D}}. " +
+                                    $"Schema validation will fail if tool has required parameters.",
+                                    "Streaming Tool Call Build"));
                                 jsonString = "{}";
                             }
 
