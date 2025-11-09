@@ -1,7 +1,7 @@
 # TransparentAiAgent Documentation
 
-**Last Updated**: 2025-11-08
-**Project Status**: Phase 8 Complete (95%) | Phase 9 Ready
+**Last Updated**: 2025-11-09
+**Project Status**: Phase 9 In Progress (Overlay System Implemented)
 
 Welcome to the TransparentAiAgent documentation! This is your central navigation hub.
 
@@ -197,6 +197,7 @@ Use templates from [08-contributing/templates/](08-contributing/templates/) for 
 - **Architecture questions**: See [02-architecture/](02-architecture/)
 - **How-to questions**: See [05-guides/](05-guides/)
 - **API questions**: See [06-reference/](06-reference/)
+- **Known issues**: See [KnownIssues.md](KnownIssues.md)
 - **Can't find something**: Check the category READMEs above
 
 ---

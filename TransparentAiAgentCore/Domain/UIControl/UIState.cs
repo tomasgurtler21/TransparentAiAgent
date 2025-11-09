@@ -37,7 +37,7 @@ public record UIState
     public AppMode CurrentMode { get; init; } = AppMode.Normal;
 
     /// <summary>
-    /// Creates a default UI state for Normal Mode (all controls visible).
+    /// Creates a default UI state for Normal Mode (overlays closed by default).
     /// </summary>
     public static UIState DefaultNormalMode() => new()
     {
@@ -53,13 +53,13 @@ public record UIState
         },
         TransparencyViewer = new TransparencyViewerState
         {
-            Visible = true,
+            Visible = false,
             ShowTimestamps = true,
             EventTypeFilters = new List<string>()
         },
         ToolsPanel = new ToolsPanelState
         {
-            Visible = true,
+            Visible = false,
             ExpandedTools = new List<string>(),
             HighlightedTool = null
         },
@@ -70,7 +70,7 @@ public record UIState
         },
         ConfigurationPage = new ConfigurationPageState
         {
-            Visible = true,
+            Visible = false,
             NavigateRequested = false,
             HighlightedSection = null
         },

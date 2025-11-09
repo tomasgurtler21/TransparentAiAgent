@@ -221,7 +221,7 @@ else
 builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
 
 // Register UI Control services (Phase 9 - Teaching Mode)
-builder.Services.AddScoped<IUIControlService, UIControlService>();  // Scoped per SignalR connection
+builder.Services.AddSingleton<IUIControlService, UIControlService>();  // Singleton to share across all render contexts
 builder.Services.AddSingleton<BuiltInUIControlToolRegistry>();
 builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to share IUIControlService instance with UI components
 

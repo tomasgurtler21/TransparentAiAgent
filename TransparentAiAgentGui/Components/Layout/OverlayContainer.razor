@@ -1,0 +1,84 @@
+@using TransparentAiAgentGui.Components.Transparency
+@using TransparentAiAgentGui.Components.Tools
+@using TransparentAiAgentGui.Components.Pages
+@using TransparentAiAgentCore.Domain.UIControl
+@using Microsoft.JSInterop
+@inject IUIControlService UIControlService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+@rendermode InteractiveServer
+
+<!-- Overlay System -->
+<div class="overlay-container">
+    <!-- TransparencyViewer as overlay -->
+    <div class="overlay-panel overlay-panel-right @(GetTransparencyOverlayVisibilityClass())">
+        <div class="overlay-resize-handle"></div>
+        <TransparencyViewer />
+    </div>
+
+    <!-- ToolsOverview as overlay -->
+    <div class="overlay-panel overlay-panel-right @(GetToolsOverlayVisibilityClass())">
+        <div class="overlay-resize-handle"></div>
+        <ToolsOverview />
+    </div>
+
+    <!-- Configuration as overlay -->
+    <div class="overlay-panel overlay-panel-right @(GetConfigurationOverlayVisibilityClass())">
+        <div class="overlay-resize-handle"></div>
+        <Configuration />
+    </div>
+</div>
+
+@code {
+    private UIState _uiState = UIState.DefaultNormalMode();
+
+    protected override void OnInitialized()
+    {
+        UIControlService.UIStateChanged += OnUIStateChanged;
+        _uiState = UIControlService.GetCurrentState();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("overlayResize.init");
+            }
+            catch (Exception)
+            {
+                // Ignore JS errors during initialization
+            }
+        }
+    }
+
+    private void OnUIStateChanged(object? sender, UIState newState)
+    {
+        InvokeAsync(() =>
+        {
+            _uiState = newState;
+            StateHasChanged();
+        });
+    }
+
+    private string GetTransparencyOverlayVisibilityClass()
+    {
+        return _uiState.TransparencyViewer.Visible ? "visible" : "";
+    }
+
+    private string GetToolsOverlayVisibilityClass()
+    {
+        return _uiState.ToolsPanel.Visible ? "visible" : "";
+    }
+
+    private string GetConfigurationOverlayVisibilityClass()
+    {
+        return _uiState.ConfigurationPage.Visible ? "visible" : "";
+    }
+
+    public void Dispose()
+    {
+        UIControlService.UIStateChanged -= OnUIStateChanged;
+    }
+}
