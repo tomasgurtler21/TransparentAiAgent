@@ -192,7 +192,7 @@ public class AnthropicProvider : ILLMProvider
                     {
                         // Try to extract input JSON delta - SDK uses TryPickInputJsonDelta
                         var deltaType = deltaEvent.Delta.GetType();
-                        _transparencyService?.LogEvent(new Domain.Transparency.TransparencyEvent(
+                        _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
                             Domain.Transparency.TransparencyEventType.Debug,
                             $"Processing delta of type: {deltaType.Name} for content block index {index}",
                             "Streaming Tool Input"));
@@ -204,14 +204,14 @@ public class AnthropicProvider : ILLMProvider
                             var result = (bool?)tryPickMethod.Invoke(deltaEvent.Delta, parameters);
                             if (result == true && parameters[0] != null)
                             {
-                                var jsonDelta = parameters[0];
+                                var jsonDelta = parameters[0]!; // Already checked for null above
                                 var partialJsonProp = jsonDelta.GetType().GetProperty("PartialJson");
                                 if (partialJsonProp != null && jsonAccumulators.ContainsKey(index))
                                 {
                                     var partialJson = partialJsonProp.GetValue(jsonDelta) as string;
                                     if (partialJson != null)
                                     {
-                                        _transparencyService?.LogEvent(new Domain.Transparency.TransparencyEvent(
+                                        _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
                                             Domain.Transparency.TransparencyEventType.Debug,
                                             $"Accumulated tool input JSON delta: {partialJson}",
                                             "Streaming Tool Input"));
@@ -224,7 +224,7 @@ public class AnthropicProvider : ILLMProvider
                         {
                             // Log available methods to help diagnose SDK version
                             var methods = string.Join(", ", deltaType.GetMethods().Select(m => m.Name).Distinct().OrderBy(n => n));
-                            _transparencyService?.LogEvent(new Domain.Transparency.TransparencyEvent(
+                            _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
                                 Domain.Transparency.TransparencyEventType.Warning,
                                 $"TryPickInputJsonDelta method not found on {deltaType.Name}. Available methods: {methods}",
                                 "Streaming Tool Input"));
@@ -277,7 +277,7 @@ public class AnthropicProvider : ILLMProvider
                                 ? jsonAccumulators[index].ToString()
                                 : "";
 
-                            _transparencyService?.LogEvent(new Domain.Transparency.TransparencyEvent(
+                            _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
                                 Domain.Transparency.TransparencyEventType.Debug,
                                 $"Building tool call '{name}' (id: {id}): Accumulated JSON = '{jsonString}' (empty: {string.IsNullOrWhiteSpace(jsonString)})",
                                 "Streaming Tool Call Build"));
@@ -285,7 +285,7 @@ public class AnthropicProvider : ILLMProvider
                             // If JSON is empty or whitespace, use empty object for tools with optional parameters
                             if (string.IsNullOrWhiteSpace(jsonString))
                             {
-                                _transparencyService?.LogEvent(new Domain.Transparency.TransparencyEvent(
+                                _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
                                     Domain.Transparency.TransparencyEventType.Warning,
                                     $"Tool call '{name}' has empty arguments - defaulting to {{}}. This may indicate streaming JSON accumulation failed.",
                                     "Streaming Tool Call Build"));
