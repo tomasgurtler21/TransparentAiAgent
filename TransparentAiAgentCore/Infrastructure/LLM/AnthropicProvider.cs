@@ -187,16 +187,39 @@ public class AnthropicProvider : ILLMProvider
                             textAccumulators[index].Append(textDelta.Text);
                         }
                     }
-                    // Note: SDK beta may not have TryPickInputJson - will accumulate from JSON string if needed
-                    // This is a workaround for beta SDK limitations
-                    // else if (deltaEvent.Delta.TryPickInputJson(out var jsonDelta))
-                    // {
-                    //     // Accumulate tool call JSON
-                    //     if (jsonAccumulators.ContainsKey(index))
-                    //     {
-                    //         jsonAccumulators[index].Append(jsonDelta.PartialJson);
-                    //     }
-                    // }
+                    // Accumulate tool call input JSON deltas
+                    else
+                    {
+                        // Try to extract input JSON delta - SDK uses TryPickInputJSON
+                        var deltaType = deltaEvent.Delta.GetType();
+                        var tryPickMethod = deltaType.GetMethod("TryPickInputJSON");
+                        if (tryPickMethod != null)
+                        {
+                            var parameters = new object?[] { null };
+                            var result = (bool?)tryPickMethod.Invoke(deltaEvent.Delta, parameters);
+                            if (result == true && parameters[0] != null)
+                            {
+                                var jsonDelta = parameters[0]!;
+                                var jsonDeltaType = jsonDelta.GetType();
+
+                                // Try common property names for the partial JSON
+                                var partialJsonProp = jsonDeltaType.GetProperty("PartialJson")
+                                    ?? jsonDeltaType.GetProperty("PartialJSON")
+                                    ?? jsonDeltaType.GetProperty("Input")
+                                    ?? jsonDeltaType.GetProperty("Json")
+                                    ?? jsonDeltaType.GetProperty("JSON");
+
+                                if (partialJsonProp != null && jsonAccumulators.ContainsKey(index))
+                                {
+                                    var partialJson = partialJsonProp.GetValue(jsonDelta) as string;
+                                    if (partialJson != null)
+                                    {
+                                        jsonAccumulators[index].Append(partialJson);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 // Handle content_block_stop
                 else if (streamEvent.TryPickContentBlockStop(out var blockStop))
@@ -244,9 +267,13 @@ public class AnthropicProvider : ILLMProvider
                                 ? jsonAccumulators[index].ToString()
                                 : "";
 
-                            // If JSON is empty or whitespace, use empty object for tools with optional parameters
+                            // If JSON is empty, default to empty object (validation layer should catch if required params missing)
                             if (string.IsNullOrWhiteSpace(jsonString))
                             {
+                                _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                                    Domain.Transparency.TransparencyEventType.Error,
+                                    $"Tool call '{name}' arguments empty - JSON accumulation failed during streaming. Defaulting to {{}}. If tool has required parameters, execution will fail during validation.",
+                                    "Tool Call Argument Failure"));
                                 jsonString = "{}";
                             }
 
@@ -269,10 +296,10 @@ public class AnthropicProvider : ILLMProvider
                         accumulatedToolCalls: toolCalls
                     );
 
-                    // Log complete response
+                    // Log complete accumulated response
                     var latency = DateTime.UtcNow - startTime;
                     var fullText = string.Join("", textAccumulators.Values.Select(sb => sb.ToString()));
-                    LogStreamingResponse(fullText, stopReason, correlationId, latency);
+                    LogStreamingResponse(fullText, toolCalls, stopReason, correlationId, latency);
 
                     break;
                 }
@@ -639,17 +666,38 @@ public class AnthropicProvider : ILLMProvider
     }
 
     /// <summary>
-    /// Log accumulated streaming response for transparency
+    /// Log complete accumulated streaming response for transparency (includes tool calls)
     /// </summary>
-    private void LogStreamingResponse(string accumulatedContent, string? stopReason, string correlationId, TimeSpan latency)
+    private void LogStreamingResponse(string accumulatedContent, List<LLMToolCall>? toolCalls, string? stopReason, string correlationId, TimeSpan latency)
     {
+        // Build response data with accumulated content and tool calls
+        var contentItems = new List<object>();
+
+        // Add text content if present
+        if (!string.IsNullOrEmpty(accumulatedContent))
+        {
+            contentItems.Add(new { Type = "text", Text = accumulatedContent });
+        }
+
+        // Add tool calls if present
+        if (toolCalls != null && toolCalls.Count > 0)
+        {
+            foreach (var toolCall in toolCalls)
+            {
+                contentItems.Add(new
+                {
+                    Type = "tool_use",
+                    Id = toolCall.Id,
+                    Name = toolCall.Name,
+                    Arguments = toolCall.Arguments
+                });
+            }
+        }
+
         var responseData = new
         {
             Provider = ProviderName,
-            Content = new[]
-            {
-                new { Type = "text", Text = accumulatedContent }
-            },
+            Content = contentItems,
             StopReason = stopReason ?? "unknown",
             Timestamp = DateTime.UtcNow,
             IsStreaming = true
@@ -670,7 +718,7 @@ public class AnthropicProvider : ILLMProvider
             new Domain.Transparency.TransparencyEvent(
                 Domain.Transparency.TransparencyEventType.RawLLMResponse,
                 eventData,
-                $"Raw streaming response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
+                $"Complete streaming response from {ProviderName} (Correlation: {correlationId}, Latency: {latency.TotalMilliseconds}ms)"));
     }
 
     /// <summary>

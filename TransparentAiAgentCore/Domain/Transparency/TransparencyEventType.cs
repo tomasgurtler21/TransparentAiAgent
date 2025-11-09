@@ -10,6 +10,9 @@ public enum TransparencyEventType
     ConfigurationChange,
     SystemState,
     Error,
+    Warning,
+    Debug,
+    Info,
 
     // Tool discovery events (Phase 5)
     ToolDiscoveryStarted,

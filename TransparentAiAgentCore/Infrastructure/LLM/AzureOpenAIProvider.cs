@@ -63,7 +63,7 @@ public class AzureOpenAIProvider : ILLMProvider
         // Create AzureOpenAIClient based on authentication mode
         AzureOpenAIClient azureClient;
 
-        switch (azureConfig.AuthenticationMode)
+        switch (azureConfig?.AuthenticationMode ?? AuthenticationMode.ApiKey)
         {
             case AuthenticationMode.DefaultAzureCredential:
             {
