@@ -1,6 +1,8 @@
 @using TransparentAiAgentCore.Domain.UIControl
+@using TransparentAiAgentGui.Services
 @implements IDisposable
 @inject IUIControlService UIControlService
+@inject IAppModeService AppModeService
 @rendermode InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
@@ -29,6 +31,31 @@
             <NavLink class="nav-link" href="weather">
                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
             </NavLink>
+        </div>
+
+        <!-- Mode Toggle Section -->
+        <hr class="nav-divider" />
+
+        <div class="nav-section-header px-3">
+            <small class="text-muted">MODE</small>
+        </div>
+
+        <div class="nav-item px-3 mode-toggle-container">
+            <div class="mode-toggle">
+                <span class="mode-label @(_uiState.CurrentMode == AppMode.Normal ? "active" : "")">Normal</span>
+                <button class="mode-switch @(_uiState.CurrentMode == AppMode.Teaching ? "teaching" : "normal")"
+                        @onclick="ToggleMode"
+                        @onclick:stopPropagation="true"
+                        disabled="@_isSwitchingMode"
+                        title="Switch between Normal and Teaching mode">
+                    <span class="switch-slider"></span>
+                </button>
+                <span class="mode-label @(_uiState.CurrentMode == AppMode.Teaching ? "active" : "")">Teaching</span>
+            </div>
+            @if (_isSwitchingMode)
+            {
+                <small class="text-muted">Switching mode...</small>
+            }
         </div>
 
         <!-- Overlay Controls Section -->
@@ -69,10 +96,12 @@
 
 @code {
     private UIState _uiState = UIState.DefaultNormalMode();
+    private bool _isSwitchingMode = false;
 
     protected override void OnInitialized()
     {
         UIControlService.UIStateChanged += OnUIStateChanged;
+        AppModeService.ModeChanged += OnModeChanged;
         _uiState = UIControlService.GetCurrentState();
     }
 
@@ -83,6 +112,36 @@
             _uiState = newState;
             StateHasChanged();
         });
+    }
+
+    private void OnModeChanged(object? sender, AppMode newMode)
+    {
+        InvokeAsync(() =>
+        {
+            _isSwitchingMode = false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task ToggleMode()
+    {
+        if (_isSwitchingMode) return;
+
+        _isSwitchingMode = true;
+        StateHasChanged();
+
+        try
+        {
+            var targetMode = _uiState.CurrentMode == AppMode.Normal ? AppMode.Teaching : AppMode.Normal;
+            await AppModeService.SwitchModeAsync(targetMode, clearConversation: true);
+        }
+        catch (Exception ex)
+        {
+            // TODO: Show error to user
+            Console.WriteLine($"Failed to switch mode: {ex.Message}");
+            _isSwitchingMode = false;
+            StateHasChanged();
+        }
     }
 
     private void ToggleTransparencyViewer()
@@ -103,5 +162,6 @@
     public void Dispose()
     {
         UIControlService.UIStateChanged -= OnUIStateChanged;
+        AppModeService.ModeChanged -= OnModeChanged;
     }
 }

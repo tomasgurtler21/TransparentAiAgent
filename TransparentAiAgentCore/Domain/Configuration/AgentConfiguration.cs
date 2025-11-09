@@ -5,6 +5,12 @@ namespace TransparentAiAgentCore.Domain.Configuration;
 public class AgentConfiguration
 {
     public string SystemPrompt { get; set; } = "You are a helpful assistant.";
+
+    /// <summary>
+    /// System prompt used when in Teaching Mode (default: uses SystemPrompt if not specified)
+    /// </summary>
+    public string? TeachingModePrompt { get; set; }
+
     public int ContextWindowSize { get; set; } = 20;
 
     /// <summary>

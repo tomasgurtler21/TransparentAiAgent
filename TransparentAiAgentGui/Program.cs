@@ -237,6 +237,9 @@ builder.Services.AddSingleton<IUIControlService, UIControlService>();  // Single
 builder.Services.AddSingleton<BuiltInUIControlToolRegistry>();
 builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to work with scoped IToolManager
 
+// Register App Mode service (Phase 9d - Teaching Mode System)
+builder.Services.AddScoped<IAppModeService, AppModeService>();  // Scoped to match ConversationManager lifetime
+
 // Register HttpClient for API calls
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:5001") });
 
