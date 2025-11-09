@@ -8,7 +8,8 @@ namespace TransparentAiAgentGui.Services;
 
 /// <summary>
 /// Implementation of UI control service managing UI state and events.
-/// Registered as Scoped service (per SignalR connection).
+/// Registered as Singleton service (shared across all render contexts in the app).
+/// Note: This means UI state is shared app-wide. For multi-user scenarios, this would need to be per-user.
 /// </summary>
 public class UIControlService : IUIControlService
 {

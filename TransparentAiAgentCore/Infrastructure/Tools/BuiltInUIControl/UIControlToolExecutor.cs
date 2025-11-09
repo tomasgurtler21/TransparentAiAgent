@@ -9,7 +9,7 @@ namespace TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
 /// <summary>
 /// Executes built-in UI control tools by routing to IUIControlService.
 /// Parses JSON arguments and converts Result&lt;UIState&gt; to ToolExecutionResult.
-/// Registered as Scoped to share the same IUIControlService instance with UI components.
+/// Registered as Scoped to work with scoped IToolManager (accesses singleton IUIControlService).
 /// </summary>
 public class UIControlToolExecutor : IToolExecutor
 {
@@ -31,7 +31,7 @@ public class UIControlToolExecutor : IToolExecutor
 
     /// <summary>
     /// Executes a UI control tool by routing to the appropriate IUIControlService method.
-    /// Uses the injected scoped IUIControlService instance to support per-connection UI state.
+    /// Uses the injected singleton IUIControlService instance shared across all contexts.
     /// </summary>
     public Task<ToolExecutionResult> ExecuteAsync(
         ITool tool,
