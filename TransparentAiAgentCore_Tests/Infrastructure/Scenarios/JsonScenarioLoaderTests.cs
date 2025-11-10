@@ -296,4 +296,351 @@ public class JsonScenarioLoaderTests
     }
 
     #endregion
+
+    #region Phase 10b: Advanced Step Types Tests
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_ScenarioUserMessage_ParsesCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "scenario_user_message",
+              "content": "Hello, my name is John",
+              "annotation": "The model will remember this for now",
+              "delay": 1000
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "scenario-user-msg.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(1, result.Steps.Count);
+        var step = result.Steps[0];
+        Assert.AreEqual(ScenarioStepType.ScenarioUserMessage, step.Type);
+        Assert.AreEqual("Hello, my name is John", step.Content);
+        Assert.AreEqual("The model will remember this for now", step.Annotation);
+        Assert.AreEqual(1000, step.DelayMs);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_ScenarioSystemMessage_ParsesVisibility()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "scenario_system_message",
+              "content": "Teaching trigger",
+              "visibleTo": "model_only"
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "scenario-sys-msg.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(1, result.Steps.Count);
+        var step = result.Steps[0];
+        Assert.AreEqual(ScenarioStepType.ScenarioSystemMessage, step.Type);
+        Assert.AreEqual("Teaching trigger", step.Content);
+        Assert.AreEqual(MessageVisibility.ModelOnly, step.VisibleTo);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_WaitForCondition_ParsesCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "wait_for_condition",
+              "condition": "response_contains",
+              "parameters": {
+                "keywords": ["don't know", "cannot recall"],
+                "timeout": 30000
+              },
+              "onTimeout": "fail",
+              "annotation": "Waiting for confusion..."
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "wait-condition.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(1, result.Steps.Count);
+        var step = result.Steps[0];
+        Assert.AreEqual(ScenarioStepType.WaitForCondition, step.Type);
+        Assert.AreEqual("response_contains", step.Condition);
+        Assert.IsNotNull(step.ConditionParameters);
+        Assert.AreEqual("fail", step.OnTimeout);
+        Assert.AreEqual("Waiting for confusion...", step.Annotation);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_ApplyConfigOverlay_ParsesOverlay()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "apply_config_overlay",
+              "overlay": {
+                "messageLimit": 10,
+                "systemPromptAddition": "Note: Teaching scenario"
+              },
+              "annotation": "Reducing message limit"
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "apply-overlay.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(1, result.Steps.Count);
+        var step = result.Steps[0];
+        Assert.AreEqual(ScenarioStepType.ApplyConfigOverlay, step.Type);
+        Assert.IsNotNull(step.ConfigOverlay);
+        Assert.AreEqual(2, step.ConfigOverlay.Count);
+        Assert.AreEqual("Reducing message limit", step.Annotation);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_RestoreConfigOverlay_ParsesCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "restore_config_overlay",
+              "annotation": "Message limit restored"
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "restore-overlay.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(1, result.Steps.Count);
+        var step = result.Steps[0];
+        Assert.AreEqual(ScenarioStepType.RestoreConfigOverlay, step.Type);
+        Assert.AreEqual("Message limit restored", step.Annotation);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_DisableEnableUserInput_ParsesCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "disable_user_input"
+            },
+            {
+              "type": "enable_user_input"
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "user-input.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(2, result.Steps.Count);
+        Assert.AreEqual(ScenarioStepType.DisableUserInput, result.Steps[0].Type);
+        Assert.AreEqual(ScenarioStepType.EnableUserInput, result.Steps[1].Type);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_DelayStep_ParsesCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "delay",
+              "delay": 2000,
+              "annotation": "Pausing to let you read"
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "delay.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(1, result.Steps.Count);
+        var step = result.Steps[0];
+        Assert.AreEqual(ScenarioStepType.Delay, step.Type);
+        Assert.AreEqual(2000, step.DelayMs);
+        Assert.AreEqual("Pausing to let you read", step.Annotation);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_UIControlStep_ParsesCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {
+              "type": "ui_control",
+              "tool": "ui_control_context_indicators",
+              "arguments": {
+                "visible": true,
+                "highlighted": true
+              },
+              "annotation": "Highlighting context indicators"
+            }
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "ui-control.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(1, result.Steps.Count);
+        var step = result.Steps[0];
+        Assert.AreEqual(ScenarioStepType.UIControl, step.Type);
+        Assert.AreEqual("ui_control_context_indicators", step.UIControlTool);
+        Assert.IsNotNull(step.UIControlArguments);
+        Assert.AreEqual(true, step.UIControlArguments["visible"]);
+        Assert.AreEqual(true, step.UIControlArguments["highlighted"]);
+        Assert.AreEqual("Highlighting context indicators", step.Annotation);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_AllAdvancedStepTypes_MapsCorrectly()
+    {
+        // Arrange - Test all 9 advanced step types
+        var allAdvancedStepsJson = """
+        {
+          "id": "all-advanced",
+          "name": "All Advanced Steps",
+          "steps": [
+            {"type": "scenario_user_message", "content": "Test"},
+            {"type": "scenario_system_message", "content": "Test"},
+            {"type": "wait_for_condition", "condition": "response_contains"},
+            {"type": "apply_config_overlay"},
+            {"type": "restore_config_overlay"},
+            {"type": "disable_user_input"},
+            {"type": "enable_user_input"},
+            {"type": "delay"},
+            {"type": "ui_control", "tool": "test_tool"}
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "all-advanced.json");
+        await File.WriteAllTextAsync(filePath, allAdvancedStepsJson);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(9, result.Steps.Count);
+        Assert.AreEqual(ScenarioStepType.ScenarioUserMessage, result.Steps[0].Type);
+        Assert.AreEqual(ScenarioStepType.ScenarioSystemMessage, result.Steps[1].Type);
+        Assert.AreEqual(ScenarioStepType.WaitForCondition, result.Steps[2].Type);
+        Assert.AreEqual(ScenarioStepType.ApplyConfigOverlay, result.Steps[3].Type);
+        Assert.AreEqual(ScenarioStepType.RestoreConfigOverlay, result.Steps[4].Type);
+        Assert.AreEqual(ScenarioStepType.DisableUserInput, result.Steps[5].Type);
+        Assert.AreEqual(ScenarioStepType.EnableUserInput, result.Steps[6].Type);
+        Assert.AreEqual(ScenarioStepType.Delay, result.Steps[7].Type);
+        Assert.AreEqual(ScenarioStepType.UIControl, result.Steps[8].Type);
+    }
+
+    [TestMethod]
+    public async Task LoadFromFileAsync_MessageVisibility_AllValues_ParseCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+          "id": "test",
+          "name": "Test",
+          "steps": [
+            {"type": "scenario_system_message", "content": "Model only", "visibleTo": "model_only"},
+            {"type": "scenario_system_message", "content": "User only", "visibleTo": "user_only"},
+            {"type": "scenario_system_message", "content": "Both", "visibleTo": "both"}
+          ]
+        }
+        """;
+        var filePath = Path.Combine(TestDataDirectory, "visibility.json");
+        await File.WriteAllTextAsync(filePath, json);
+        var loader = new JsonScenarioLoader();
+
+        // Act
+        var result = await loader.LoadFromFileAsync(filePath);
+
+        // Assert
+        Assert.AreEqual(3, result.Steps.Count);
+        Assert.AreEqual(MessageVisibility.ModelOnly, result.Steps[0].VisibleTo);
+        Assert.AreEqual(MessageVisibility.UserOnly, result.Steps[1].VisibleTo);
+        Assert.AreEqual(MessageVisibility.Both, result.Steps[2].VisibleTo);
+    }
+
+    #endregion
 }

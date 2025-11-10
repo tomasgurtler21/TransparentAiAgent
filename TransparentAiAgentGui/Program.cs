@@ -251,6 +251,7 @@ builder.Services.AddScoped<IConfigurationOverlay>(sp =>
     var baseConfig = new Dictionary<string, object>();
     return new ConfigurationOverlayService(baseConfig);
 });
+builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddScoped<IScenarioExecutor, ScenarioExecutor>();
 
 // Register HttpClient for API calls

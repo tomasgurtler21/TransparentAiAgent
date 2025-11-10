@@ -113,4 +113,141 @@ public class ScenarioStepTests
         Assert.AreEqual("high", step.ConfigOverlay["transparency.level"]);
         Assert.AreEqual(true, step.ConfigOverlay["teaching.mode"]);
     }
+
+    // Phase 10b: Advanced step type validation tests
+
+    [TestMethod]
+    public void ScenarioStep_WaitForCondition_NullCondition_ThrowsArgumentException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            new ScenarioStep(ScenarioStepType.WaitForCondition, condition: null));
+    }
+
+    [TestMethod]
+    public void ScenarioStep_WaitForCondition_EmptyCondition_ThrowsArgumentException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            new ScenarioStep(ScenarioStepType.WaitForCondition, condition: ""));
+    }
+
+    [TestMethod]
+    public void ScenarioStep_WaitForCondition_ValidCondition_SetsProperty()
+    {
+        // Act
+        var parameters = new Dictionary<string, object> { ["timeout"] = 5000 };
+        var step = new ScenarioStep(
+            ScenarioStepType.WaitForCondition,
+            condition: "response_contains",
+            conditionParameters: parameters);
+
+        // Assert
+        Assert.AreEqual(ScenarioStepType.WaitForCondition, step.Type);
+        Assert.AreEqual("response_contains", step.Condition);
+        Assert.IsNotNull(step.ConditionParameters);
+        Assert.AreEqual(5000, step.ConditionParameters["timeout"]);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_UIControl_NullTool_ThrowsArgumentException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            new ScenarioStep(ScenarioStepType.UIControl, uiControlTool: null));
+    }
+
+    [TestMethod]
+    public void ScenarioStep_UIControl_EmptyTool_ThrowsArgumentException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            new ScenarioStep(ScenarioStepType.UIControl, uiControlTool: ""));
+    }
+
+    [TestMethod]
+    public void ScenarioStep_UIControl_ValidTool_SetsProperties()
+    {
+        // Arrange
+        var arguments = new Dictionary<string, object> { ["visible"] = true };
+
+        // Act
+        var step = new ScenarioStep(
+            ScenarioStepType.UIControl,
+            uiControlTool: "ui_control_context_indicators",
+            uiControlArguments: arguments);
+
+        // Assert
+        Assert.AreEqual(ScenarioStepType.UIControl, step.Type);
+        Assert.AreEqual("ui_control_context_indicators", step.UIControlTool);
+        Assert.IsNotNull(step.UIControlArguments);
+        Assert.AreEqual(true, step.UIControlArguments["visible"]);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_ScenarioUserMessage_WithAnnotation_SetsProperty()
+    {
+        // Act
+        var step = new ScenarioStep(
+            ScenarioStepType.ScenarioUserMessage,
+            content: "Hello",
+            annotation: "This is visible to the user only");
+
+        // Assert
+        Assert.AreEqual("This is visible to the user only", step.Annotation);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_ScenarioSystemMessage_WithVisibility_SetsProperty()
+    {
+        // Act
+        var step = new ScenarioStep(
+            ScenarioStepType.ScenarioSystemMessage,
+            content: "Teaching trigger",
+            visibleTo: MessageVisibility.ModelOnly);
+
+        // Assert
+        Assert.AreEqual(MessageVisibility.ModelOnly, step.VisibleTo);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_OnTimeout_DefaultsToContinue()
+    {
+        // Act
+        var step = new ScenarioStep(
+            ScenarioStepType.WaitForCondition,
+            condition: "response_contains");
+
+        // Assert
+        Assert.AreEqual("continue", step.OnTimeout);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_OnTimeout_CustomValue_SetsProperty()
+    {
+        // Act
+        var step = new ScenarioStep(
+            ScenarioStepType.WaitForCondition,
+            condition: "response_contains",
+            onTimeout: "fail");
+
+        // Assert
+        Assert.AreEqual("fail", step.OnTimeout);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_AdvancedStepTypes_AllowNullContent()
+    {
+        // Act - These step types should not require content
+        var applyOverlay = new ScenarioStep(ScenarioStepType.ApplyConfigOverlay);
+        var restoreOverlay = new ScenarioStep(ScenarioStepType.RestoreConfigOverlay);
+        var disableInput = new ScenarioStep(ScenarioStepType.DisableUserInput);
+        var enableInput = new ScenarioStep(ScenarioStepType.EnableUserInput);
+
+        // Assert - Should not throw
+        Assert.AreEqual(ScenarioStepType.ApplyConfigOverlay, applyOverlay.Type);
+        Assert.AreEqual(ScenarioStepType.RestoreConfigOverlay, restoreOverlay.Type);
+        Assert.AreEqual(ScenarioStepType.DisableUserInput, disableInput.Type);
+        Assert.AreEqual(ScenarioStepType.EnableUserInput, enableInput.Type);
+    }
 }

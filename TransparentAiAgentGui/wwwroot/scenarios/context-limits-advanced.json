@@ -1,0 +1,120 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "context-limits-advanced",
+  "version": "1.0",
+  "name": "Context Limits (Advanced)",
+  "description": "Experience genuine context window truncation",
+  "category": "context-management",
+  "difficulty": "intermediate",
+  "estimatedDurationSeconds": 180,
+  "steps": [
+    {
+      "type": "scenario_system_message",
+      "content": "📚 Starting scenario: Context Limits (Advanced)",
+      "visibleTo": "user_only"
+    },
+    {
+      "type": "apply_config_overlay",
+      "overlay": {
+        "messageLimit": 10,
+        "systemPromptAddition": "Note: You are experiencing a teaching scenario about context windows."
+      },
+      "annotation": "Message limit reduced to 10 to demonstrate truncation."
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "Hi, my name is John Doe.",
+      "annotation": "The model will remember this name... for now.",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "What is my name?",
+      "annotation": "Verifying the model still has the name in context.",
+      "delay": 2000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "Demo message, just respond 'Confirmed'.",
+      "annotation": "Filling context to force truncation...",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "Demo message, just respond 'Confirmed'.",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "Demo message, just respond 'Confirmed'.",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "How many demo messages did I send you?",
+      "annotation": "Testing if model tracked the count.",
+      "delay": 1500
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "What is my name?",
+      "annotation": "The name should now be truncated. Model genuinely won't know.",
+      "delay": 2000
+    },
+    {
+      "type": "wait_for_condition",
+      "condition": "response_contains",
+      "parameters": {
+        "keywords": ["don't know", "not know", "cannot recall", "didn't tell", "haven't told"],
+        "timeout": 30000
+      },
+      "annotation": "Waiting for model to indicate it doesn't know..."
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "How do you not know my name?? I told you it several messages ago! What is going on??",
+      "annotation": "Expressing confusion - this should be a teaching moment.",
+      "delay": 2000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "restore_config_overlay",
+      "annotation": "Message limit restored. Model can now access more context and teach effectively."
+    },
+    {
+      "type": "scenario_system_message",
+      "content": "Scenario 'Context Limits' has ended. The conversation message limit was temporarily reduced to 10 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration",
+      "visibleTo": "model_only"
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "enable_user_input"
+    },
+    {
+      "type": "completion_message",
+      "content": "✅ Scenario complete! The agent has explained context limits. Feel free to continue exploring or select another scenario."
+    }
+  ]
+}
