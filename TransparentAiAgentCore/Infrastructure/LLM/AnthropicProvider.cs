@@ -515,7 +515,21 @@ public class AnthropicProvider : ILLMProvider
         var messages = new List<MessageParam>();
         string? systemPrompt = null;
 
-        // Group consecutive tool result messages into a single user message
+        // FIRST PASS: Collect all tool_use IDs from assistant messages to validate tool_result references
+        var validToolUseIds = new HashSet<string>();
+        foreach (var msg in llmMessages)
+        {
+            if (msg.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) &&
+                msg.ToolCalls != null)
+            {
+                foreach (var toolCall in msg.ToolCalls)
+                {
+                    validToolUseIds.Add(toolCall.Id);
+                }
+            }
+        }
+
+        // SECOND PASS: Convert messages, filtering out orphaned tool results
         var i = 0;
         while (i < llmMessages.Count)
         {
@@ -542,6 +556,18 @@ public class AnthropicProvider : ILLMProvider
                     if (string.IsNullOrEmpty(toolMsg.ToolCallId))
                         throw new ArgumentException("Tool result message must have ToolCallId");
 
+                    // CRITICAL FIX: Skip orphaned tool results (where corresponding tool_use was truncated)
+                    if (!validToolUseIds.Contains(toolMsg.ToolCallId))
+                    {
+                        _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                            Domain.Transparency.TransparencyEventType.Error,
+                            $"Skipping orphaned tool_result with ID '{toolMsg.ToolCallId}' - corresponding tool_use not found in conversation context. " +
+                            $"This typically happens when context truncation removes the assistant message with tool_use but leaves the tool_result.",
+                            "Orphaned Tool Result Filtered"));
+                        i++;
+                        continue;
+                    }
+
                     var toolResultBlock = new ToolResultBlockParam(toolMsg.ToolCallId)
                     {
                         Content = new Anthropic.Client.Models.Messages.ToolResultBlockParamProperties.Content(toolMsg.Content),
@@ -552,14 +578,17 @@ public class AnthropicProvider : ILLMProvider
                     i++;
                 }
 
-                // Create ONE user message with ALL tool results
-                var messageParam = new MessageParam
+                // Only create the user message if we have at least one valid tool result
+                if (toolResultBlocks.Count > 0)
                 {
-                    Role = Role.User,
-                    Content = new Content(toolResultBlocks)
-                };
+                    var messageParam = new MessageParam
+                    {
+                        Role = Role.User,
+                        Content = new Content(toolResultBlocks)
+                    };
 
-                messages.Add(messageParam);
+                    messages.Add(messageParam);
+                }
                 continue;
             }
 
