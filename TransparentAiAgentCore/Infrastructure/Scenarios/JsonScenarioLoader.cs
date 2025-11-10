@@ -142,9 +142,11 @@ public class JsonScenarioLoader
 
     /// <summary>
     /// DTO for scenario step JSON deserialization.
+    /// Supports both basic and advanced (Phase 10b) scenario features.
     /// </summary>
     private class ScenarioStepDto
     {
+        // Basic properties
         [JsonPropertyName("type")]
         public string? Type { get; set; }
 
@@ -154,8 +156,36 @@ public class JsonScenarioLoader
         [JsonPropertyName("delayMs")]
         public int? DelayMs { get; set; }
 
+        [JsonPropertyName("delay")]
+        public int? Delay { get; set; }
+
         [JsonPropertyName("config_overlay")]
         public Dictionary<string, object>? ConfigOverlay { get; set; }
+
+        [JsonPropertyName("overlay")]
+        public Dictionary<string, object>? Overlay { get; set; }
+
+        // Advanced properties (Phase 10b)
+        [JsonPropertyName("annotation")]
+        public string? Annotation { get; set; }
+
+        [JsonPropertyName("visibleTo")]
+        public string? VisibleTo { get; set; }
+
+        [JsonPropertyName("condition")]
+        public string? Condition { get; set; }
+
+        [JsonPropertyName("parameters")]
+        public Dictionary<string, object>? Parameters { get; set; }
+
+        [JsonPropertyName("onTimeout")]
+        public string? OnTimeout { get; set; }
+
+        [JsonPropertyName("tool")]
+        public string? Tool { get; set; }
+
+        [JsonPropertyName("arguments")]
+        public Dictionary<string, object>? Arguments { get; set; }
 
         public ScenarioStep ToScenarioStep()
         {
@@ -166,14 +196,50 @@ public class JsonScenarioLoader
                 "wait_for_response" => ScenarioStepType.WaitForResponse,
                 "agent_prompt" => ScenarioStepType.AgentPrompt,
                 "completion_message" => ScenarioStepType.CompletionMessage,
+                // Advanced step types (Phase 10b)
+                "scenario_user_message" => ScenarioStepType.ScenarioUserMessage,
+                "scenario_system_message" => ScenarioStepType.ScenarioSystemMessage,
+                "wait_for_condition" => ScenarioStepType.WaitForCondition,
+                "apply_config_overlay" => ScenarioStepType.ApplyConfigOverlay,
+                "restore_config_overlay" => ScenarioStepType.RestoreConfigOverlay,
+                "disable_user_input" => ScenarioStepType.DisableUserInput,
+                "enable_user_input" => ScenarioStepType.EnableUserInput,
+                "delay" => ScenarioStepType.Delay,
+                "ui_control" => ScenarioStepType.UIControl,
                 _ => throw new ArgumentException($"Unknown scenario step type: {Type}")
             };
+
+            // Parse MessageVisibility
+            MessageVisibility? visibleTo = null;
+            if (!string.IsNullOrWhiteSpace(VisibleTo))
+            {
+                visibleTo = VisibleTo.ToLowerInvariant() switch
+                {
+                    "model_only" => MessageVisibility.ModelOnly,
+                    "user_only" => MessageVisibility.UserOnly,
+                    "both" => MessageVisibility.Both,
+                    _ => throw new ArgumentException($"Unknown visibility type: {VisibleTo}")
+                };
+            }
+
+            // Support both "delay" and "delayMs" for flexibility
+            var delayMsValue = DelayMs ?? Delay ?? 0;
+
+            // Support both "overlay" and "config_overlay" for flexibility
+            var configOverlayValue = ConfigOverlay ?? Overlay;
 
             return new ScenarioStep(
                 type: stepType,
                 content: Content,
-                delayMs: DelayMs ?? 0,
-                configOverlay: ConfigOverlay
+                delayMs: delayMsValue,
+                configOverlay: configOverlayValue,
+                annotation: Annotation,
+                visibleTo: visibleTo,
+                condition: Condition,
+                conditionParameters: Parameters,
+                onTimeout: OnTimeout,
+                uiControlTool: Tool,
+                uiControlArguments: Arguments
             );
         }
     }
