@@ -112,7 +112,7 @@ public class AppModeService : IAppModeService
 
     private string GetTeachingModePrompt()
     {
-        // Return configured teaching mode prompt, or fall back to normal prompt if not configured
-        return _appConfiguration.Agent.TeachingModePrompt ?? _appConfiguration.Agent.SystemPrompt;
+        // Use hardcoded teaching mode prompt (not user-configurable for security)
+        return TeachingModeConstants.TEACHING_MODE_SYSTEM_PROMPT;
     }
 }
