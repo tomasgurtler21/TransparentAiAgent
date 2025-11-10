@@ -198,19 +198,6 @@ public class ScenarioStepTests
     }
 
     [TestMethod]
-    public void ScenarioStep_ScenarioSystemMessage_WithVisibility_SetsProperty()
-    {
-        // Act
-        var step = new ScenarioStep(
-            ScenarioStepType.ScenarioSystemMessage,
-            content: "Teaching trigger",
-            visibleTo: MessageVisibility.ModelOnly);
-
-        // Assert
-        Assert.AreEqual(MessageVisibility.ModelOnly, step.VisibleTo);
-    }
-
-    [TestMethod]
     public void ScenarioStep_OnTimeout_DefaultsToContinue()
     {
         // Act

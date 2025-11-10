@@ -19,8 +19,22 @@ public class ConversationUIService : IConversationUIService
     private readonly HashSet<string> _pendingAutoMessages = new();
     private readonly object _autoMessageLock = new();
     private bool _isScenarioStreaming = false;
+    private string? _nextAutoMessageAnnotation = null;
+    private readonly object _annotationLock = new();
+    private readonly object _messagesLock = new();
 
-    public IReadOnlyList<UIMessage> Messages => _messages.AsReadOnly();
+    // Return a snapshot copy to prevent collection modification exceptions during enumeration
+    public IReadOnlyList<UIMessage> Messages
+    {
+        get
+        {
+            lock (_messagesLock)
+            {
+                return _messages.ToList();
+            }
+        }
+    }
+
     public bool IsProcessing => _isProcessing;
 
     public event EventHandler? MessagesChanged;
@@ -44,6 +58,9 @@ public class ConversationUIService : IConversationUIService
 
         // Subscribe to scenario streaming events for real-time UI updates
         _scenarioExecutor.StreamingUpdate += OnScenarioStreamingUpdate;
+
+        // Subscribe to scenario step events for tracking annotations
+        _scenarioExecutor.StepExecuted += OnScenarioStepExecuted;
 
         // Load existing messages if any
         RefreshMessages();
@@ -105,7 +122,24 @@ public class ConversationUIService : IConversationUIService
                 ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext,
                 IsAutoMessage = isAutoMessage
             };
-            _messages.Add(userMessage);
+
+            // Attach annotation if this is an auto-message with pending annotation
+            if (isAutoMessage)
+            {
+                lock (_annotationLock)
+                {
+                    if (_nextAutoMessageAnnotation != null)
+                    {
+                        userMessage.Annotation = _nextAutoMessageAnnotation;
+                        _nextAutoMessageAnnotation = null;
+                    }
+                }
+            }
+
+            lock (_messagesLock)
+            {
+                _messages.Add(userMessage);
+            }
             OnMessagesChanged();
 
             // Create streaming assistant message placeholder
@@ -121,6 +155,10 @@ public class ConversationUIService : IConversationUIService
             lock (_streamingLock)
             {
                 _currentStreamingMessage = streamingMessage;
+            }
+
+            lock (_messagesLock)
+            {
                 _messages.Add(streamingMessage);
             }
 
@@ -220,15 +258,19 @@ public class ConversationUIService : IConversationUIService
     public async Task ClearConversationAsync()
     {
         _conversationManager.ClearConversation();
-        _messages.Clear();
+        lock (_messagesLock)
+        {
+            _messages.Clear();
+        }
         OnMessagesChanged();
         await Task.CompletedTask;
     }
 
     private void RefreshMessages()
     {
-        _messages.Clear();
         var domainMessages = _conversationManager.GetAllMessages();
+        var newMessages = new List<UIMessage>();
+
         foreach (var domainMessage in domainMessages)
         {
             var uiMessage = UIMessage.FromDomainMessage(domainMessage);
@@ -246,7 +288,13 @@ public class ConversationUIService : IConversationUIService
                 }
             }
 
-            _messages.Add(uiMessage);
+            newMessages.Add(uiMessage);
+        }
+
+        lock (_messagesLock)
+        {
+            _messages.Clear();
+            _messages.AddRange(newMessages);
         }
         OnMessagesChanged();
     }
@@ -304,7 +352,11 @@ public class ConversationUIService : IConversationUIService
                 };
 
                 _currentStreamingMessage = streamingMessage;
-                _messages.Add(streamingMessage);
+
+                lock (_messagesLock)
+                {
+                    _messages.Add(streamingMessage);
+                }
                 OnMessagesChanged();
             }
 
@@ -329,6 +381,21 @@ public class ConversationUIService : IConversationUIService
                 _currentStreamingMessage = null;
                 SetProcessing(false);
                 RefreshMessages();
+            }
+        }
+    }
+
+    private void OnScenarioStepExecuted(object? sender, ScenarioStepEventArgs e)
+    {
+        var step = e.Step;
+
+        // For scenario user messages with annotations, track the annotation for the next auto-message
+        if (step.Type == TransparentAiAgentCore.Domain.Scenarios.ScenarioStepType.ScenarioUserMessage &&
+            !string.IsNullOrWhiteSpace(step.Annotation))
+        {
+            lock (_annotationLock)
+            {
+                _nextAutoMessageAnnotation = step.Annotation;
             }
         }
     }

@@ -195,10 +195,8 @@ public class JsonScenarioLoader
                 "auto_message" => ScenarioStepType.AutoMessage,
                 "wait_for_response" => ScenarioStepType.WaitForResponse,
                 "agent_prompt" => ScenarioStepType.AgentPrompt,
-                "completion_message" => ScenarioStepType.CompletionMessage,
                 // Advanced step types (Phase 10b)
                 "scenario_user_message" => ScenarioStepType.ScenarioUserMessage,
-                "scenario_system_message" => ScenarioStepType.ScenarioSystemMessage,
                 "wait_for_condition" => ScenarioStepType.WaitForCondition,
                 "apply_config_overlay" => ScenarioStepType.ApplyConfigOverlay,
                 "restore_config_overlay" => ScenarioStepType.RestoreConfigOverlay,

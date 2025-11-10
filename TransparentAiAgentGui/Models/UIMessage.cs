@@ -26,6 +26,12 @@ public class UIMessage
     public bool IsAutoMessage { get; set; }
 
     /// <summary>
+    /// Annotation text for scenario messages (visible to user, explains what's happening).
+    /// This is UI-only metadata, never sent to the LLM.
+    /// </summary>
+    public string? Annotation { get; set; }
+
+    /// <summary>
     /// Represents a single tool call in the UI
     /// </summary>
     public class UIToolCall

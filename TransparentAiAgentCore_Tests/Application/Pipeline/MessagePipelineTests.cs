@@ -236,6 +236,79 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             Assert.AreEqual("Hi there!", llmMessages[2].Content);
         }
 
+        [TestMethod]
+        public void ConvertToLLMMessages_EmptyAssistantMessageAsFinal_Included()
+        {
+            // Empty assistant message as the final message is valid per Anthropic API
+            var messages = new List<IMessage>
+            {
+                new UserMessage("Hello"),
+                new AssistantMessage("")
+            };
+
+            var llmMessages = _pipeline.ConvertToLLMMessages(messages);
+
+            Assert.AreEqual(2, llmMessages.Count);
+            Assert.AreEqual("user", llmMessages[0].Role);
+            Assert.AreEqual("assistant", llmMessages[1].Role);
+            Assert.AreEqual("", llmMessages[1].Content);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessages_EmptyAssistantMessageNotFinal_Filtered()
+        {
+            // Empty assistant message followed by user message should be filtered
+            // This prevents "messages must have non-empty content except for optional final assistant message" error
+            var messages = new List<IMessage>
+            {
+                new UserMessage("Hello"),
+                new AssistantMessage("Hi!"),
+                new UserMessage("How are you?"),
+                new AssistantMessage(""), // Empty, not final - should be filtered
+                new UserMessage("Are you there?")
+            };
+
+            var llmMessages = _pipeline.ConvertToLLMMessages(messages);
+
+            // Should have 4 messages (empty assistant message filtered out)
+            Assert.AreEqual(4, llmMessages.Count);
+            Assert.AreEqual("user", llmMessages[0].Role);
+            Assert.AreEqual("Hello", llmMessages[0].Content);
+            Assert.AreEqual("assistant", llmMessages[1].Role);
+            Assert.AreEqual("Hi!", llmMessages[1].Content);
+            Assert.AreEqual("user", llmMessages[2].Role);
+            Assert.AreEqual("How are you?", llmMessages[2].Content);
+            Assert.AreEqual("user", llmMessages[3].Role);
+            Assert.AreEqual("Are you there?", llmMessages[3].Content);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessages_EmptyAssistantToolCallMessage_NotFiltered()
+        {
+            // AssistantToolCallMessage with empty content is valid (has tool calls)
+            // Should not be filtered even if not final
+            var messages = new List<IMessage>
+            {
+                new UserMessage("Get weather"),
+                new AssistantToolCallMessage("", new List<ToolCall>
+                {
+                    new ToolCall("c1", "get_weather", "{}")
+                }),
+                new ToolResultMessage("c1", "get_weather", "{\"temp\":20}", true),
+                new AssistantMessage("It's 20°C")
+            };
+
+            var llmMessages = _pipeline.ConvertToLLMMessages(messages);
+
+            Assert.AreEqual(4, llmMessages.Count);
+            Assert.AreEqual("user", llmMessages[0].Role);
+            Assert.AreEqual("assistant", llmMessages[1].Role);
+            Assert.AreEqual("", llmMessages[1].Content); // Empty but has tool calls
+            Assert.IsNotNull(llmMessages[1].ToolCalls);
+            Assert.AreEqual("tool", llmMessages[2].Role);
+            Assert.AreEqual("assistant", llmMessages[3].Role);
+        }
+
         #endregion
 
         #region ConvertToDomainMessage Tests

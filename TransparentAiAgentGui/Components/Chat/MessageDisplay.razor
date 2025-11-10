@@ -77,6 +77,15 @@
             @Message.Content
         }
     </div>
+
+    @* Display annotation if present *@
+    @if (!string.IsNullOrWhiteSpace(Message.Annotation))
+    {
+        <div class="message-annotation">
+            <span class="annotation-icon">💡</span>
+            <span class="annotation-text">@Message.Annotation</span>
+        </div>
+    }
 </div>
 
 @code {

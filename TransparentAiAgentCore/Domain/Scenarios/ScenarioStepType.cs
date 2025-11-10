@@ -18,28 +18,17 @@ public enum ScenarioStepType
     WaitForResponse,
 
     /// <summary>
-    /// Sends a hidden teaching trigger to the agent (system message).
+    /// Sends a system message to the agent (visible to both user and LLM for transparency).
     /// </summary>
     AgentPrompt,
-
-    /// <summary>
-    /// Shows a completion message/banner to the user.
-    /// </summary>
-    CompletionMessage,
 
     // Advanced Step Types (Phase 10b)
 
     /// <summary>
-    /// Sends a user-like message with annotation (advanced scenarios).
-    /// Annotation shown to observer, hidden from model.
+    /// Sends a user-like message with optional annotation (advanced scenarios).
+    /// Annotation is UI-only hint, not sent to LLM.
     /// </summary>
     ScenarioUserMessage,
-
-    /// <summary>
-    /// Sends a system message with visibility control (advanced scenarios).
-    /// Can be visible to model only, user only, or both.
-    /// </summary>
-    ScenarioSystemMessage,
 
     /// <summary>
     /// Waits until a specific condition is met (advanced scenarios).

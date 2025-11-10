@@ -142,17 +142,9 @@ public class ScenarioExecutor : IScenarioExecutor
                     await ExecuteAgentPromptStepAsync(step, cancellationToken);
                     break;
 
-                case ScenarioStepType.CompletionMessage:
-                    // CompletionMessage doesn't need to do anything - it's handled by ScenarioCompleted event
-                    break;
-
                 // Advanced step types (Phase 10b)
                 case ScenarioStepType.ScenarioUserMessage:
                     await ExecuteScenarioUserMessageStepAsync(step, cancellationToken);
-                    break;
-
-                case ScenarioStepType.ScenarioSystemMessage:
-                    await ExecuteScenarioSystemMessageStepAsync(step, cancellationToken);
                     break;
 
                 case ScenarioStepType.WaitForCondition:
@@ -265,26 +257,6 @@ public class ScenarioExecutor : IScenarioExecutor
         // ScenarioUserMessage behaves like AutoMessage but with annotation support
         // The annotation is handled by the UI layer
         await ExecuteAutoMessageStepAsync(step, cancellationToken);
-    }
-
-    private Task ExecuteScenarioSystemMessageStepAsync(ScenarioStep step, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(step.Content))
-            return Task.CompletedTask;
-
-        var visibleTo = step.VisibleTo ?? MessageVisibility.Both;
-
-        // If visible to model (ModelOnly or Both), add to conversation
-        if (visibleTo == MessageVisibility.ModelOnly || visibleTo == MessageVisibility.Both)
-        {
-            var systemMessage = new SystemMessage(step.Content);
-            _orchestrator.ConversationManager.AddMessage(systemMessage);
-        }
-
-        // If visible to user (UserOnly or Both), it will be displayed by UI layer
-        // The UI layer checks step.VisibleTo and renders accordingly
-
-        return Task.CompletedTask;
     }
 
     private async Task ExecuteWaitForConditionStepAsync(ScenarioStep step, CancellationToken cancellationToken)

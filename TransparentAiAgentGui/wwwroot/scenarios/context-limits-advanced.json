@@ -9,11 +9,6 @@
   "estimatedDurationSeconds": 180,
   "steps": [
     {
-      "type": "scenario_system_message",
-      "content": "📚 Starting scenario: Context Limits (Advanced)",
-      "visibleTo": "user_only"
-    },
-    {
       "type": "apply_config_overlay",
       "overlay": {
         "messageLimit": 10,
@@ -96,19 +91,14 @@
       "annotation": "Message limit restored. Model can now access more context and teach effectively."
     },
     {
-      "type": "scenario_system_message",
-      "content": "Scenario 'Context Limits' has ended. The conversation message limit was temporarily reduced to 10 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration",
-      "visibleTo": "model_only"
+      "type": "scenario_user_message",
+      "content": "Scenario 'Context Limits' has ended. The conversation message limit was temporarily reduced to 10 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration"
     },
     {
       "type": "wait_for_response"
     },
     {
       "type": "enable_user_input"
-    },
-    {
-      "type": "completion_message",
-      "content": "✅ Scenario complete! The agent has explained context limits. Feel free to continue exploring or select another scenario."
     }
   ]
 }

@@ -45,10 +45,6 @@
     },
     {
       "type": "wait_for_response"
-    },
-    {
-      "type": "completion_message",
-      "content": "✅ Demo Complete: Understanding Context Limits\n\nYou now understand how context windows work and why transparent AI agents show you context status. Feel free to continue the conversation or explore other features!"
     }
   ]
 }
