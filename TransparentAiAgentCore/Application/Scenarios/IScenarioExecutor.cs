@@ -49,6 +49,12 @@ public interface IScenarioExecutor
     event EventHandler<AutoMessageSentEventArgs>? AutoMessageSent;
 
     /// <summary>
+    /// Event fired when a streaming update occurs during scenario execution.
+    /// Allows UI to update in real-time as messages stream.
+    /// </summary>
+    event EventHandler<ScenarioStreamingUpdateEventArgs>? StreamingUpdate;
+
+    /// <summary>
     /// Starts executing a scenario.
     /// </summary>
     /// <param name="scenario">The scenario to execute.</param>
@@ -106,5 +112,20 @@ public class AutoMessageSentEventArgs : EventArgs
     {
         MessageContent = messageContent;
         SentAt = sentAt;
+    }
+}
+
+/// <summary>
+/// Event args for scenario streaming update events.
+/// </summary>
+public class ScenarioStreamingUpdateEventArgs : EventArgs
+{
+    public string ContentDelta { get; }
+    public bool IsComplete { get; }
+
+    public ScenarioStreamingUpdateEventArgs(string contentDelta, bool isComplete)
+    {
+        ContentDelta = contentDelta;
+        IsComplete = isComplete;
     }
 }

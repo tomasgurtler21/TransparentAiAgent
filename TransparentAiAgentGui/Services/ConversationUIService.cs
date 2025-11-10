@@ -18,6 +18,7 @@ public class ConversationUIService : IConversationUIService
     private readonly object _streamingLock = new();
     private readonly HashSet<string> _pendingAutoMessages = new();
     private readonly object _autoMessageLock = new();
+    private bool _isScenarioStreaming = false;
 
     public IReadOnlyList<UIMessage> Messages => _messages.AsReadOnly();
     public bool IsProcessing => _isProcessing;
@@ -40,6 +41,9 @@ public class ConversationUIService : IConversationUIService
 
         // Subscribe to scenario auto-message events
         _scenarioExecutor.AutoMessageSent += OnAutoMessageSent;
+
+        // Subscribe to scenario streaming events for real-time UI updates
+        _scenarioExecutor.StreamingUpdate += OnScenarioStreamingUpdate;
 
         // Load existing messages if any
         RefreshMessages();
@@ -273,6 +277,59 @@ public class ConversationUIService : IConversationUIService
         lock (_autoMessageLock)
         {
             _pendingAutoMessages.Add(e.MessageContent);
+        }
+    }
+
+    private void OnScenarioStreamingUpdate(object? sender, ScenarioStreamingUpdateEventArgs e)
+    {
+        lock (_streamingLock)
+        {
+            // If this is the first chunk of a scenario streaming session, set up the messages
+            if (!_isScenarioStreaming)
+            {
+                _isScenarioStreaming = true;
+                SetProcessing(true);
+
+                // Refresh to get the user message that was added by orchestrator
+                RefreshMessages();
+
+                // Create streaming assistant message placeholder
+                var streamingMessage = new UIMessage
+                {
+                    Id = Guid.NewGuid(),
+                    Role = TransparentAiAgentCore.Domain.Enums.MessageRole.Assistant,
+                    Content = string.Empty,
+                    Timestamp = DateTime.UtcNow,
+                    ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext
+                };
+
+                _currentStreamingMessage = streamingMessage;
+                _messages.Add(streamingMessage);
+                OnMessagesChanged();
+            }
+
+            // Update current streaming message with content delta
+            if (_currentStreamingMessage != null && !string.IsNullOrEmpty(e.ContentDelta))
+            {
+                _currentStreamingMessage.Content += e.ContentDelta;
+
+                // Fire event to notify UI of streaming update
+                StreamingMessageUpdated?.Invoke(this, new StreamingMessageUpdate
+                {
+                    MessageId = _currentStreamingMessage.Id,
+                    Content = _currentStreamingMessage.Content,
+                    IsComplete = e.IsComplete
+                });
+            }
+
+            // If streaming is complete, finalize the message
+            if (e.IsComplete)
+            {
+                _isScenarioStreaming = false;
+                _currentStreamingMessage = null;
+                SetProcessing(false);
+                RefreshMessages();
+            }
         }
     }
 }

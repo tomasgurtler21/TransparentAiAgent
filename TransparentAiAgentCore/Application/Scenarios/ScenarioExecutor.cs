@@ -31,6 +31,7 @@ public class ScenarioExecutor : IScenarioExecutor
     public event EventHandler<ScenarioExecutionEventArgs>? ScenarioFailed;
     public event EventHandler<ScenarioStepEventArgs>? StepExecuted;
     public event EventHandler<AutoMessageSentEventArgs>? AutoMessageSent;
+    public event EventHandler<ScenarioStreamingUpdateEventArgs>? StreamingUpdate;
 
     public async Task ExecuteScenarioAsync(ScenarioDefinition scenario, CancellationToken cancellationToken = default)
     {
@@ -158,7 +159,11 @@ public class ScenarioExecutor : IScenarioExecutor
         // Process the user input through the orchestrator (streaming)
         await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(step.Content, cancellationToken))
         {
-            // Just consume the chunks - the orchestrator handles adding messages to conversation
+            // Forward streaming chunks as events for UI to consume
+            StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
+                chunk.ContentDeltaSafe,
+                chunk.IsComplete));
+
             if (chunk.IsComplete)
                 break;
         }
