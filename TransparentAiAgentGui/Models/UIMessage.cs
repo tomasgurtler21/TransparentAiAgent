@@ -4,22 +4,6 @@ using TransparentAiAgentCore.Domain.Models;
 namespace TransparentAiAgentGui.Models;
 
 /// <summary>
-/// Visibility scope for scenario system messages
-/// </summary>
-public enum ScenarioMessageVisibility
-{
-    /// <summary>
-    /// Message visible only to user (not in LLM context)
-    /// </summary>
-    UserOnly,
-
-    /// <summary>
-    /// Message visible to both user and LLM
-    /// </summary>
-    Both
-}
-
-/// <summary>
 /// View model for displaying messages in UI
 /// </summary>
 public class UIMessage
@@ -42,19 +26,10 @@ public class UIMessage
     public bool IsAutoMessage { get; set; }
 
     /// <summary>
-    /// Annotation text for scenario messages (visible to user, explains what's happening)
+    /// Annotation text for scenario messages (visible to user, explains what's happening).
+    /// This is UI-only metadata, never sent to the LLM.
     /// </summary>
     public string? Annotation { get; set; }
-
-    /// <summary>
-    /// Indicates this is a scenario-generated system message (not from conversation history)
-    /// </summary>
-    public bool IsScenarioSystemMessage { get; set; }
-
-    /// <summary>
-    /// Indicates visibility scope for scenario system messages
-    /// </summary>
-    public ScenarioMessageVisibility? ScenarioVisibility { get; set; }
 
     /// <summary>
     /// Represents a single tool call in the UI

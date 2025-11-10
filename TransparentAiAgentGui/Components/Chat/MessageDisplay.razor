@@ -19,17 +19,6 @@
         {
             <span class="auto-message-indicator" title="Auto-sent by scenario">🎬</span>
         }
-        @if (Message.IsScenarioSystemMessage)
-        {
-            @if (Message.ScenarioVisibility == Models.ScenarioMessageVisibility.UserOnly)
-            {
-                <span class="scenario-visibility-indicator" title="Visible to user only (not in LLM context)">👁️</span>
-            }
-            else
-            {
-                <span class="scenario-visibility-indicator" title="Visible to both user and LLM">👁️🤖</span>
-            }
-        }
         @if (_uiState.ContextIndicators.Visible)
         {
             <span class="message-context-status @(_uiState.ContextIndicators.Highlighted ? "highlighted" : "")">

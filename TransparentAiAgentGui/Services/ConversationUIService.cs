@@ -19,7 +19,7 @@ public class ConversationUIService : IConversationUIService
     private readonly HashSet<string> _pendingAutoMessages = new();
     private readonly object _autoMessageLock = new();
     private bool _isScenarioStreaming = false;
-    private readonly Dictionary<string, string> _pendingAnnotations = new();
+    private string? _nextAutoMessageAnnotation = null;
     private readonly object _annotationLock = new();
 
     public IReadOnlyList<UIMessage> Messages => _messages.AsReadOnly();
@@ -47,7 +47,7 @@ public class ConversationUIService : IConversationUIService
         // Subscribe to scenario streaming events for real-time UI updates
         _scenarioExecutor.StreamingUpdate += OnScenarioStreamingUpdate;
 
-        // Subscribe to scenario step events for handling annotations and UI-only messages
+        // Subscribe to scenario step events for tracking annotations
         _scenarioExecutor.StepExecuted += OnScenarioStepExecuted;
 
         // Load existing messages if any
@@ -110,6 +110,20 @@ public class ConversationUIService : IConversationUIService
                 ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext,
                 IsAutoMessage = isAutoMessage
             };
+
+            // Attach annotation if this is an auto-message with pending annotation
+            if (isAutoMessage)
+            {
+                lock (_annotationLock)
+                {
+                    if (_nextAutoMessageAnnotation != null)
+                    {
+                        userMessage.Annotation = _nextAutoMessageAnnotation;
+                        _nextAutoMessageAnnotation = null;
+                    }
+                }
+            }
+
             _messages.Add(userMessage);
             OnMessagesChanged();
 
@@ -251,16 +265,6 @@ public class ConversationUIService : IConversationUIService
                 }
             }
 
-            // Check if this message has a pending annotation
-            lock (_annotationLock)
-            {
-                if (_pendingAnnotations.TryGetValue(uiMessage.Content, out var annotation))
-                {
-                    uiMessage.Annotation = annotation;
-                    _pendingAnnotations.Remove(uiMessage.Content);
-                }
-            }
-
             _messages.Add(uiMessage);
         }
         OnMessagesChanged();
@@ -352,43 +356,13 @@ public class ConversationUIService : IConversationUIService
     {
         var step = e.Step;
 
-        // Handle scenario system messages with user_only visibility
-        if (step.Type == TransparentAiAgentCore.Domain.Scenarios.ScenarioStepType.ScenarioSystemMessage)
-        {
-            var visibleTo = step.VisibleTo ?? TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.Both;
-
-            // If visible to user (UserOnly or Both), add it to UI messages
-            if (visibleTo == TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.UserOnly ||
-                visibleTo == TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.Both)
-            {
-                var uiMessage = new UIMessage
-                {
-                    Id = Guid.NewGuid(),
-                    Role = TransparentAiAgentCore.Domain.Enums.MessageRole.System,
-                    Content = step.Content ?? string.Empty,
-                    Timestamp = DateTime.UtcNow,
-                    ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext,
-                    IsScenarioSystemMessage = true,
-                    ScenarioVisibility = visibleTo == TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.UserOnly
-                        ? ScenarioMessageVisibility.UserOnly
-                        : ScenarioMessageVisibility.Both,
-                    Annotation = step.Annotation
-                };
-
-                _messages.Add(uiMessage);
-                OnMessagesChanged();
-            }
-        }
-
-        // Handle annotations for scenario user messages
+        // For scenario user messages with annotations, track the annotation for the next auto-message
         if (step.Type == TransparentAiAgentCore.Domain.Scenarios.ScenarioStepType.ScenarioUserMessage &&
-            !string.IsNullOrWhiteSpace(step.Annotation) &&
-            !string.IsNullOrWhiteSpace(step.Content))
+            !string.IsNullOrWhiteSpace(step.Annotation))
         {
             lock (_annotationLock)
             {
-                // Track annotation for this message content
-                _pendingAnnotations[step.Content] = step.Annotation;
+                _nextAutoMessageAnnotation = step.Annotation;
             }
         }
     }
