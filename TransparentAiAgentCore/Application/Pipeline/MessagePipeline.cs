@@ -44,7 +44,28 @@ public class MessagePipeline : IMessagePipeline
         if (messages == null)
             throw new ArgumentNullException(nameof(messages));
 
-        return messages.Select(ConvertToLLMMessage).ToList();
+        var messageList = messages.ToList();
+        var llmMessages = new List<LLMMessage>();
+
+        for (int i = 0; i < messageList.Count; i++)
+        {
+            var message = messageList[i];
+            var isLastMessage = (i == messageList.Count - 1);
+
+            // Filter out empty assistant messages that are NOT the final message
+            // Per Anthropic API: "all messages must have non-empty content except for the optional final assistant message"
+            if (message is AssistantMessage assistantMsg &&
+                string.IsNullOrEmpty(assistantMsg.Content) &&
+                !isLastMessage)
+            {
+                // Skip this empty assistant message as it's not the final message
+                continue;
+            }
+
+            llmMessages.Add(ConvertToLLMMessage(message));
+        }
+
+        return llmMessages;
     }
 
     public IMessage ConvertToDomainMessage(LLMResponse response)
