@@ -352,13 +352,13 @@ public class ConversationUIService : IConversationUIService
                 };
 
                 _currentStreamingMessage = streamingMessage;
-            }
 
-            lock (_messagesLock)
-            {
-                _messages.Add(streamingMessage);
+                lock (_messagesLock)
+                {
+                    _messages.Add(streamingMessage);
+                }
+                OnMessagesChanged();
             }
-            OnMessagesChanged();
 
             // Update current streaming message with content delta
             if (_currentStreamingMessage != null && !string.IsNullOrEmpty(e.ContentDelta))
