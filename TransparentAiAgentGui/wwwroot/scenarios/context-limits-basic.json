@@ -1,51 +1,54 @@
 {
-  "id": "context-limits-basic",
+  "id": "context-limits-demo",
   "name": "Understanding Context Limits",
-  "description": "Learn about context windows, token limits, and how AI agents manage conversation history.",
+  "description": "Learn about context windows and how AI agents manage conversation history",
   "category": "basics",
   "difficulty": "beginner",
-  "estimatedDurationSeconds": 150,
+  "estimatedDurationSeconds": 180,
   "steps": [
     {
       "type": "auto_message",
-      "content": "Let's talk about context limits - one of the most important concepts in understanding AI agent behavior!",
+      "content": "Let's explore context limits - a fundamental concept in AI agents. Context limits determine how much conversation history I can remember at once.",
       "delayMs": 1000
     },
     {
+      "type": "wait_for_response"
+    },
+    {
       "type": "auto_message",
-      "content": "AI language models have a 'context window' - a limit on how much text they can process at once. This affects how much conversation history I can remember.",
+      "content": "AI models have a 'context window' - a limit on how much text they can process. Think of it like working memory: I can only hold so many messages before older ones start to fade.",
       "delayMs": 2000
     },
     {
       "type": "wait_for_response"
     },
     {
-      "type": "agent_prompt",
-      "content": "Explain what a context window is in simple terms. Discuss tokens, typical context window sizes (e.g., 8K, 32K, 200K tokens), and why this limit exists. Use an analogy to make it easier to understand."
-    },
-    {
       "type": "auto_message",
-      "content": "When the context limit is reached, the agent must decide what to keep and what to forget. Different strategies include:\n- Sliding window (keep recent messages)\n- Summary-based (summarize old messages)\n- Important message retention (keep critical context)",
-      "delayMs": 1500
+      "content": "When we reach the context limit, the system must decide what to keep and what to forget. Usually, we keep recent messages and the system prompt, but let older messages drop out.",
+      "delayMs": 2000
     },
     {
       "type": "wait_for_response"
     },
     {
-      "type": "agent_prompt",
-      "content": "Explain why context management is particularly important in transparent AI systems. How does transparency help users understand when context limits are affecting agent behavior?"
+      "type": "auto_message",
+      "content": "This transparent agent shows you which messages are in my active context (✅) and which have been truncated (⚠️). You can see exactly what I can 'remember' at any moment.",
+      "delayMs": 2000
+    },
+    {
+      "type": "wait_for_response"
     },
     {
       "type": "auto_message",
-      "content": "In this transparent agent:\n- You can see the current context usage\n- The system shows which messages are in/out of context\n- Context management decisions are visible and auditable",
-      "delayMs": 1000
+      "content": "Why is transparency about context important? Because if I seem to 'forget' something you told me earlier, you can check if that message has been truncated from my context window.",
+      "delayMs": 2000
     },
     {
       "type": "wait_for_response"
     },
     {
       "type": "completion_message",
-      "content": "Perfect! You now understand context limits and how transparent agents help you track context usage. This knowledge will help you use AI agents more effectively!"
+      "content": "✅ Demo Complete: Understanding Context Limits\n\nYou now understand how context windows work and why transparent AI agents show you context status. Feel free to continue the conversation or explore other features!"
     }
   ]
 }
