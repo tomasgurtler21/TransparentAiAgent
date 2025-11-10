@@ -43,7 +43,7 @@
 }
 
 /* Tool-specific and scenario styling */
-.tool-indicator, .tool-result-indicator, .auto-message-indicator, .scenario-visibility-indicator {
+.tool-indicator, .tool-result-indicator, .auto-message-indicator {
     font-size: 1rem;
 }
 
