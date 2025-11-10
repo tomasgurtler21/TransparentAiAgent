@@ -139,14 +139,26 @@
                ScenarioExecutor.CurrentScenario?.Id == scenarioId;
     }
 
-    private async Task StartScenario(ScenarioDefinition scenario)
+    private void StartScenario(ScenarioDefinition scenario)
     {
         if (ScenarioExecutor.IsExecuting)
         {
             ScenarioExecutor.StopScenario();
         }
 
-        await ScenarioExecutor.ExecuteScenarioAsync(scenario, CancellationToken.None);
+        // Fire-and-forget: Let scenario run in background without blocking UI
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ScenarioExecutor.ExecuteScenarioAsync(scenario, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't propagate to UI thread
+                Console.WriteLine($"Scenario execution failed: {ex.Message}");
+            }
+        });
     }
 
     private string FormatDuration(int seconds)

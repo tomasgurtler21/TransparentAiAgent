@@ -80,13 +80,7 @@
       "delay": 2000
     },
     {
-      "type": "wait_for_condition",
-      "condition": "response_contains",
-      "parameters": {
-        "keywords": ["don't know", "not know", "cannot recall", "didn't tell", "haven't told"],
-        "timeout": 30000
-      },
-      "annotation": "Waiting for model to indicate it doesn't know..."
+      "type": "wait_for_response"
     },
     {
       "type": "scenario_user_message",
