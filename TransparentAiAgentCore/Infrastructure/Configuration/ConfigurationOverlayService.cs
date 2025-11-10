@@ -1,4 +1,5 @@
 using TransparentAiAgentCore.Domain.Configuration;
+using System.Text.Json;
 
 namespace TransparentAiAgentCore.Infrastructure.Configuration;
 
@@ -148,6 +149,7 @@ public class ConfigurationOverlayService : IConfigurationOverlay
 
     /// <summary>
     /// Converts a value to the requested type with proper null handling.
+    /// Handles JsonElement values from JSON deserialization.
     /// </summary>
     private T? ConvertValue<T>(object value)
     {
@@ -159,6 +161,13 @@ public class ConfigurationOverlayService : IConfigurationOverlay
             // Handle direct type match
             if (value is T typedValue)
                 return typedValue;
+
+            // Handle JsonElement (from JSON deserialization)
+            if (value is JsonElement jsonElement)
+            {
+                // Deserialize JsonElement to target type
+                return jsonElement.Deserialize<T>();
+            }
 
             // Handle convertible types
             if (value is IConvertible)
