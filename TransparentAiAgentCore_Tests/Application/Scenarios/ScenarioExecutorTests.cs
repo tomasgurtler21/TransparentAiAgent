@@ -15,6 +15,7 @@ public class ScenarioExecutorTests
     private Mock<IAgentOrchestrator> _mockOrchestrator = null!;
     private Mock<IConfigurationOverlay> _mockConfigOverlay = null!;
     private Mock<IConversationManager> _mockConversationManager = null!;
+    private Mock<IConditionEvaluator> _mockConditionEvaluator = null!;
 
     [TestInitialize]
     public void Setup()
@@ -22,6 +23,7 @@ public class ScenarioExecutorTests
         _mockOrchestrator = new Mock<IAgentOrchestrator>();
         _mockConfigOverlay = new Mock<IConfigurationOverlay>();
         _mockConversationManager = new Mock<IConversationManager>();
+        _mockConditionEvaluator = new Mock<IConditionEvaluator>();
 
         // Setup orchestrator to return conversation manager
         _mockOrchestrator.Setup(o => o.ConversationManager).Returns(_mockConversationManager.Object);
@@ -47,7 +49,10 @@ public class ScenarioExecutorTests
 
     private ScenarioExecutor CreateExecutor()
     {
-        return new ScenarioExecutor(_mockOrchestrator.Object, _mockConfigOverlay.Object);
+        return new ScenarioExecutor(
+            _mockOrchestrator.Object,
+            _mockConfigOverlay.Object,
+            _mockConditionEvaluator.Object);
     }
 
     [TestMethod]
