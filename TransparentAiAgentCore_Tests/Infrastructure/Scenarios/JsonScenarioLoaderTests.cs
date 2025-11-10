@@ -170,7 +170,7 @@ public class JsonScenarioLoaderTests
     [TestMethod]
     public async Task LoadFromFileAsync_AllStepTypes_MapsCorrectly()
     {
-        // Arrange - Test all 4 step types
+        // Arrange - Test all 3 basic step types
         var allStepTypesJson = """
         {
           "id": "all-steps",
@@ -186,10 +186,6 @@ public class JsonScenarioLoaderTests
             {
               "type": "agent_prompt",
               "content": "Agent prompt"
-            },
-            {
-              "type": "completion_message",
-              "content": "Completion"
             }
           ]
         }
@@ -202,11 +198,10 @@ public class JsonScenarioLoaderTests
         var result = await loader.LoadFromFileAsync(filePath);
 
         // Assert
-        Assert.AreEqual(4, result.Steps.Count);
+        Assert.AreEqual(3, result.Steps.Count);
         Assert.AreEqual(ScenarioStepType.AutoMessage, result.Steps[0].Type);
         Assert.AreEqual(ScenarioStepType.WaitForResponse, result.Steps[1].Type);
         Assert.AreEqual(ScenarioStepType.AgentPrompt, result.Steps[2].Type);
-        Assert.AreEqual(ScenarioStepType.CompletionMessage, result.Steps[3].Type);
     }
 
     #endregion
@@ -331,38 +326,6 @@ public class JsonScenarioLoaderTests
         Assert.AreEqual("Hello, my name is John", step.Content);
         Assert.AreEqual("The model will remember this for now", step.Annotation);
         Assert.AreEqual(1000, step.DelayMs);
-    }
-
-    [TestMethod]
-    public async Task LoadFromFileAsync_ScenarioSystemMessage_ParsesVisibility()
-    {
-        // Arrange
-        var json = """
-        {
-          "id": "test",
-          "name": "Test",
-          "steps": [
-            {
-              "type": "scenario_system_message",
-              "content": "Teaching trigger",
-              "visibleTo": "model_only"
-            }
-          ]
-        }
-        """;
-        var filePath = Path.Combine(TestDataDirectory, "scenario-sys-msg.json");
-        await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
-
-        // Act
-        var result = await loader.LoadFromFileAsync(filePath);
-
-        // Assert
-        Assert.AreEqual(1, result.Steps.Count);
-        var step = result.Steps[0];
-        Assert.AreEqual(ScenarioStepType.ScenarioSystemMessage, step.Type);
-        Assert.AreEqual("Teaching trigger", step.Content);
-        Assert.AreEqual(MessageVisibility.ModelOnly, step.VisibleTo);
     }
 
     [TestMethod]
@@ -575,14 +538,13 @@ public class JsonScenarioLoaderTests
     [TestMethod]
     public async Task LoadFromFileAsync_AllAdvancedStepTypes_MapsCorrectly()
     {
-        // Arrange - Test all 9 advanced step types
+        // Arrange - Test all 8 advanced step types
         var allAdvancedStepsJson = """
         {
           "id": "all-advanced",
           "name": "All Advanced Steps",
           "steps": [
             {"type": "scenario_user_message", "content": "Test"},
-            {"type": "scenario_system_message", "content": "Test"},
             {"type": "wait_for_condition", "condition": "response_contains"},
             {"type": "apply_config_overlay"},
             {"type": "restore_config_overlay"},
@@ -601,16 +563,15 @@ public class JsonScenarioLoaderTests
         var result = await loader.LoadFromFileAsync(filePath);
 
         // Assert
-        Assert.AreEqual(9, result.Steps.Count);
+        Assert.AreEqual(8, result.Steps.Count);
         Assert.AreEqual(ScenarioStepType.ScenarioUserMessage, result.Steps[0].Type);
-        Assert.AreEqual(ScenarioStepType.ScenarioSystemMessage, result.Steps[1].Type);
-        Assert.AreEqual(ScenarioStepType.WaitForCondition, result.Steps[2].Type);
-        Assert.AreEqual(ScenarioStepType.ApplyConfigOverlay, result.Steps[3].Type);
-        Assert.AreEqual(ScenarioStepType.RestoreConfigOverlay, result.Steps[4].Type);
-        Assert.AreEqual(ScenarioStepType.DisableUserInput, result.Steps[5].Type);
-        Assert.AreEqual(ScenarioStepType.EnableUserInput, result.Steps[6].Type);
-        Assert.AreEqual(ScenarioStepType.Delay, result.Steps[7].Type);
-        Assert.AreEqual(ScenarioStepType.UIControl, result.Steps[8].Type);
+        Assert.AreEqual(ScenarioStepType.WaitForCondition, result.Steps[1].Type);
+        Assert.AreEqual(ScenarioStepType.ApplyConfigOverlay, result.Steps[2].Type);
+        Assert.AreEqual(ScenarioStepType.RestoreConfigOverlay, result.Steps[3].Type);
+        Assert.AreEqual(ScenarioStepType.DisableUserInput, result.Steps[4].Type);
+        Assert.AreEqual(ScenarioStepType.EnableUserInput, result.Steps[5].Type);
+        Assert.AreEqual(ScenarioStepType.Delay, result.Steps[6].Type);
+        Assert.AreEqual(ScenarioStepType.UIControl, result.Steps[7].Type);
     }
 
     [TestMethod]
