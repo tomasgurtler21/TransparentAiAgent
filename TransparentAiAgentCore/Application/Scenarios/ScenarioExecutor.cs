@@ -364,7 +364,7 @@ public class ScenarioExecutor : IScenarioExecutor
         await Task.Delay(duration, cancellationToken);
     }
 
-    private async Task ExecuteUIControlStepAsync(ScenarioStep step, CancellationToken cancellationToken)
+    private Task ExecuteUIControlStepAsync(ScenarioStep step, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(step.UIControlTool))
             throw new InvalidOperationException("UIControlTool is required for UIControl step");

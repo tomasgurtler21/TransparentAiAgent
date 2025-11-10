@@ -38,7 +38,7 @@ public class ConditionEvaluator : IConditionEvaluator
         };
     }
 
-    private async Task<bool> EvaluateResponseContainsAsync(
+    private Task<bool> EvaluateResponseContainsAsync(
         IReadOnlyDictionary<string, object> parameters,
         CancellationToken cancellationToken)
     {
@@ -60,22 +60,22 @@ public class ConditionEvaluator : IConditionEvaluator
         // Check if the last assistant message contains any of the keywords
         var messages = _orchestrator.ConversationManager.GetAllMessages();
         if (messages.Count == 0)
-            return false;
+            return Task.FromResult(false);
 
         var lastMessage = messages[messages.Count - 1];
         if (lastMessage.Role != MessageRole.Assistant)
-            return false;
+            return Task.FromResult(false);
 
-        var content = lastMessage.GetContentAsString()?.ToLowerInvariant() ?? string.Empty;
+        var content = lastMessage.Content?.ToLowerInvariant() ?? string.Empty;
 
         // Check if any keyword is present in the content
         foreach (var keyword in keywords)
         {
             if (content.Contains(keyword.ToLowerInvariant()))
-                return true;
+                return Task.FromResult(true);
         }
 
-        return false;
+        return Task.FromResult(false);
     }
 
     private Task<bool> EvaluateMessageCountAsync(
