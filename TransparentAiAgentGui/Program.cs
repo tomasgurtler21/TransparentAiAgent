@@ -98,7 +98,8 @@ builder.Services.AddScoped<IConversationManager>(sp =>
 {
     var config = sp.GetRequiredService<AppConfiguration>();
     var transparencyService = sp.GetRequiredService<ITransparencyService>();
-    return new ConversationManager(config.Agent.ContextWindowSize, transparencyService);
+    var configurationOverlay = sp.GetRequiredService<IConfigurationOverlay>();
+    return new ConversationManager(config.Agent.ContextWindowSize, transparencyService, configurationOverlay);
 });
 
 // Register Tool services (if tools are enabled)

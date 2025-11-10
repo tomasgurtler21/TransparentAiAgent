@@ -119,8 +119,13 @@ public class ScenarioExecutor : IScenarioExecutor
 
     private async Task ExecuteStepAsync(ScenarioStep step, ScenarioDefinition scenario, int stepIndex, CancellationToken cancellationToken)
     {
-        // Apply config overlay if present
-        if (step.ConfigOverlay != null && step.ConfigOverlay.Count > 0)
+        // For ApplyConfigOverlay and RestoreConfigOverlay steps, don't use the wrapper push/pop
+        // They manage overlays explicitly and permanently until restore is called
+        bool isOverlayManagementStep = step.Type == ScenarioStepType.ApplyConfigOverlay
+                                        || step.Type == ScenarioStepType.RestoreConfigOverlay;
+
+        // Apply config overlay if present (but not for overlay management steps)
+        if (!isOverlayManagementStep && step.ConfigOverlay != null && step.ConfigOverlay.Count > 0)
         {
             _configurationOverlay.PushOverlay(step.ConfigOverlay);
         }
@@ -181,8 +186,8 @@ public class ScenarioExecutor : IScenarioExecutor
         }
         finally
         {
-            // Remove config overlay if we pushed one
-            if (step.ConfigOverlay != null && step.ConfigOverlay.Count > 0)
+            // Remove config overlay if we pushed one (but not for overlay management steps)
+            if (!isOverlayManagementStep && step.ConfigOverlay != null && step.ConfigOverlay.Count > 0)
             {
                 _configurationOverlay.PopOverlay();
             }

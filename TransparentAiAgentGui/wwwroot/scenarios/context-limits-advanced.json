@@ -11,7 +11,7 @@
     {
       "type": "apply_config_overlay",
       "overlay": {
-        "messageLimit": 10,
+        "messageLimit": 8,
         "systemPromptAddition": "Note: You are experiencing a teaching scenario about context windows."
       },
       "annotation": "Message limit reduced to 10 to demonstrate truncation."
@@ -96,9 +96,6 @@
     },
     {
       "type": "wait_for_response"
-    },
-    {
-      "type": "enable_user_input"
     }
   ]
 }
