@@ -21,8 +21,20 @@ public class ConversationUIService : IConversationUIService
     private bool _isScenarioStreaming = false;
     private string? _nextAutoMessageAnnotation = null;
     private readonly object _annotationLock = new();
+    private readonly object _messagesLock = new();
 
-    public IReadOnlyList<UIMessage> Messages => _messages.AsReadOnly();
+    // Return a snapshot copy to prevent collection modification exceptions during enumeration
+    public IReadOnlyList<UIMessage> Messages
+    {
+        get
+        {
+            lock (_messagesLock)
+            {
+                return _messages.ToList();
+            }
+        }
+    }
+
     public bool IsProcessing => _isProcessing;
 
     public event EventHandler? MessagesChanged;
@@ -124,7 +136,10 @@ public class ConversationUIService : IConversationUIService
                 }
             }
 
-            _messages.Add(userMessage);
+            lock (_messagesLock)
+            {
+                _messages.Add(userMessage);
+            }
             OnMessagesChanged();
 
             // Create streaming assistant message placeholder
@@ -140,6 +155,10 @@ public class ConversationUIService : IConversationUIService
             lock (_streamingLock)
             {
                 _currentStreamingMessage = streamingMessage;
+            }
+
+            lock (_messagesLock)
+            {
                 _messages.Add(streamingMessage);
             }
 
@@ -239,15 +258,19 @@ public class ConversationUIService : IConversationUIService
     public async Task ClearConversationAsync()
     {
         _conversationManager.ClearConversation();
-        _messages.Clear();
+        lock (_messagesLock)
+        {
+            _messages.Clear();
+        }
         OnMessagesChanged();
         await Task.CompletedTask;
     }
 
     private void RefreshMessages()
     {
-        _messages.Clear();
         var domainMessages = _conversationManager.GetAllMessages();
+        var newMessages = new List<UIMessage>();
+
         foreach (var domainMessage in domainMessages)
         {
             var uiMessage = UIMessage.FromDomainMessage(domainMessage);
@@ -265,7 +288,13 @@ public class ConversationUIService : IConversationUIService
                 }
             }
 
-            _messages.Add(uiMessage);
+            newMessages.Add(uiMessage);
+        }
+
+        lock (_messagesLock)
+        {
+            _messages.Clear();
+            _messages.AddRange(newMessages);
         }
         OnMessagesChanged();
     }
@@ -323,9 +352,13 @@ public class ConversationUIService : IConversationUIService
                 };
 
                 _currentStreamingMessage = streamingMessage;
-                _messages.Add(streamingMessage);
-                OnMessagesChanged();
             }
+
+            lock (_messagesLock)
+            {
+                _messages.Add(streamingMessage);
+            }
+            OnMessagesChanged();
 
             // Update current streaming message with content delta
             if (_currentStreamingMessage != null && !string.IsNullOrEmpty(e.ContentDelta))
