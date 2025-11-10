@@ -2,6 +2,7 @@ using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Domain.Enums;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Domain.Transparency;
+using TransparentAiAgentCore.Domain.Configuration;
 
 namespace TransparentAiAgentCore.Application.Conversation;
 
@@ -13,6 +14,7 @@ public class ConversationManager : IConversationManager
     private readonly List<IMessage> _messages = new();
     private readonly object _lock = new();
     private readonly ITransparencyService _transparencyService;
+    private readonly IConfigurationOverlay? _configurationOverlay;
 
     public Guid ConversationId { get; }
     public int ContextWindowSize { get; private set; }
@@ -22,7 +24,8 @@ public class ConversationManager : IConversationManager
 
     public ConversationManager(
         int contextWindowSize,
-        ITransparencyService transparencyService)
+        ITransparencyService transparencyService,
+        IConfigurationOverlay? configurationOverlay = null)
     {
         if (contextWindowSize <= 0)
             throw new ArgumentOutOfRangeException(
@@ -31,6 +34,8 @@ public class ConversationManager : IConversationManager
 
         _transparencyService = transparencyService
             ?? throw new ArgumentNullException(nameof(transparencyService));
+
+        _configurationOverlay = configurationOverlay;
 
         ConversationId = Guid.NewGuid();
         ContextWindowSize = contextWindowSize;
@@ -143,15 +148,26 @@ public class ConversationManager : IConversationManager
     /// </summary>
     private void TruncateIfNeeded()
     {
+        // Get effective context window size from overlay or use default
+        var effectiveWindowSize = ContextWindowSize;
+        if (_configurationOverlay != null)
+        {
+            effectiveWindowSize = _configurationOverlay.GetValue("messageLimit", ContextWindowSize);
+            if (effectiveWindowSize != ContextWindowSize)
+            {
+                LogEvent("EffectiveContextWindowSize", $"Using overlay messageLimit: {effectiveWindowSize} (base: {ContextWindowSize})");
+            }
+        }
+
         var inContextMessages = _messages
             .Where(m => m.ContextStatus == MessageContextStatus.InContext)
             .ToList();
 
-        if (inContextMessages.Count <= ContextWindowSize)
+        if (inContextMessages.Count <= effectiveWindowSize)
             return; // No truncation needed
 
         // How many messages to truncate
-        int toTruncate = inContextMessages.Count - ContextWindowSize;
+        int toTruncate = inContextMessages.Count - effectiveWindowSize;
 
         // Get messages to truncate (oldest first, but prefer non-system messages)
         var messagesToTruncate = inContextMessages
@@ -173,7 +189,7 @@ public class ConversationManager : IConversationManager
             LogEvent("MessageTruncated", $"Message {message.Id} truncated from context");
         }
 
-        LogEvent("ContextTruncated", $"{toTruncate} messages truncated. In context: {InContextMessageCount}/{ContextWindowSize}");
+        LogEvent("ContextTruncated", $"{toTruncate} messages truncated. In context: {InContextMessageCount}/{effectiveWindowSize}");
     }
 
     private void LogEvent(string eventType, string details)

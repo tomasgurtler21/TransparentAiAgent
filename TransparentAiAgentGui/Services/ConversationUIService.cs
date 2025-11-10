@@ -22,6 +22,7 @@ public class ConversationUIService : IConversationUIService
     private string? _nextAutoMessageAnnotation = null;
     private readonly object _annotationLock = new();
     private readonly object _messagesLock = new();
+    private readonly Dictionary<string, string> _contentToAnnotation = new(); // Maps message content to annotation
 
     // Return a snapshot copy to prevent collection modification exceptions during enumeration
     public IReadOnlyList<UIMessage> Messages
@@ -131,6 +132,8 @@ public class ConversationUIService : IConversationUIService
                     if (_nextAutoMessageAnnotation != null)
                     {
                         userMessage.Annotation = _nextAutoMessageAnnotation;
+                        // Store annotation by content for persistence across RefreshMessages
+                        _contentToAnnotation[content] = _nextAutoMessageAnnotation;
                         _nextAutoMessageAnnotation = null;
                     }
                 }
@@ -262,6 +265,14 @@ public class ConversationUIService : IConversationUIService
         {
             _messages.Clear();
         }
+        lock (_annotationLock)
+        {
+            _contentToAnnotation.Clear();
+        }
+        lock (_autoMessageLock)
+        {
+            _pendingAutoMessages.Clear();
+        }
         OnMessagesChanged();
         await Task.CompletedTask;
     }
@@ -284,6 +295,15 @@ public class ConversationUIService : IConversationUIService
                     {
                         uiMessage.IsAutoMessage = true;
                         _pendingAutoMessages.Remove(uiMessage.Content);
+                    }
+                }
+
+                // Restore annotation if one exists for this content
+                lock (_annotationLock)
+                {
+                    if (_contentToAnnotation.TryGetValue(uiMessage.Content, out var annotation))
+                    {
+                        uiMessage.Annotation = annotation;
                     }
                 }
             }
