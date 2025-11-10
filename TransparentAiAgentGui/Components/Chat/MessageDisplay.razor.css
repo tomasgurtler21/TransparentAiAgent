@@ -42,8 +42,8 @@
     word-wrap: break-word;
 }
 
-/* Tool-specific styling */
-.tool-indicator, .tool-result-indicator, .auto-message-indicator {
+/* Tool-specific and scenario styling */
+.tool-indicator, .tool-result-indicator, .auto-message-indicator, .scenario-visibility-indicator {
     font-size: 1rem;
 }
 
@@ -63,4 +63,28 @@
     border-radius: 4px;
     margin: 6px 0;
     font-weight: 500;
+}
+
+/* Annotation styling */
+.message-annotation {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: #fffbf0;
+    border-left: 3px solid #ffc107;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #856404;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.annotation-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.annotation-text {
+    flex: 1;
+    font-style: italic;
 }

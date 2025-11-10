@@ -19,6 +19,17 @@
         {
             <span class="auto-message-indicator" title="Auto-sent by scenario">🎬</span>
         }
+        @if (Message.IsScenarioSystemMessage)
+        {
+            @if (Message.ScenarioVisibility == Models.ScenarioMessageVisibility.UserOnly)
+            {
+                <span class="scenario-visibility-indicator" title="Visible to user only (not in LLM context)">👁️</span>
+            }
+            else
+            {
+                <span class="scenario-visibility-indicator" title="Visible to both user and LLM">👁️🤖</span>
+            }
+        }
         @if (_uiState.ContextIndicators.Visible)
         {
             <span class="message-context-status @(_uiState.ContextIndicators.Highlighted ? "highlighted" : "")">
@@ -77,6 +88,15 @@
             @Message.Content
         }
     </div>
+
+    @* Display annotation if present *@
+    @if (!string.IsNullOrWhiteSpace(Message.Annotation))
+    {
+        <div class="message-annotation">
+            <span class="annotation-icon">💡</span>
+            <span class="annotation-text">@Message.Annotation</span>
+        </div>
+    }
 </div>
 
 @code {

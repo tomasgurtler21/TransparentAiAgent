@@ -19,6 +19,8 @@ public class ConversationUIService : IConversationUIService
     private readonly HashSet<string> _pendingAutoMessages = new();
     private readonly object _autoMessageLock = new();
     private bool _isScenarioStreaming = false;
+    private readonly Dictionary<string, string> _pendingAnnotations = new();
+    private readonly object _annotationLock = new();
 
     public IReadOnlyList<UIMessage> Messages => _messages.AsReadOnly();
     public bool IsProcessing => _isProcessing;
@@ -44,6 +46,9 @@ public class ConversationUIService : IConversationUIService
 
         // Subscribe to scenario streaming events for real-time UI updates
         _scenarioExecutor.StreamingUpdate += OnScenarioStreamingUpdate;
+
+        // Subscribe to scenario step events for handling annotations and UI-only messages
+        _scenarioExecutor.StepExecuted += OnScenarioStepExecuted;
 
         // Load existing messages if any
         RefreshMessages();
@@ -246,6 +251,16 @@ public class ConversationUIService : IConversationUIService
                 }
             }
 
+            // Check if this message has a pending annotation
+            lock (_annotationLock)
+            {
+                if (_pendingAnnotations.TryGetValue(uiMessage.Content, out var annotation))
+                {
+                    uiMessage.Annotation = annotation;
+                    _pendingAnnotations.Remove(uiMessage.Content);
+                }
+            }
+
             _messages.Add(uiMessage);
         }
         OnMessagesChanged();
@@ -329,6 +344,51 @@ public class ConversationUIService : IConversationUIService
                 _currentStreamingMessage = null;
                 SetProcessing(false);
                 RefreshMessages();
+            }
+        }
+    }
+
+    private void OnScenarioStepExecuted(object? sender, ScenarioStepEventArgs e)
+    {
+        var step = e.Step;
+
+        // Handle scenario system messages with user_only visibility
+        if (step.Type == TransparentAiAgentCore.Domain.Scenarios.ScenarioStepType.ScenarioSystemMessage)
+        {
+            var visibleTo = step.VisibleTo ?? TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.Both;
+
+            // If visible to user (UserOnly or Both), add it to UI messages
+            if (visibleTo == TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.UserOnly ||
+                visibleTo == TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.Both)
+            {
+                var uiMessage = new UIMessage
+                {
+                    Id = Guid.NewGuid(),
+                    Role = TransparentAiAgentCore.Domain.Enums.MessageRole.System,
+                    Content = step.Content ?? string.Empty,
+                    Timestamp = DateTime.UtcNow,
+                    ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext,
+                    IsScenarioSystemMessage = true,
+                    ScenarioVisibility = visibleTo == TransparentAiAgentCore.Domain.Scenarios.MessageVisibility.UserOnly
+                        ? ScenarioMessageVisibility.UserOnly
+                        : ScenarioMessageVisibility.Both,
+                    Annotation = step.Annotation
+                };
+
+                _messages.Add(uiMessage);
+                OnMessagesChanged();
+            }
+        }
+
+        // Handle annotations for scenario user messages
+        if (step.Type == TransparentAiAgentCore.Domain.Scenarios.ScenarioStepType.ScenarioUserMessage &&
+            !string.IsNullOrWhiteSpace(step.Annotation) &&
+            !string.IsNullOrWhiteSpace(step.Content))
+        {
+            lock (_annotationLock)
+            {
+                // Track annotation for this message content
+                _pendingAnnotations[step.Content] = step.Annotation;
             }
         }
     }
