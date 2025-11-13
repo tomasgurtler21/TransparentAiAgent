@@ -57,8 +57,7 @@ When refactoring existing code with valid logic:
 1. Run all existing tests
 2. Document any failing tests
 3. Fix any existing test failures
-4. Commit baseline state
-5. Create implementation branch
+4. Document baseline state
 
 **Verification**:
 ```bash
@@ -68,8 +67,6 @@ dotnet test TransparentAiAgentCore_Tests
 
 **Exit Criteria**:
 - ✅ All existing tests pass (100%)
-- ✅ Clean git state
-- ✅ Implementation branch created
 - ✅ Baseline documented
 
 **Rollback**: N/A (baseline)
@@ -1303,7 +1300,7 @@ dotnet test
 - ✅ No compilation errors
 - ✅ All tests pass
 
-**Rollback**: Restore deleted files from git
+**Rollback**: Restore deleted files from backup/version control
 
 ---
 
