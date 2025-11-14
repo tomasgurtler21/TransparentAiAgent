@@ -259,9 +259,24 @@ public class ScenarioExecutor : IScenarioExecutor
         if (string.IsNullOrWhiteSpace(step.Content))
             return;
 
-        // ScenarioUserMessage behaves like AutoMessage but with annotation support
-        // The annotation is handled by the UI layer
-        await ExecuteAutoMessageStepAsync(step, cancellationToken);
+        // Create a ScenarioUserMessage with annotation support
+        // This uses the proper ApplicationMessage routing through ProcessApplicationMessageAsync
+        var scenarioMessage = new ScenarioUserMessage(step.Content, step.Annotation);
+
+        // Process through the application message pipeline (not user input pipeline)
+        await foreach (var chunk in _orchestrator.ProcessApplicationMessageAsync(scenarioMessage, cancellationToken))
+        {
+            // Forward streaming chunks as events for UI to consume
+            StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
+                chunk.ContentDeltaSafe,
+                chunk.IsComplete));
+
+            if (chunk.IsComplete)
+                break;
+        }
+
+        // Fire event to notify that an auto-message was sent
+        AutoMessageSent?.Invoke(this, new AutoMessageSentEventArgs(step.Content, DateTime.UtcNow));
     }
 
     private async Task ExecuteWaitForConditionStepAsync(ScenarioStep step, CancellationToken cancellationToken)
