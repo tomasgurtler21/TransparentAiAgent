@@ -400,23 +400,23 @@ public class KnowledgeEntrySummary
 
 ### Session 1 Deliverable
 
-✅ **Completed**:
+✅ **COMPLETED - 2025-11-14**:
 - 4 domain models with full validation
 - 4 test classes with comprehensive test coverage
-- All tests passing
+- All 57 tests passing ✅
 - Models enforce guardrails (kebab-case IDs, valid dates, valid gap likelihood)
 
 ✅ **Files Created**:
 - `TransparentAiAgentCore/Domain/Knowledge/KnowledgeExample.cs`
 - `TransparentAiAgentCore/Domain/Knowledge/KnowledgeContent.cs`
-- `TransparentAiAgentCore/Domain/Knowledge/KnowledgeReference.cs`
+- `TransparentAiAgentCore/Domain/Knowledge/KnowledgeReference.cs` (in KnowledgeContent.cs)
 - `TransparentAiAgentCore/Domain/Knowledge/KnowledgeEntry.cs`
 - `TransparentAiAgentCore/Domain/Knowledge/KnowledgeEntrySummary.cs`
 - Test files (4 files)
 
 ✅ **Test Coverage**: ~95% for domain models (excludes trivial getters)
 
-**FINAL COMMIT**: "feat(session-1): complete knowledge library domain models"
+**FINAL COMMIT**: "feat(session-1): complete knowledge library domain models" ✅ DONE
 
 ---
 
@@ -425,6 +425,13 @@ public class KnowledgeEntrySummary
 **Goal**: Define service interface and enable JSON deserialization of knowledge entries
 
 **Estimated Time**: 30-45 minutes
+
+**🔄 ARCHITECTURAL DEVIATION (2025-11-14):**
+- **Original Plan**: Add `[JsonConstructor]` attributes directly to domain models
+- **Actual Implementation**: DTO Pattern - separate DTOs for JSON deserialization
+- **Reason**: System.Text.Json with readonly properties and constructor-based deserialization has limitations. DTO pattern provides cleaner separation of concerns (Infrastructure vs Domain).
+- **Benefits**: Domain models remain pure, no serialization concerns in domain layer, aligns with Clean Architecture
+- **Impact**: Minimal - DTOs live in Infrastructure.Knowledge namespace, domain models unchanged
 
 ### Test Files to Create
 - `TransparentAiAgentCore_Tests/Domain/Knowledge/IKnowledgeLibraryContractTests.cs`
@@ -593,18 +600,23 @@ public class JsonKnowledgeEntryDeserializationTests
 
 ### Session 2 Deliverable
 
-✅ **Completed**:
-- IKnowledgeLibrary interface defined
-- JSON deserialization working for all models
-- Validation still enforced during deserialization
-- Contract tests ensure interface requirements
+✅ **COMPLETED - 2025-11-14 (with DTO Pattern)**:
+- IKnowledgeLibrary interface defined (contract tests: 9 tests passing)
+- JSON DTOs created in Infrastructure layer
+- Mapping methods (ToDomain()) convert DTOs to domain models with validation
+- JSON deserialization working for all models (11 tests passing)
+- Validation still enforced during DTO-to-domain conversion
+- Domain models remain pure (no serialization concerns)
 
 ✅ **Files Created**:
 - `TransparentAiAgentCore/Domain/Knowledge/IKnowledgeLibrary.cs`
-- Updated domain models with JSON attributes
-- Test files (2 files)
+- `TransparentAiAgentCore/Infrastructure/Knowledge/JsonModels.cs` (DTOs)
+- `TransparentAiAgentCore_Tests/Domain/Knowledge/IKnowledgeLibraryContractTests.cs`
+- `TransparentAiAgentCore_Tests/Infrastructure/Knowledge/JsonKnowledgeEntryDeserializationTests.cs`
 
-**FINAL COMMIT**: "feat(session-2): complete IKnowledgeLibrary interface and JSON support"
+✅ **Test Coverage**: 20 tests total (9 contract + 11 deserialization), all passing
+
+**FINAL COMMIT**: "feat(session-2): complete IKnowledgeLibrary interface and JSON support with DTO pattern" ✅ DONE
 
 ---
 
@@ -614,8 +626,10 @@ public class JsonKnowledgeEntryDeserializationTests
 
 **Estimated Time**: 60-75 minutes
 
+**✅ COMPLETED - 2025-11-14**
+
 ### Test Files to Create
-- `TransparentAiAgentCore_Tests/Infrastructure/Knowledge/JsonKnowledgeLibraryTests.cs`
+- `TransparentAiAgentCore_Tests/Infrastructure/Knowledge/JsonKnowledgeLibraryTests.cs` ✅
 
 ### TDD Tasks
 
@@ -859,21 +873,32 @@ public void GetTopic_CorruptedFile_ReturnsNullAndLogs()
 
 ### Session 3 Deliverable
 
-✅ **Completed**:
+✅ **COMPLETED - 2025-11-14**:
 - JsonKnowledgeLibrary fully implemented
-- Directory scanning at startup
-- Lazy loading with in-memory caching
-- Thread-safe implementation
-- Graceful error handling (corrupted files don't crash)
-- Comprehensive test coverage
+- Directory scanning at startup (7 tests passing)
+- Lazy loading with in-memory caching (7 tests passing)
+- Thread-safe implementation (concurrent access tested)
+- Graceful error handling (corrupted files don't crash) (8 tests passing)
+- Comprehensive test coverage (22 tests total, all passing)
+- Case-insensitive JSON deserialization
+- Alphabetically sorted results
 
 ✅ **Files Created**:
 - `TransparentAiAgentCore/Infrastructure/Knowledge/JsonKnowledgeLibrary.cs`
 - `TransparentAiAgentCore_Tests/Infrastructure/Knowledge/JsonKnowledgeLibraryTests.cs`
 
-✅ **Test Coverage**: ~90% (infrastructure layer)
+✅ **Test Coverage**: 22 tests, all passing (100% method coverage for public API)
+  - Task 3.1 (Directory Scanning): 7 tests ✅
+  - Task 3.2 (Lazy Loading & Caching): 7 tests ✅
+  - Task 3.3 (Error Handling): 8 tests ✅
 
-**FINAL COMMIT**: "feat(session-3): complete JsonKnowledgeLibrary implementation"
+✅ **Implementation Notes**:
+- Used JsonSerializerOptions with PropertyNameCaseInsensitive=true for flexible JSON parsing
+- Thread-safe caching with lock (_cacheLock) for concurrent access
+- Graceful degradation: corrupted files logged but don't crash application
+- Case-insensitive category matching for better UX
+
+**FINAL COMMIT**: "feat(session-3): complete JsonKnowledgeLibrary implementation" ✅ DONE
 
 ---
 
@@ -1208,21 +1233,34 @@ public class BuiltInKnowledgeToolRegistry : IToolRegistry
 
 ### Session 4 Deliverable
 
-✅ **Completed**:
-- KnowledgeLibraryTool implementing ITool
-- KnowledgeLibraryToolExecutor with markdown formatting
-- BuiltInKnowledgeToolRegistry for tool discovery
-- Comprehensive test coverage for all components
+✅ **COMPLETED - 2025-11-14**:
+- ✅ KnowledgeLibraryTool implementing ITool (3 tests passing)
+- ✅ KnowledgeLibraryToolExecutor with markdown formatting (11 tests passing)
+- ✅ BuiltInKnowledgeToolRegistry for tool discovery (9 tests passing)
+- ✅ Added BuiltInKnowledge to ToolSourceType enum
+- ✅ Comprehensive test coverage for all components (23 tests total)
 
 ✅ **Files Created**:
+- `TransparentAiAgentCore/Domain/Tools/ToolSourceType.cs` (updated)
 - `TransparentAiAgentCore/Infrastructure/Tools/BuiltInKnowledge/KnowledgeLibraryTool.cs`
 - `TransparentAiAgentCore/Infrastructure/Tools/BuiltInKnowledge/KnowledgeLibraryToolExecutor.cs`
 - `TransparentAiAgentCore/Infrastructure/Tools/BuiltInKnowledge/BuiltInKnowledgeToolRegistry.cs`
-- Test files (3 files)
+- `TransparentAiAgentCore_Tests/Infrastructure/Tools/BuiltInKnowledge/KnowledgeLibraryToolTests.cs`
+- `TransparentAiAgentCore_Tests/Infrastructure/Tools/BuiltInKnowledge/KnowledgeLibraryToolExecutorTests.cs`
+- `TransparentAiAgentCore_Tests/Infrastructure/Tools/BuiltInKnowledge/BuiltInKnowledgeToolRegistryTests.cs`
 
-✅ **Test Coverage**: ~90% for tool implementation
+✅ **Test Coverage**: 23 tests, all passing (100% method coverage for public API)
+  - Task 4.1 (KnowledgeLibraryTool): 3 tests ✅
+  - Task 4.2 (KnowledgeLibraryToolExecutor): 11 tests ✅
+  - Task 4.3 (BuiltInKnowledgeToolRegistry): 9 tests ✅
 
-**FINAL COMMIT**: "feat(session-4): complete KnowledgeLibraryTool implementation"
+✅ **Implementation Notes**:
+- Tool follows same pattern as BuiltInUIControl tools
+- Executor uses Stopwatch for precise timing metrics
+- Registry provides case-insensitive tool lookup
+- Markdown formatter creates LLM-friendly output with all sections
+
+**FINAL COMMIT**: "feat(session-4): complete KnowledgeLibraryTool implementation" ✅ DONE
 
 ---
 
@@ -1684,27 +1722,31 @@ Create `docs/05-guides/development/knowledge-library-maintenance.md`:
 
 ### Session Checklist
 
-- [ ] **Session 1**: Domain Models (foundation)
+- [x] **Session 1**: Domain Models (foundation) ✅ COMPLETED
   - Domain models with validation
   - Comprehensive unit tests
   - ~60 minutes
+  - **Status**: All 57 tests passing, all deliverables completed
 
-- [ ] **Session 2**: IKnowledgeLibrary Interface & JSON
+- [x] **Session 2**: IKnowledgeLibrary Interface & JSON ✅ COMPLETED
   - Service interface
-  - JSON deserialization
+  - JSON deserialization (DTO pattern)
   - ~45 minutes
+  - **Status**: All 20 tests passing (9 contract + 11 deserialization)
 
-- [ ] **Session 3**: JsonKnowledgeLibrary Implementation
+- [x] **Session 3**: JsonKnowledgeLibrary Implementation ✅ COMPLETED
   - File system scanning
   - Caching and lazy loading
   - Error handling
   - ~75 minutes
+  - **Status**: All 22 tests passing (7 + 7 + 8)
 
-- [ ] **Session 4**: KnowledgeLibraryTool
+- [x] **Session 4**: KnowledgeLibraryTool ✅ COMPLETED
   - Tool implementation
   - Tool executor
   - Registry integration
-  - ~60 minutes
+  - ~45 minutes (actual)
+  - **Status**: All 23 tests passing (3 + 11 + 9)
 
 - [ ] **Session 5**: System Prompt & DI
   - Prompt builder

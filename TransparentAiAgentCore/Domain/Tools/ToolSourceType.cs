@@ -22,5 +22,11 @@ public enum ToolSourceType
     /// </summary>
     BuiltInUIControl,
 
+    /// <summary>
+    /// Built-in knowledge library tool
+    /// Used by agents to query curated knowledge entries with guardrails
+    /// </summary>
+    BuiltInKnowledge,
+
     // Future: ExternalAPI, CustomProtocol, etc.
 }
