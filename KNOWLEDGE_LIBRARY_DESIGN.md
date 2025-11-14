@@ -1737,3 +1737,370 @@ This design provides a solid foundation for the Knowledge Library feature:
 4. Iterate based on testing and feedback
 
 **This document will evolve** as implementation progresses and new insights emerge. Commit frequently to preserve decisions and context.
+
+---
+
+## Brainstorming Session: Issues, Suggestions, and Open Questions
+
+**Session Date**: 2025-11-14
+
+This section captures unresolved issues, potential improvements, and questions that arose during design review.
+
+---
+
+### 🔍 Potential Issues & Concerns
+
+#### Issue 1: Index-Entry Synchronization Problem
+
+**Problem**: The `index.json` duplicates metadata (knowledgeGapLikelihood, lastUpdated, lastChecked) from individual entry files. If someone updates `api-key-security.json`, they must remember to update `index.json` too. This is error-prone.
+
+**Possible Solutions:**
+1. **Auto-generate index**: Build tool/script that regenerates `index.json` from all entry files
+2. **Index as source of truth**: Make `index.json` authoritative and entries don't duplicate these fields
+3. **Accept duplication**: Keep current design but add validation tests to catch drift
+
+**Decision Needed**: Which approach to take?
+
+---
+
+#### Issue 2: Missing Fields in C# Models
+
+**Problem**: The `KnowledgeEntrySummary` class (line 549) doesn't include the new fields:
+
+```csharp
+public class KnowledgeEntrySummary
+{
+    public required string Id { get; init; }
+    public required string Topic { get; init; }
+    public required string Category { get; init; }
+    public required string Summary { get; init; }
+    public List<string> Keywords { get; init; } = new();
+    // Missing: knowledgeGapLikelihood, lastUpdated, lastChecked
+}
+```
+
+**Questions:**
+- Should the summary include these fields?
+- Or keep it lightweight and only include in full entries?
+- Does the system prompt need access to these fields when listing topics?
+
+---
+
+#### Issue 3: Tool Response Doesn't Show Metadata
+
+**Problem**: The `FormatKnowledgeEntry` method doesn't include knowledgeGapLikelihood or timestamps in the output to the LLM.
+
+**Question**: Should the LLM see this metadata when querying a topic?
+
+**Option A - Include Metadata:**
+```markdown
+# API Key Security
+**Category:** Security
+**Knowledge Gap:** Low (my built-in knowledge is reliable)
+**Last Checked:** 2025-11-14
+
+## Overview
+...
+```
+
+**Option B - Hide Metadata:**
+```markdown
+# API Key Security
+**Category:** Security
+
+## Overview
+...
+```
+
+**Consideration**: Is this metadata only for human maintainers, or should it inform the LLM's teaching approach?
+
+---
+
+#### Issue 4: Cache Invalidation Issue
+
+**Problem**: `JsonKnowledgeLibrary` caches entries in memory. If you update an entry file during runtime, the cache won't refresh without restarting the app.
+
+**Solutions:**
+1. Accept this limitation for MVP (restart required)
+2. Add hot-reload with file system watching
+3. Add manual cache clearing endpoint/command
+
+---
+
+#### Issue 5: Stale Entry Detection
+
+**Problem**: We have `lastChecked`, but no automated way to alert maintainers when entries are old.
+
+**Possible Solutions:**
+- Add maintenance script that warns about entries with `lastChecked > 6 months ago`
+- Display staleness in hypothetical admin UI
+- Add to CI/CD checks
+- Auto-increment knowledgeGapLikelihood if entry is very old?
+
+---
+
+### 🤔 Unclear/Ambiguous Aspects
+
+#### Question 6: How Does LLM Actually Use knowledgeGapLikelihood?
+
+**Scenario**: The system prompt mentions the field exists, but what's the expected behavior?
+
+**Example flow:**
+- User asks: "Explain MCP tools"
+- LLM queries library, sees `knowledgeGapLikelihood: "high"`
+- Then what?
+
+**Possible Behaviors:**
+1. Explicitly say "This is a rapidly evolving topic, my knowledge may be outdated"
+2. Automatically try web search (if available)
+3. Just use the library content and internal knowledge
+4. Adjust confidence level in responses
+
+**Need**: Clear prompt instructions or behavior guidelines in system prompt
+
+---
+
+#### Question 7: Library + Web Search Integration
+
+**Context**: For high-gap topics, design mentions preferring web search.
+
+**Unclear Points:**
+- How does LLM know if web search is available?
+- What's the precedence? Library first, then web? Or web first for high-gap?
+- Should the library entry itself say "recommend web search for latest info"?
+- Should the tool description mention web search as an alternative?
+
+**Suggested Flow for High-Gap Topics:**
+1. LLM checks if web search is available
+2. If yes: Query both library (for guardrails) AND web search (for current info)
+3. If no: Query library, then warn user based on `lastChecked` date
+
+---
+
+#### Question 8: Knowledge Library Availability
+
+**Question**: Is the knowledge library:
+- ✅ Only available in teaching mode?
+- ❌ Available in all conversation modes?
+
+**Context**: The doc says "when teaching mode is active" for system prompt injection. Should confirm this is intentional.
+
+**Considerations:**
+- Teaching mode is specifically for education
+- But guardrails (especially security) might be useful in general conversations too
+- Tool registration might be mode-specific or global
+
+---
+
+#### Question 9: What if Timestamps Are Very Old?
+
+**Scenario**: `lastChecked` is from 2024-01-01 (almost a year ago) and user asks about that topic.
+
+**Should we:**
+- Have the LLM warn the user about stale information?
+- Include a staleness warning in tool response?
+- Automatically increase knowledge gap likelihood based on age?
+- Prevent query and force web search?
+
+**Example Response:**
+> "I have guardrails on this topic, but they were last verified on 2024-01-01. Given this is [X months old], let me search for the latest information..."
+
+---
+
+### 💡 Suggestions & Ideas
+
+#### Suggestion 10: Validation Guidelines for knowledgeGapLikelihood
+
+**Problem**: Who decides if a topic is "low" vs "medium" vs "high"?
+
+**Proposed Decision Criteria:**
+
+```markdown
+**Deciding Knowledge Gap Likelihood:**
+
+**Low** - Choose when topic is:
+- Fundamental, standardized concept (e.g., "what are tokens?")
+- Slow-changing best practice (e.g., "don't commit secrets")
+- Well-established protocol (e.g., HTTP basics)
+- Unlikely to have changed significantly since LLM training cutoff
+
+**Medium** - Choose when topic is:
+- Best practices that evolve over years (e.g., authentication patterns)
+- Technology with incremental updates (e.g., OAuth versions)
+- May have new recommendations but core principles stable
+
+**High** - Choose when topic:
+- Has had major developments in last 12-18 months
+- Is an emerging standard or protocol (e.g., MCP, A2A)
+- Is actively evolving with frequent changes
+- Represents cutting-edge research or practice
+
+**If uncertain**: Default to "medium" and include recent `lastChecked` date
+```
+
+---
+
+#### Suggestion 11: Auto-Generate index.json
+
+**Proposal**: Instead of manually maintaining `index.json`, create a build script:
+
+```bash
+# Node.js version
+npm run generate-knowledge-index
+
+# .NET version
+dotnet run --project Tools/KnowledgeIndexBuilder
+```
+
+**What it does:**
+1. Reads all `wwwroot/knowledge/entries/*.json`
+2. Validates each against schema
+3. Extracts metadata (id, topic, category, summary, knowledgeGapLikelihood, timestamps)
+4. Generates `index.json`
+5. Validates no duplicate IDs
+
+**Benefits:**
+- Single source of truth (individual entries)
+- No sync problems
+- Run in CI/CD to prevent drift
+- Can add validation rules (e.g., warn if `lastChecked > 6 months`)
+
+**Drawback**: Extra tooling, but seems worth it for correctness
+
+---
+
+#### Suggestion 12: Add "Freshness Indicator" to System Prompt
+
+**Proposal**: For high-gap topics in the system prompt listing, mark them visually:
+
+```text
+Available knowledge topics:
+- api-key-security: API Key Security [reliable ✓]
+- context-windows: Context Windows and Message Limits [reliable ✓]
+- mcp-overview: Model Context Protocol [evolving ⚠️ - prefer web search]
+- multi-agent-orchestration: Multi-Agent Orchestration [evolving ⚠️ - prefer web search]
+```
+
+**Benefits:**
+- Makes it visually clear which topics need extra care
+- Reminds LLM to use web search for high-gap topics
+- Low cognitive overhead (just symbols)
+
+**Alternative**: Use color coding or categories in prompt
+
+---
+
+#### Suggestion 13: Priority Topics Need Updating
+
+**Observation**: The "Initial Knowledge Topics" section (line 1026) doesn't include AI-agent-specific topics like:
+- multi-agent-orchestration
+- agent-to-agent-protocols
+- agent-communication-patterns
+
+**Proposal**: Given teaching mode's purpose (educating about AI agents), shouldn't these be Priority 1 or 2?
+
+**Suggested Restructure:**
+
+**Priority 1: AI Agent Topics** (Teaching Mode Core)
+1. multi-agent-orchestration
+2. agent-to-agent-protocols
+3. teaching-mode
+4. transparency-logging
+
+**Priority 2: Critical Security Topics**
+5. api-key-security
+6. tool-security
+7. environment-variables
+
+**Priority 3: Core LLM Concepts**
+8. context-windows
+9. tokens
+10. prompt-engineering
+
+---
+
+#### Suggestion 14: Consider "updatedBy" Field
+
+**Proposal**: Add authorship tracking for maintenance:
+
+```json
+{
+  "lastUpdated": "2025-11-14",
+  "lastChecked": "2025-11-14",
+  "updatedBy": "user@domain.com",
+  "checkedBy": "reviewer@domain.com"
+}
+```
+
+**Benefits:**
+- Know who to ask when reviewing old entries
+- Accountability for content quality
+- Easier to track subject matter experts
+
+**Drawback**: Adds complexity, may not be needed for small teams
+
+---
+
+#### Suggestion 15: LLM Behavior Template
+
+**Proposal**: Add a section showing exactly how the LLM should respond based on knowledge gap.
+
+**LLM Response Patterns by Knowledge Gap:**
+
+**Low Gap Topics:**
+```
+1. Query library for guardrails
+2. Teach confidently using library + built-in knowledge
+3. No special warnings needed
+4. Example: "Let me explain API key security. The most critical rule is..."
+```
+
+**Medium Gap Topics:**
+```
+1. Query library for guardrails
+2. Mention: "Let me get the latest guidelines on this..."
+3. Consider web search for very recent developments
+4. Example: "Let me check the current best practices for authentication. [queries library] Based on the latest guidelines..."
+```
+
+**High Gap Topics:**
+```
+1. Query library first for guardrails
+2. Explicitly state: "This is a rapidly evolving area. The guardrails I have are from [lastChecked date]."
+3. Strongly recommend/use web search if available
+4. If no web search: "My knowledge may be limited; consider checking [references from library]"
+5. Example: "Multi-agent orchestration is evolving rapidly. Let me get the foundational principles [queries library], but I recommend also checking recent research as this field changes quickly."
+```
+
+---
+
+### ❓ Questions for Discussion
+
+**Question Set A: Technical Decisions**
+1. **Index duplication**: Should we auto-generate `index.json`, or keep manual sync with validation?
+2. **Tool response metadata**: Should LLM see knowledgeGapLikelihood and timestamps when querying?
+3. **C# model fields**: Should `KnowledgeEntrySummary` include the new metadata fields?
+
+**Question Set B: Integration & Behavior**
+4. **Web search integration**: How should we guide the LLM to use web search for high-gap topics?
+5. **Stale entry alerts**: How should we handle entries with old `lastChecked` dates?
+6. **Teaching mode only**: Confirm that knowledge library is ONLY for teaching mode, not general conversations?
+
+**Question Set C: Content & Priorities**
+7. **Priority topics**: Should we add multi-agent topics to the Priority 1-2 list?
+8. **Freshness indicators**: Should system prompt show visual indicators for high-gap topics?
+9. **LLM behavior**: Do we need explicit behavior guidelines for each gap level in the system prompt?
+
+---
+
+### 📝 Next Steps for This Session
+
+1. Discuss and decide on critical questions (especially #1, #2, #4, #6)
+2. Update design document with decisions
+3. Add resolved items to appropriate sections
+4. Keep unresolved items here for future discussion
+5. Commit frequently to preserve decisions
+
+---
+
+**End of Brainstorming Section**
