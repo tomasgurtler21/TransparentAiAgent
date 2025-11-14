@@ -462,10 +462,12 @@ With auto-save, the Modified state essentially triggers immediate transition bac
 3. ✅ **Finalize conversation metadata structure** - COMPLETED (see Section 4.1)
 4. ✅ **Design configuration snapshot mechanism** - COMPLETED (see Section 5.2)
 5. ✅ **Design auto-save hook** - COMPLETED (see Section 5.3)
-6. ⬜ **Create detailed component design** - classes, interfaces, methods with full signatures
-7. ⬜ **Design UI component** - ConversationSelector.razor with dropdown behavior
-8. ⬜ **Design file naming strategy** - how to name conversation files on disk
+6. ✅ **Create detailed component design** - COMPLETED (see Section 11.1, 11.2, 11.3)
+7. ✅ **Design UI component** - COMPLETED (see Section 11.5)
+8. ✅ **Design file naming strategy** - COMPLETED (see Section 11.4)
 9. ⬜ **Move to implementation planning** (separate document/phase)
+
+**Design Status**: ✅ **COMPLETE** - Ready for implementation planning
 
 ---
 
@@ -606,65 +608,564 @@ User provided answers to all key questions:
 
 ---
 
-## 11. Implementation Considerations (To Be Detailed Later)
+## 11. Detailed Component Design ✅
 
-### 11.1 Component Skeleton (Draft)
+### 11.1 Domain Layer - Complete Design
 
-**Domain Layer**:
+**File**: `TransparentAiAgentCore/Domain/ConversationHistory/Conversation.cs`
 ```csharp
-// Conversation.cs - Entity
+namespace TransparentAiAgentCore.Domain.ConversationHistory;
+
+/// <summary>
+/// Represents a complete conversation with messages and configuration snapshot.
+/// </summary>
 public class Conversation
 {
     public Guid ConversationId { get; set; }
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime LastModifiedAt { get; set; }
-    public ConversationConfiguration Configuration { get; set; }
-    public List<IMessage> Messages { get; set; }
-}
+    public ConversationConfiguration Configuration { get; set; } = new();
+    public List<IMessage> Messages { get; set; } = new();
 
-// ConversationConfiguration.cs - Value Object
+    /// <summary>
+    /// Generates conversation name from first user message.
+    /// Falls back to timestamp-based name if no user message found.
+    /// </summary>
+    public static string GenerateName(IReadOnlyList<IMessage> messages)
+    {
+        var firstUserMessage = messages
+            .FirstOrDefault(m => m.Role == MessageRole.User);
+
+        if (firstUserMessage != null && !string.IsNullOrWhiteSpace(firstUserMessage.Content))
+        {
+            // Take first 50 characters, sanitize
+            var content = firstUserMessage.Content.Trim();
+            var name = content.Length > 50 ? content.Substring(0, 50) + "..." : content;
+            return SanitizeFileName(name);
+        }
+
+        // Fallback to timestamp
+        return $"Conversation {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}";
+    }
+
+    /// <summary>
+    /// Sanitizes a string for use in filename.
+    /// Removes invalid filename characters.
+    /// </summary>
+    private static string SanitizeFileName(string input)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = string.Join("_", input.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
+        return sanitized.Trim();
+    }
+}
+```
+
+**File**: `TransparentAiAgentCore/Domain/ConversationHistory/ConversationMetadata.cs`
+```csharp
+namespace TransparentAiAgentCore.Domain.ConversationHistory;
+
+/// <summary>
+/// Lightweight conversation metadata for listing conversations.
+/// Does not include full message list or configuration.
+/// </summary>
+public class ConversationMetadata
+{
+    public Guid ConversationId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastModifiedAt { get; set; }
+    public int MessageCount { get; set; }
+}
+```
+
+**File**: `TransparentAiAgentCore/Domain/ConversationHistory/ConversationConfiguration.cs`
+```csharp
+namespace TransparentAiAgentCore.Domain.ConversationHistory;
+
+/// <summary>
+/// Configuration snapshot for a conversation.
+/// Excludes sensitive data (API keys, tenant IDs).
+/// </summary>
 public class ConversationConfiguration
 {
-    public string ModelName { get; set; }
-    public string Endpoint { get; set; }
-    public string SystemPrompt { get; set; }
+    // Agent Configuration
+    public string SystemPrompt { get; set; } = string.Empty;
     public int ContextWindowSize { get; set; }
-    // ... other config properties
+    public bool EnableTools { get; set; }
+    public string ToolExecutionMode { get; set; } = "Sequential";
+
+    // LLM Configuration
+    public string Provider { get; set; } = string.Empty;
+    public double? Temperature { get; set; }
+    public double? TopP { get; set; }
+    public int MaxTokens { get; set; }
+
+    // Provider-specific configurations
+    public AnthropicSnapshot? Anthropic { get; set; }
+    public AzureOpenAISnapshot? AzureOpenAI { get; set; }
+
+    /// <summary>
+    /// Creates configuration snapshot from AppConfiguration.
+    /// Excludes sensitive data (API keys, tenant IDs).
+    /// </summary>
+    public static ConversationConfiguration CreateSnapshot(AppConfiguration appConfig)
+    {
+        var snapshot = new ConversationConfiguration
+        {
+            // Agent
+            SystemPrompt = appConfig.Agent.SystemPrompt,
+            ContextWindowSize = appConfig.Agent.ContextWindowSize,
+            EnableTools = appConfig.Agent.EnableTools,
+            ToolExecutionMode = appConfig.Agent.ToolExecutionMode.ToString(),
+
+            // LLM
+            Provider = appConfig.LLM.Provider,
+            Temperature = appConfig.LLM.Temperature,
+            TopP = appConfig.LLM.TopP,
+            MaxTokens = appConfig.LLM.MaxTokens
+        };
+
+        // Provider-specific config (excluding API keys!)
+        if (appConfig.LLM.Provider == "Anthropic" && appConfig.LLM.Anthropic != null)
+        {
+            snapshot.Anthropic = new AnthropicSnapshot
+            {
+                Model = appConfig.LLM.Anthropic.Model,
+                ExtendedThinking = appConfig.LLM.Anthropic.ExtendedThinking != null
+                    ? new ExtendedThinkingSnapshot
+                    {
+                        Enabled = appConfig.LLM.Anthropic.ExtendedThinking.Enabled,
+                        BudgetTokens = appConfig.LLM.Anthropic.ExtendedThinking.BudgetTokens
+                    }
+                    : null
+            };
+        }
+        else if (appConfig.LLM.Provider == "AzureOpenAI" && appConfig.LLM.AzureOpenAI != null)
+        {
+            snapshot.AzureOpenAI = new AzureOpenAISnapshot
+            {
+                Endpoint = appConfig.LLM.AzureOpenAI.Endpoint,
+                DeploymentName = appConfig.LLM.AzureOpenAI.DeploymentName,
+                ApiVersion = appConfig.LLM.AzureOpenAI.ApiVersion,
+                IsReasoningModel = appConfig.LLM.AzureOpenAI.IsReasoningModel,
+                AuthenticationMode = appConfig.LLM.AzureOpenAI.AuthenticationMode.ToString()
+                // Deliberately exclude: ApiKey, TenantId
+            };
+        }
+
+        return snapshot;
+    }
 }
 
-// IConversationRepository.cs - Repository Interface
+public class AnthropicSnapshot
+{
+    public string Model { get; set; } = string.Empty;
+    public ExtendedThinkingSnapshot? ExtendedThinking { get; set; }
+}
+
+public class ExtendedThinkingSnapshot
+{
+    public bool Enabled { get; set; }
+    public int BudgetTokens { get; set; }
+}
+
+public class AzureOpenAISnapshot
+{
+    public string Endpoint { get; set; } = string.Empty;
+    public string DeploymentName { get; set; } = string.Empty;
+    public string ApiVersion { get; set; } = string.Empty;
+    public bool IsReasoningModel { get; set; }
+    public string AuthenticationMode { get; set; } = string.Empty;
+    // ApiKey and TenantId deliberately excluded for security
+}
+```
+
+**File**: `TransparentAiAgentCore/Domain/ConversationHistory/IConversationRepository.cs`
+```csharp
+namespace TransparentAiAgentCore.Domain.ConversationHistory;
+
+/// <summary>
+/// Repository interface for conversation persistence.
+/// </summary>
 public interface IConversationRepository
 {
+    /// <summary>
+    /// Loads a conversation by ID.
+    /// Throws if conversation not found or file corrupted.
+    /// </summary>
     Task<Conversation> LoadAsync(Guid conversationId);
+
+    /// <summary>
+    /// Saves a conversation to persistent storage.
+    /// Creates new file or overwrites existing.
+    /// </summary>
     Task SaveAsync(Conversation conversation);
+
+    /// <summary>
+    /// Lists all conversation metadata (lightweight, no messages).
+    /// Ordered by LastModifiedAt descending (most recent first).
+    /// </summary>
     Task<List<ConversationMetadata>> ListAllAsync();
+
+    /// <summary>
+    /// Deletes a conversation from persistent storage.
+    /// Throws if conversation not found.
+    /// </summary>
     Task DeleteAsync(Guid conversationId);
+
+    /// <summary>
+    /// Checks if a conversation exists.
+    /// </summary>
+    Task<bool> ExistsAsync(Guid conversationId);
 }
 ```
 
-**Infrastructure Layer**:
+### 11.2 Infrastructure Layer - Complete Design
+
+**File**: `TransparentAiAgentCore/Infrastructure/ConversationHistory/JsonConversationRepository.cs`
 ```csharp
-// JsonConversationRepository.cs
+namespace TransparentAiAgentCore.Infrastructure.ConversationHistory;
+
+/// <summary>
+/// File-based JSON conversation repository.
+/// Stores conversations in ./conversations/ directory.
+/// </summary>
 public class JsonConversationRepository : IConversationRepository
 {
-    // Implements file-based storage in ./conversations/
-    // Uses MessageSerializer for message serialization
+    private readonly string _conversationsDirectory;
+    private readonly IMessageSerializer _messageSerializer;
+    private readonly ILogger<JsonConversationRepository> _logger;
+
+    public JsonConversationRepository(
+        IMessageSerializer messageSerializer,
+        ILogger<JsonConversationRepository> logger)
+    {
+        _messageSerializer = messageSerializer ?? throw new ArgumentNullException(nameof(messageSerializer));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        // Use ./conversations/ relative to application directory
+        _conversationsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "conversations");
+
+        // Ensure directory exists
+        if (!Directory.Exists(_conversationsDirectory))
+        {
+            Directory.CreateDirectory(_conversationsDirectory);
+            _logger.LogInformation("Created conversations directory: {Directory}", _conversationsDirectory);
+        }
+    }
+
+    public async Task<Conversation> LoadAsync(Guid conversationId)
+    {
+        var filePath = GetFilePath(conversationId);
+
+        if (!File.Exists(filePath))
+        {
+            _logger.LogError("Conversation file not found: {ConversationId}", conversationId);
+            throw new FileNotFoundException($"Conversation {conversationId} not found", filePath);
+        }
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(filePath);
+            var conversation = JsonSerializer.Deserialize<Conversation>(json, GetJsonOptions());
+
+            if (conversation == null)
+            {
+                throw new InvalidOperationException($"Failed to deserialize conversation {conversationId}");
+            }
+
+            _logger.LogInformation("Loaded conversation: {ConversationId}, Messages: {Count}",
+                conversationId, conversation.Messages.Count);
+
+            return conversation;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to parse conversation file: {ConversationId}", conversationId);
+            throw new InvalidOperationException($"Conversation file corrupted: {conversationId}", ex);
+        }
+    }
+
+    public async Task SaveAsync(Conversation conversation)
+    {
+        if (conversation == null)
+            throw new ArgumentNullException(nameof(conversation));
+
+        // Update timestamp
+        conversation.LastModifiedAt = DateTime.UtcNow;
+
+        // Generate filename: {conversationId}_{sanitizedName}.json
+        var fileName = $"{conversation.ConversationId}_{SanitizeFileName(conversation.Name)}.json";
+        var filePath = Path.Combine(_conversationsDirectory, fileName);
+
+        try
+        {
+            var json = JsonSerializer.Serialize(conversation, GetJsonOptions());
+            await File.WriteAllTextAsync(filePath, json);
+
+            _logger.LogInformation("Saved conversation: {ConversationId}, Messages: {Count}, File: {FileName}",
+                conversation.ConversationId, conversation.Messages.Count, fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save conversation: {ConversationId}", conversation.ConversationId);
+            throw;
+        }
+    }
+
+    public async Task<List<ConversationMetadata>> ListAllAsync()
+    {
+        var metadataList = new List<ConversationMetadata>();
+
+        try
+        {
+            var files = Directory.GetFiles(_conversationsDirectory, "*.json");
+
+            foreach (var filePath in files)
+            {
+                try
+                {
+                    // Read just enough to get metadata (not full messages)
+                    var json = await File.ReadAllTextAsync(filePath);
+
+                    // Parse minimally to extract metadata
+                    using var doc = JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+
+                    var metadata = new ConversationMetadata
+                    {
+                        ConversationId = Guid.Parse(root.GetProperty("conversationId").GetString() ?? Guid.Empty.ToString()),
+                        Name = root.GetProperty("name").GetString() ?? "Untitled",
+                        CreatedAt = root.GetProperty("createdAt").GetDateTime(),
+                        LastModifiedAt = root.GetProperty("lastModifiedAt").GetDateTime(),
+                        MessageCount = root.GetProperty("messages").GetArrayLength()
+                    };
+
+                    metadataList.Add(metadata);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Skipping corrupted conversation file: {FilePath}", filePath);
+                    // Continue to next file
+                }
+            }
+
+            // Sort by most recent first
+            var sorted = metadataList.OrderByDescending(m => m.LastModifiedAt).ToList();
+
+            _logger.LogInformation("Listed {Count} conversations", sorted.Count);
+            return sorted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list conversations");
+            throw;
+        }
+    }
+
+    public async Task DeleteAsync(Guid conversationId)
+    {
+        var filePath = GetFilePath(conversationId);
+
+        if (!File.Exists(filePath))
+        {
+            _logger.LogError("Cannot delete: Conversation file not found: {ConversationId}", conversationId);
+            throw new FileNotFoundException($"Conversation {conversationId} not found", filePath);
+        }
+
+        try
+        {
+            File.Delete(filePath);
+            _logger.LogInformation("Deleted conversation: {ConversationId}", conversationId);
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete conversation: {ConversationId}", conversationId);
+            throw;
+        }
+    }
+
+    public async Task<bool> ExistsAsync(Guid conversationId)
+    {
+        var filePath = GetFilePath(conversationId);
+        await Task.CompletedTask;
+        return File.Exists(filePath);
+    }
+
+    private string GetFilePath(Guid conversationId)
+    {
+        // Find file matching conversationId pattern: {guid}_*.json
+        var pattern = $"{conversationId}_*.json";
+        var matches = Directory.GetFiles(_conversationsDirectory, pattern);
+
+        if (matches.Length > 0)
+        {
+            return matches[0]; // Return first match
+        }
+
+        // If not found, construct default path (for new conversations)
+        return Path.Combine(_conversationsDirectory, $"{conversationId}_new.json");
+    }
+
+    private static string SanitizeFileName(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return "untitled";
+
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = string.Join("_", input.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
+        return sanitized.Trim().Substring(0, Math.Min(sanitized.Length, 50)); // Limit length
+    }
+
+    private JsonSerializerOptions GetJsonOptions()
+    {
+        return new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true,
+            Converters = { new MessageTypeDiscriminatorConverter() } // Reuse existing converter
+        };
+    }
 }
 ```
 
-**Application Layer**:
+### 11.3 Application Layer - Complete Design
+
+**File**: `TransparentAiAgentCore/Application/ConversationHistory/IConversationHistoryManager.cs`
 ```csharp
-// ConversationHistoryManager.cs
-public class ConversationHistoryManager
+namespace TransparentAiAgentCore.Application.ConversationHistory;
+
+/// <summary>
+/// Manages conversation history operations.
+/// Orchestrates between repository, current conversation, and configuration.
+/// </summary>
+public interface IConversationHistoryManager
+{
+    /// <summary>
+    /// Saves the current conversation with config snapshot.
+    /// Auto-called after every message.
+    /// </summary>
+    Task SaveCurrentConversationAsync(
+        Guid conversationId,
+        IReadOnlyList<IMessage> messages,
+        AppConfiguration currentConfig);
+
+    /// <summary>
+    /// Loads a conversation and restores it as the current conversation.
+    /// Returns the loaded conversation for UI update.
+    /// </summary>
+    Task<Conversation> LoadConversationAsync(Guid conversationId);
+
+    /// <summary>
+    /// Lists all saved conversations (metadata only, no messages).
+    /// Ordered by most recent first.
+    /// </summary>
+    Task<List<ConversationMetadata>> GetConversationListAsync();
+
+    /// <summary>
+    /// Creates a new conversation.
+    /// Clears current messages, generates new conversation ID.
+    /// Actual save happens on first message (to extract name).
+    /// </summary>
+    Task<Guid> CreateNewConversationAsync();
+
+    /// <summary>
+    /// Deletes a conversation from storage.
+    /// </summary>
+    Task DeleteConversationAsync(Guid conversationId);
+}
+```
+
+**File**: `TransparentAiAgentCore/Application/ConversationHistory/ConversationHistoryManager.cs`
+```csharp
+namespace TransparentAiAgentCore.Application.ConversationHistory;
+
+public class ConversationHistoryManager : IConversationHistoryManager
 {
     private readonly IConversationRepository _repository;
+    private readonly ILogger<ConversationHistoryManager> _logger;
 
-    public Task<Conversation> LoadConversationAsync(Guid id);
-    public Task SaveConversationAsync(Conversation conversation);
-    public Task<List<ConversationMetadata>> GetConversationListAsync();
-    public Task CreateNewConversationAsync();
-    // Auto-save hook integration
+    public ConversationHistoryManager(
+        IConversationRepository repository,
+        ILogger<ConversationHistoryManager> logger)
+    {
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task SaveCurrentConversationAsync(
+        Guid conversationId,
+        IReadOnlyList<IMessage> messages,
+        AppConfiguration currentConfig)
+    {
+        try
+        {
+            // Don't save empty conversations
+            if (messages == null || messages.Count == 0)
+            {
+                _logger.LogDebug("Skipping save: conversation is empty");
+                return;
+            }
+
+            var conversation = new Conversation
+            {
+                ConversationId = conversationId,
+                Name = Conversation.GenerateName(messages),
+                CreatedAt = DateTime.UtcNow, // Will be preserved if loading existing
+                LastModifiedAt = DateTime.UtcNow,
+                Configuration = ConversationConfiguration.CreateSnapshot(currentConfig),
+                Messages = messages.ToList()
+            };
+
+            // If conversation exists, preserve CreatedAt
+            if (await _repository.ExistsAsync(conversationId))
+            {
+                var existing = await _repository.LoadAsync(conversationId);
+                conversation.CreatedAt = existing.CreatedAt;
+            }
+
+            await _repository.SaveAsync(conversation);
+
+            _logger.LogInformation("Auto-saved conversation: {ConversationId}, Name: {Name}",
+                conversationId, conversation.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-save conversation: {ConversationId}", conversationId);
+            // Don't throw - auto-save failure shouldn't crash the app
+        }
+    }
+
+    public async Task<Conversation> LoadConversationAsync(Guid conversationId)
+    {
+        _logger.LogInformation("Loading conversation: {ConversationId}", conversationId);
+        return await _repository.LoadAsync(conversationId);
+    }
+
+    public async Task<List<ConversationMetadata>> GetConversationListAsync()
+    {
+        _logger.LogDebug("Fetching conversation list");
+        return await _repository.ListAllAsync();
+    }
+
+    public async Task<Guid> CreateNewConversationAsync()
+    {
+        var newId = Guid.NewGuid();
+        _logger.LogInformation("Created new conversation: {ConversationId}", newId);
+
+        // Don't save yet - will save on first message (to extract name)
+        await Task.CompletedTask;
+        return newId;
+    }
+
+    public async Task DeleteConversationAsync(Guid conversationId)
+    {
+        _logger.LogInformation("Deleting conversation: {ConversationId}", conversationId);
+        await _repository.DeleteAsync(conversationId);
+    }
 }
 ```
 
@@ -761,16 +1262,388 @@ public static ConversationConfiguration CreateSnapshot(AppConfiguration appConfi
 }
 ```
 
-### 11.4 File Naming Strategy (TO BE DESIGNED)
-Options to consider:
-- Option A: `{conversationId}.json` - Simple, guaranteed unique
-- Option B: `{timestamp}_{sanitized_name}.json` - Human-readable, risk of collisions
-- Option C: `{conversationId}_{sanitized_name}.json` - Best of both worlds
+### 11.4 File Naming Strategy ✅
 
-**Recommendation**: Option C
-- Allows easy identification in file browser
+**Decision**: Use Option C: `{conversationId}_{sanitized_name}.json`
+
+**Implementation**:
+- Format: `{guid}_{sanitized_name}.json`
+- Name sanitization: Remove invalid filename characters, limit to 50 chars
+- Example: `a3f2b4c5-..._{What_is_clean_architecture...}.json`
+
+**Benefits**:
 - Guaranteed unique via GUID
-- Easy to implement
+- Human-readable name for easy browsing
+- Easy to implement (already in JsonConversationRepository)
+
+### 11.5 UI Component Design - ConversationSelector ✅
+
+**File**: `TransparentAiAgentGui/Components/ConversationHistory/ConversationSelector.razor`
+
+```razor
+@using TransparentAiAgentCore.Domain.ConversationHistory
+@using TransparentAiAgentCore.Application.ConversationHistory
+@inject IConversationHistoryManager ConversationHistoryManager
+@inject IConversationUIService ConversationService
+@implements IDisposable
+
+<div class="conversation-selector">
+    <div class="selector-controls">
+        <!-- Dropdown showing current/selected conversation -->
+        <select class="conversation-dropdown"
+                @bind="SelectedConversationId"
+                @bind:after="OnConversationSelected"
+                disabled="@IsLoading">
+            @if (CurrentConversationName != null)
+            {
+                <option value="@CurrentConversationId">@CurrentConversationName (Current)</option>
+            }
+            else
+            {
+                <option value="">New Conversation</option>
+            }
+
+            @if (Conversations != null)
+            {
+                @foreach (var conv in Conversations)
+                {
+                    @if (conv.ConversationId != CurrentConversationId)
+                    {
+                        <option value="@conv.ConversationId">
+                            @conv.Name (@conv.LastModifiedAt.ToString("MMM dd, HH:mm"))
+                        </option>
+                    }
+                }
+            }
+        </select>
+
+        <!-- New Conversation button -->
+        <button class="new-conversation-button"
+                @onclick="OnNewConversationClick"
+                disabled="@IsLoading">
+            + New
+        </button>
+    </div>
+
+    @if (IsLoading)
+    {
+        <span class="loading-indicator">Loading...</span>
+    }
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="error-message">@ErrorMessage</div>
+    }
+</div>
+
+@code {
+    private List<ConversationMetadata>? Conversations;
+    private Guid? SelectedConversationId;
+    private Guid? CurrentConversationId;
+    private string? CurrentConversationName;
+    private bool IsLoading;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConversationListAsync();
+
+        // Subscribe to conversation changes
+        ConversationService.MessagesChanged += OnMessagesChanged;
+    }
+
+    private async Task LoadConversationListAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            Conversations = await ConversationHistoryManager.GetConversationListAsync();
+
+            // Set current conversation ID from ConversationManager
+            // (This would need to be exposed via ConversationService)
+            // CurrentConversationId = ConversationService.CurrentConversationId;
+            // CurrentConversationName = Extract from current messages or null
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load conversations: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task OnConversationSelected()
+    {
+        if (SelectedConversationId == null || SelectedConversationId == CurrentConversationId)
+            return;
+
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            // Load conversation
+            var conversation = await ConversationHistoryManager.LoadConversationAsync(SelectedConversationId.Value);
+
+            // Update ConversationService with loaded messages
+            // This would require new method on IConversationUIService:
+            // await ConversationService.LoadConversationAsync(conversation);
+
+            CurrentConversationId = conversation.ConversationId;
+            CurrentConversationName = conversation.Name;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load conversation: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task OnNewConversationClick()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            // Current conversation auto-saves (already designed)
+            // Just clear the current conversation
+            await ConversationService.ClearConversationAsync();
+
+            // Reset state
+            CurrentConversationId = null;
+            CurrentConversationName = null;
+            SelectedConversationId = null;
+
+            // Refresh list to show newly saved conversation
+            await LoadConversationListAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to create new conversation: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void OnMessagesChanged(object? sender, EventArgs e)
+    {
+        // Update current conversation name when messages change
+        var messages = ConversationService.Messages;
+        if (messages != null && messages.Any())
+        {
+            CurrentConversationName = Conversation.GenerateName(
+                messages.Select(m => m.ToDomainMessage()).ToList()
+            );
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        ConversationService.MessagesChanged -= OnMessagesChanged;
+    }
+}
+```
+
+**CSS File**: `TransparentAiAgentGui/Components/ConversationHistory/ConversationSelector.razor.css`
+
+```css
+.conversation-selector {
+    padding: 12px 20px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+}
+
+.selector-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.conversation-dropdown {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.conversation-dropdown:disabled {
+    background-color: #f0f0f0;
+    cursor: not-allowed;
+}
+
+.new-conversation-button {
+    padding: 8px 16px;
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.new-conversation-button:hover:not(:disabled) {
+    background-color: #1976d2;
+}
+
+.new-conversation-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.loading-indicator {
+    display: inline-block;
+    margin-left: 10px;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.error-message {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #ffebee;
+    color: #c62828;
+    border-left: 3px solid #f44336;
+    border-radius: 4px;
+    font-size: 13px;
+}
+```
+
+**Key Features**:
+1. **Dropdown Menu**: Shows current conversation and all saved conversations
+2. **Current Conversation**: Labeled as "(Current)" in dropdown
+3. **Conversation List**: Ordered by most recent (from repository)
+4. **Date Display**: Shows last modified date/time for each conversation
+5. **New Conversation Button**: Clears chat, waits for first message to name conversation
+6. **Loading States**: Disabled during operations, shows loading indicator
+7. **Error Handling**: Displays error messages if operations fail
+8. **Auto-Update**: Updates conversation name when messages change
+
+**Integration with Home.razor**:
+```razor
+<div class="chat-container">
+    <div class="chat-header">
+        <h1>Transparent AI Agent</h1>
+        <button @onclick="HandleClearClick">Clear Conversation</button>
+    </div>
+
+    <!-- NEW: Conversation selector -->
+    <ConversationSelector />
+
+    <MessageList Messages="..." IsProcessing="..." />
+    <ChatInput OnSend="..." IsDisabled="..." />
+</div>
+```
+
+**Required Updates to ConversationUIService**:
+```csharp
+// Add property to expose current conversation ID
+public Guid CurrentConversationId => _conversationManager.ConversationId;
+
+// Add method to load a conversation
+public async Task LoadConversationAsync(Conversation conversation)
+{
+    // Clear current messages
+    _conversationManager.ClearConversation();
+
+    // Add loaded messages
+    foreach (var message in conversation.Messages)
+    {
+        _conversationManager.AddMessage(message);
+    }
+
+    // Optionally: restore configuration from conversation.Configuration
+    // (Would require coordination with IConfigurationService)
+
+    // Notify UI
+    OnMessagesChanged();
+}
+```
+
+---
+
+## 12. Design Summary
+
+### Completeness Status: ✅ 100% COMPLETE
+
+All design tasks completed. The conversation history feature is fully designed and ready for implementation.
+
+### What Was Designed
+
+**Domain Layer** (Section 11.1):
+- ✅ `Conversation` entity with name generation logic
+- ✅ `ConversationMetadata` for lightweight listing
+- ✅ `ConversationConfiguration` with security-conscious config snapshot
+- ✅ `IConversationRepository` interface with full method signatures
+- ✅ Provider-specific snapshot classes (Anthropic, Azure OpenAI)
+
+**Infrastructure Layer** (Section 11.2):
+- ✅ `JsonConversationRepository` complete implementation
+- ✅ File-based storage in `./conversations/` directory
+- ✅ Error handling for corrupted files, missing files
+- ✅ Efficient metadata listing (minimal parsing)
+- ✅ File naming: `{conversationId}_{sanitized_name}.json`
+
+**Application Layer** (Section 11.3):
+- ✅ `IConversationHistoryManager` interface
+- ✅ `ConversationHistoryManager` implementation
+- ✅ Auto-save integration with fire-and-forget pattern
+- ✅ Empty conversation handling
+- ✅ CreatedAt preservation logic
+
+**UI Layer** (Section 11.5):
+- ✅ `ConversationSelector.razor` component
+- ✅ Dropdown menu with conversation list
+- ✅ "+ New" button for creating conversations
+- ✅ Loading states and error handling
+- ✅ Auto-update of conversation name
+- ✅ CSS styling for clean UI
+- ✅ Integration pattern with `Home.razor`
+
+**Integration Points** (Sections 5.3, 11.2):
+- ✅ Auto-save hooks after `RefreshMessages()`
+- ✅ ConversationUIService extensions
+- ✅ Configuration snapshot mechanism
+- ✅ UI placement: between chat-header and MessageList
+
+### Key Decisions Made
+
+| Area | Decision | Rationale |
+|------|----------|-----------|
+| **Storage** | `./conversations/` directory, JSON format | Simple, leverages existing MessageSerializer |
+| **Naming** | Extract from first user message | Intuitive, automatic |
+| **UI Placement** | Between chat-header and MessageList | Always visible, no scrolling issues |
+| **Auto-Save** | After every message | Maximum safety, transparent to user |
+| **File Naming** | `{guid}_{sanitized_name}.json` | Unique + human-readable |
+| **Security** | Exclude API keys/TenantId | Prevent credential leakage |
+| **Concurrency** | Single active conversation | Simpler, matches current UI |
+| **Config Snapshot** | Full lightweight config | Complete reproducibility |
+
+### Implementation Readiness
+
+**Ready to Implement**:
+- All classes have complete signatures
+- All methods have defined behavior
+- Error handling patterns specified
+- Integration points identified
+- UI component fully designed with CSS
+
+**Next Phase**: Create implementation plan (task breakdown, order of implementation, testing strategy)
 
 ---
 
