@@ -32,6 +32,14 @@ public class UIMessage
     public string? Annotation { get; set; }
 
     /// <summary>
+    /// Note appended to all annotations to clarify they are not sent to the LLM.
+    /// CONTROL POINT: This string is appended in FromDomainMessage() where annotations
+    /// are extracted from domain messages. If we ever change the behavior to include
+    /// annotations in LLM context, this note must be updated or removed.
+    /// </summary>
+    private const string AnnotationContextNote = "\n\n(Note: This hint was not sent to the LLM - it is not part of its context)";
+
+    /// <summary>
     /// Represents a single tool call in the UI
     /// </summary>
     public class UIToolCall
@@ -97,15 +105,22 @@ public class UIMessage
 
         // === Application-originated scenario messages ===
         // These are auto-generated messages from teaching scenarios
+        // CONTROL POINT: Annotations are extracted here and appended with context note.
+        // Annotations are NEVER included in message.Content or sent to the LLM.
+        // They exist only in the Annotation property for UI display purposes.
         if (message is ScenarioUserMessage scenarioUserMsg)
         {
             uiMessage.IsAutoMessage = true;
-            uiMessage.Annotation = scenarioUserMsg.Annotation;
+            uiMessage.Annotation = !string.IsNullOrWhiteSpace(scenarioUserMsg.Annotation)
+                ? scenarioUserMsg.Annotation + AnnotationContextNote
+                : null;
         }
         else if (message is ScenarioAssistantMessage scenarioAssistantMsg)
         {
             uiMessage.IsAutoMessage = true;
-            uiMessage.Annotation = scenarioAssistantMsg.Annotation;
+            uiMessage.Annotation = !string.IsNullOrWhiteSpace(scenarioAssistantMsg.Annotation)
+                ? scenarioAssistantMsg.Annotation + AnnotationContextNote
+                : null;
         }
 
         // === LLM-originated tool call messages ===
