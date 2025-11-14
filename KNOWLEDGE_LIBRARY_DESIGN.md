@@ -151,24 +151,32 @@ The Knowledge Library is a curated collection of information that the teaching a
 - But acknowledged that "should not get through reviews and UTs though"
 - This suggests: **separate files with strong validation**
 
-**Proposal: Hybrid Approach**
+**Decision: Directory Scanning Approach (No index.json)**
 ```
 wwwroot/knowledge/
-├── index.json                 # Lightweight index: just IDs, topics, keywords
 ├── entries/
 │   ├── api-key-security.json
 │   ├── context-windows.json
 │   ├── mcp-overview.json
 │   └── ... (one file per entry)
-└── _schema.json               # JSON schema for validation
+├── _schema.json               # JSON schema for validation
+└── README.md                  # Maintenance guide for librarians
 ```
+
+**How it works:**
+1. At startup, app scans `wwwroot/knowledge/entries/` directory
+2. Attempts to parse all `*.json` files
+3. Skips corrupted/invalid files with error logging
+4. Builds in-memory index from successfully parsed entries
+5. Index contains all metadata needed for system prompt
 
 **Benefits:**
 - ✅ Isolated failures (one bad entry doesn't break library)
-- ✅ `index.json` is small, easy to parse, low risk
+- ✅ No index synchronization problem (eliminated!)
+- ✅ Single source of truth (individual entry files)
 - ✅ Entries loaded on-demand (or cached)
 - ✅ Version control friendly
-- ✅ Easy to add/remove entries without touching other files
+- ✅ Easy to add/remove entries - just add/delete file
 - ✅ Can still validate each entry against schema
 
 **Implementation Note:** If parsing an entry fails, log error and skip it. Library remains functional with other entries.
@@ -220,7 +228,7 @@ The LLM tool interface for this would be:
 - ✅ Tool just retrieves one entry at a time by ID
 
 **Simplified Tool Flow:**
-1. **System/Teaching Prompt**: Includes available knowledge topics (from index.json)
+1. **System/Teaching Prompt**: Includes available knowledge topics (from in-memory index built at startup)
    ```
    Available knowledge topics:
    - api-key-security: API Key Security
@@ -367,7 +375,7 @@ Available knowledge topics:
 - mcp-overview: Essential MCP concepts for this application
 - tool-security: Security red lines for tool usage
 - transparency-logging: Core transparency principles
-... (all topics from index.json)
+... (all discovered topics)
 
 **When to query the library:**
 1. Teaching security, privacy, or safety-critical topics (ALWAYS query for guardrails)
@@ -396,9 +404,9 @@ Critical topics that REQUIRE knowledge library lookup:
 ```
 
 **Implementation:**
-- `index.json` loaded at startup
-- System prompt dynamically built from index
-- If index changes, prompt updates on next conversation (or reload)
+- Directory scanned at startup, in-memory index built from all valid entries
+- System prompt dynamically built from discovered entries
+- If entries change, restart app to refresh (hot-reload can be added later)
 
 **Scaling Consideration:**
 - What if we have 100+ topics? Won't fit in prompt.
@@ -597,6 +605,9 @@ namespace TransparentAiAgent.Domain.Services
         public required string Category { get; init; }
         public required string Summary { get; init; }
         public List<string> Keywords { get; init; } = new();
+        public required string KnowledgeGapLikelihood { get; init; } // "low", "medium", "high"
+        public required string LastUpdated { get; init; } // YYYY-MM-DD
+        public required string LastChecked { get; init; } // YYYY-MM-DD
     }
 }
 ```
@@ -633,25 +644,59 @@ namespace TransparentAiAgent.Infrastructure.Knowledge
         {
             try
             {
-                var indexPath = Path.Combine(_knowledgeBasePath, "index.json");
-                if (!File.Exists(indexPath))
+                var entriesPath = Path.Combine(_knowledgeBasePath, "entries");
+                if (!Directory.Exists(entriesPath))
                 {
-                    _logger.LogWarning("Knowledge library index not found at {Path}", indexPath);
+                    _logger.LogWarning("Knowledge library entries directory not found at {Path}", entriesPath);
                     return;
                 }
 
-                var json = File.ReadAllText(indexPath);
-                var indexData = JsonSerializer.Deserialize<KnowledgeIndexFile>(json);
+                var entryFiles = Directory.GetFiles(entriesPath, "*.json");
+                var loadedCount = 0;
+                var failedCount = 0;
 
-                if (indexData?.Entries != null)
+                foreach (var filePath in entryFiles)
                 {
-                    _index.AddRange(indexData.Entries);
-                    _logger.LogInformation("Loaded {Count} knowledge topics from index", _index.Count);
+                    try
+                    {
+                        var json = File.ReadAllText(filePath);
+                        var entry = JsonSerializer.Deserialize<KnowledgeEntry>(json);
+
+                        if (entry != null && !string.IsNullOrEmpty(entry.Id))
+                        {
+                            // Add to index
+                            _index.Add(new KnowledgeEntrySummary
+                            {
+                                Id = entry.Id,
+                                Topic = entry.Topic,
+                                Category = entry.Category,
+                                Summary = entry.Summary,
+                                Keywords = entry.Keywords,
+                                KnowledgeGapLikelihood = entry.KnowledgeGapLikelihood,
+                                LastUpdated = entry.LastUpdated,
+                                LastChecked = entry.LastChecked
+                            });
+                            loadedCount++;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Invalid entry in file {Path}: missing required fields", filePath);
+                            failedCount++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to parse knowledge entry file: {Path}", filePath);
+                        failedCount++;
+                    }
                 }
+
+                _logger.LogInformation("Knowledge library initialized: {Loaded} entries loaded, {Failed} failed",
+                    loadedCount, failedCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load knowledge library index");
+                _logger.LogError(ex, "Failed to scan knowledge library directory");
             }
         }
 
@@ -711,11 +756,6 @@ namespace TransparentAiAgent.Infrastructure.Knowledge
                          .ToList()
                          .AsReadOnly();
         }
-    }
-
-    internal class KnowledgeIndexFile
-    {
-        public List<KnowledgeEntrySummary> Entries { get; set; } = new();
     }
 }
 ```
@@ -923,7 +963,6 @@ This section is appended to the base teaching mode prompt when the conversation 
 TransparentAiAgentGui/
 └── wwwroot/
     └── knowledge/
-        ├── index.json                     # Master index (lightweight)
         ├── entries/                       # Individual entry files
         │   ├── api-key-security.json
         │   ├── context-windows.json
@@ -932,67 +971,45 @@ TransparentAiAgentGui/
         │   ├── transparency-logging.json
         │   ├── authentication-methods.json
         │   ├── environment-variables.json
+        │   ├── multi-agent-orchestration.json
         │   └── security-best-practices.json
         ├── _schema.json                   # JSON Schema for validation (dev tool)
-        └── README.md                      # Explains the library structure
+        └── README.md                      # Maintenance guide for librarians
 ```
 
-### index.json Example
+**Note**: No index.json file needed! The app scans the entries/ directory at startup and builds an in-memory index automatically.
+
+### Entry File Example (api-key-security.json)
+
+This example already shown earlier in detail, but here's the structure:
 
 ```json
 {
-  "version": "1.0",
+  "id": "api-key-security",
+  "topic": "API Key Security",
+  "category": "Security",
+  "summary": "Critical security guardrails for API key handling",
+  "keywords": ["api", "key", "secrets", "security", "authentication"],
+  "knowledgeGapLikelihood": "low",
   "lastUpdated": "2025-11-14",
-  "entries": [
-    {
-      "id": "api-key-security",
-      "topic": "API Key Security",
-      "category": "Security",
-      "summary": "Best practices for handling API keys securely in applications",
-      "keywords": ["api", "key", "secrets", "security", "authentication"],
-      "knowledgeGapLikelihood": "low",
-      "lastUpdated": "2025-11-14",
-      "lastChecked": "2025-11-14"
-    },
-    {
-      "id": "context-windows",
-      "topic": "Context Windows and Message Limits",
-      "category": "LLM Concepts",
-      "summary": "Understanding how conversation context works and managing message history",
-      "keywords": ["context", "window", "messages", "limits", "truncation"],
-      "knowledgeGapLikelihood": "low",
-      "lastUpdated": "2025-11-14",
-      "lastChecked": "2025-11-14"
-    },
-    {
-      "id": "mcp-overview",
-      "topic": "Model Context Protocol Overview",
-      "category": "Tools",
-      "summary": "Introduction to MCP and how it enables tool integration",
-      "keywords": ["mcp", "tools", "protocol", "integration"],
-      "knowledgeGapLikelihood": "high",
-      "lastUpdated": "2025-11-14",
-      "lastChecked": "2025-11-14"
-    },
-    {
-      "id": "multi-agent-orchestration",
-      "topic": "Multi-Agent Orchestration",
-      "category": "AI Agents",
-      "summary": "Principles for coordinating multiple AI agents in complex systems",
-      "keywords": ["multi-agent", "orchestration", "coordination", "agents"],
-      "knowledgeGapLikelihood": "high",
-      "lastUpdated": "2025-11-14",
-      "lastChecked": "2025-11-14"
-    }
-  ]
+  "lastChecked": "2025-11-14",
+  "content": {
+    "overview": "...",
+    "keyPoints": [...],
+    "examples": [...],
+    "warnings": [...],
+    "relatedTopics": [...]
+  }
 }
 ```
 
+See earlier sections for the complete example with full content structure.
+
 **Design Notes:**
-- Version field for future schema evolution
-- Index is the source of truth for what topics exist
-- Summaries shown in system prompt
-- Keywords could be used for future search features
+- Each entry is a standalone JSON file
+- App discovers entries by scanning directory at startup
+- Metadata (knowledgeGapLikelihood, timestamps) extracted during scan
+- Corrupted files are skipped with error logging
 
 ---
 
@@ -1432,10 +1449,11 @@ The token count should match the topic's complexity:
 8. Write `security-best-practices.json`
 9. Write `token-limits.json`
 10. Write `teaching-mode.json`
-11. Update `index.json` with all entries
-12. Validate all entries against schema
+11. Validate all entries against schema
 
 **Deliverable:** 10 validated, high-quality knowledge entries
+
+**Note:** No need to maintain index.json - app discovers entries automatically at startup
 
 ---
 
@@ -1744,362 +1762,175 @@ This design provides a solid foundation for the Knowledge Library feature:
 
 **Session Date**: 2025-11-14
 
-This section captures unresolved issues, potential improvements, and questions that arose during design review.
+This section captures issues, potential improvements, and questions that arose during design review, along with resolutions.
 
 ---
 
-### 🔍 Potential Issues & Concerns
+## ✅ Resolved Decisions
 
-#### Issue 1: Index-Entry Synchronization Problem
+The following decisions have been made and incorporated into the design:
+
+1. **No index.json file** - App scans `wwwroot/knowledge/entries/` at startup, parses all `.json` files, skips corrupted ones, builds in-memory index. Eliminates synchronization problem entirely.
+
+2. **C# model fields updated** - `KnowledgeEntrySummary` now includes `knowledgeGapLikelihood`, `lastUpdated`, `lastChecked` fields extracted during directory scan.
+
+3. **Tool description handles behavior** - `knowledgeGapLikelihood` usage and LLM behavior guidance goes in tool description JSON schema and/or teaching mode system instructions. Will be fine-tuned based on functional tests.
+
+4. **Cache invalidation** - Initial version: restart required to reload entries. Hot-reload with file system watching can be added later if needed.
+
+5. **Stale entry detection** - Git commit history handles "when updated". CI/CD can add checks if needed. Not an app runtime concern.
+
+6. **Web search integration** - LLM sees list of available tools (including web search if present). LLM has intelligence to decide when to use web search based on knowledgeGapLikelihood and tool availability.
+
+7. **Teaching mode only** - Knowledge library tool is ONLY available in teaching mode to avoid overwhelming LLM with tools. Normal mode has different toolset. Users can switch to teaching mode mid-session (already implemented).
+
+8. **Maintenance concerns** - Library maintenance (freshness, staleness, quality) is responsibility of librarians/content creators, not app users. Instructions go in `docs/05-guides/development/`. Git handles authorship tracking.
+
+9. **Gap likelihood guidelines** - Decision criteria for low/medium/high goes in development docs. Entry creators must know what they're doing.
+
+10. **LLM behavior patterns** - Yes, include in tool description or teaching mode system instructions. Fine-tune based on functional testing results.
+
+11. **Priority topics** - Concrete list will be brainstormed once design is finalized.
+
+12. **Auto-generate index** - Not needed! Eliminated by directory scanning approach.
+
+---
+
+### 🔍 Potential Issues & Concerns (Archive)
+
+#### Issue 1: Index-Entry Synchronization Problem ✅ RESOLVED
 
 **Problem**: The `index.json` duplicates metadata (knowledgeGapLikelihood, lastUpdated, lastChecked) from individual entry files. If someone updates `api-key-security.json`, they must remember to update `index.json` too. This is error-prone.
 
-**Possible Solutions:**
-1. **Auto-generate index**: Build tool/script that regenerates `index.json` from all entry files
-2. **Index as source of truth**: Make `index.json` authoritative and entries don't duplicate these fields
-3. **Accept duplication**: Keep current design but add validation tests to catch drift
-
-**Decision Needed**: Which approach to take?
+**Resolution**: **Eliminated index.json entirely!** App scans `wwwroot/knowledge/entries/` directory at startup, discovers all `.json` files, parses them, builds in-memory index. No synchronization problem because there's only one source of truth (the entry files themselves).
 
 ---
 
-#### Issue 2: Missing Fields in C# Models
+#### Issue 2: Missing Fields in C# Models ✅ RESOLVED
 
-**Problem**: The `KnowledgeEntrySummary` class (line 549) doesn't include the new fields:
+**Problem**: The `KnowledgeEntrySummary` class was missing knowledgeGapLikelihood, lastUpdated, lastChecked fields.
 
-```csharp
-public class KnowledgeEntrySummary
-{
-    public required string Id { get; init; }
-    public required string Topic { get; init; }
-    public required string Category { get; init; }
-    public required string Summary { get; init; }
-    public List<string> Keywords { get; init; } = new();
-    // Missing: knowledgeGapLikelihood, lastUpdated, lastChecked
-}
-```
-
-**Questions:**
-- Should the summary include these fields?
-- Or keep it lightweight and only include in full entries?
-- Does the system prompt need access to these fields when listing topics?
+**Resolution**: **Fields added to `KnowledgeEntrySummary`**. These are needed in the summary because they're extracted during directory scan and used to build system prompt. The implementation code in the design now includes these fields.
 
 ---
 
-#### Issue 3: Tool Response Doesn't Show Metadata
+#### Issue 3: Tool Response Doesn't Show Metadata 📋 DEFERRED
 
 **Problem**: The `FormatKnowledgeEntry` method doesn't include knowledgeGapLikelihood or timestamps in the output to the LLM.
 
-**Question**: Should the LLM see this metadata when querying a topic?
-
-**Option A - Include Metadata:**
-```markdown
-# API Key Security
-**Category:** Security
-**Knowledge Gap:** Low (my built-in knowledge is reliable)
-**Last Checked:** 2025-11-14
-
-## Overview
-...
-```
-
-**Option B - Hide Metadata:**
-```markdown
-# API Key Security
-**Category:** Security
-
-## Overview
-...
-```
-
-**Consideration**: Is this metadata only for human maintainers, or should it inform the LLM's teaching approach?
+**Resolution**: **Deferred to implementation phase**. This is too detailed for current design phase. The guidance will be included in tool description/schema, and LLM will use it appropriately. Whether to also show in formatted output can be decided during functional testing based on LLM behavior.
 
 ---
 
-#### Issue 4: Cache Invalidation Issue
+#### Issue 4: Cache Invalidation Issue ✅ RESOLVED
 
 **Problem**: `JsonKnowledgeLibrary` caches entries in memory. If you update an entry file during runtime, the cache won't refresh without restarting the app.
 
-**Solutions:**
-1. Accept this limitation for MVP (restart required)
-2. Add hot-reload with file system watching
-3. Add manual cache clearing endpoint/command
+**Resolution**: **Accept restart requirement for initial version**. Hot-reload with file system watching can be added later if needed. This is a reasonable trade-off for MVP.
 
 ---
 
-#### Issue 5: Stale Entry Detection
+#### Issue 5: Stale Entry Detection ✅ RESOLVED
 
 **Problem**: We have `lastChecked`, but no automated way to alert maintainers when entries are old.
 
-**Possible Solutions:**
-- Add maintenance script that warns about entries with `lastChecked > 6 months ago`
-- Display staleness in hypothetical admin UI
-- Add to CI/CD checks
-- Auto-increment knowledgeGapLikelihood if entry is very old?
+**Resolution**: **Not an app concern**. Git commit history shows when files were last updated. CI/CD can add automated checks if needed (e.g., warn if lastChecked > 6 months). Library maintenance is the responsibility of librarians/content creators, not app runtime.
 
 ---
 
-### 🤔 Unclear/Ambiguous Aspects
+### 🤔 Unclear/Ambiguous Aspects (Archive)
 
-#### Question 6: How Does LLM Actually Use knowledgeGapLikelihood?
+#### Question 6: How Does LLM Actually Use knowledgeGapLikelihood? ✅ RESOLVED
 
-**Scenario**: The system prompt mentions the field exists, but what's the expected behavior?
-
-**Example flow:**
-- User asks: "Explain MCP tools"
-- LLM queries library, sees `knowledgeGapLikelihood: "high"`
-- Then what?
-
-**Possible Behaviors:**
-1. Explicitly say "This is a rapidly evolving topic, my knowledge may be outdated"
-2. Automatically try web search (if available)
-3. Just use the library content and internal knowledge
-4. Adjust confidence level in responses
-
-**Need**: Clear prompt instructions or behavior guidelines in system prompt
+**Resolution**: **Tool description and teaching mode system instructions will include behavior guidance**. JSON schema will have comments on the property. Fine-tuning will happen during functional testing. LLM has intelligence to understand the guidance and act appropriately.
 
 ---
 
-#### Question 7: Library + Web Search Integration
+#### Question 7: Library + Web Search Integration ✅ RESOLVED
 
-**Context**: For high-gap topics, design mentions preferring web search.
-
-**Unclear Points:**
-- How does LLM know if web search is available?
-- What's the precedence? Library first, then web? Or web first for high-gap?
-- Should the library entry itself say "recommend web search for latest info"?
-- Should the tool description mention web search as an alternative?
-
-**Suggested Flow for High-Gap Topics:**
-1. LLM checks if web search is available
-2. If yes: Query both library (for guardrails) AND web search (for current info)
-3. If no: Query library, then warn user based on `lastChecked` date
+**Resolution**: **LLM sees available tools list** (which includes web search if present). LLM has the intelligence to decide when to use web search based on knowledgeGapLikelihood field and tool availability. No special integration needed - the LLM figures it out.
 
 ---
 
-#### Question 8: Knowledge Library Availability
+#### Question 8: Knowledge Library Availability ✅ RESOLVED
 
-**Question**: Is the knowledge library:
-- ✅ Only available in teaching mode?
-- ❌ Available in all conversation modes?
-
-**Context**: The doc says "when teaching mode is active" for system prompt injection. Should confirm this is intentional.
-
-**Considerations:**
-- Teaching mode is specifically for education
-- But guardrails (especially security) might be useful in general conversations too
-- Tool registration might be mode-specific or global
+**Resolution**: **Teaching mode only**. Knowledge library tool is ONLY available in teaching mode to avoid overwhelming LLM with too many tools. Normal mode has a different toolset focused on designed tasks (not teaching). Users can switch to teaching mode mid-session (already implemented).
 
 ---
 
-#### Question 9: What if Timestamps Are Very Old?
+#### Question 9: What if Timestamps Are Very Old? ✅ RESOLVED
 
-**Scenario**: `lastChecked` is from 2024-01-01 (almost a year ago) and user asks about that topic.
-
-**Should we:**
-- Have the LLM warn the user about stale information?
-- Include a staleness warning in tool response?
-- Automatically increase knowledge gap likelihood based on age?
-- Prevent query and force web search?
-
-**Example Response:**
-> "I have guardrails on this topic, but they were last verified on 2024-01-01. Given this is [X months old], let me search for the latest information..."
+**Resolution**: **Duplicate of Issue 5**. Stale entries are a librarian/maintenance concern, not an app runtime concern. The knowledgeGapLikelihood field provides the key signal. If entry is old AND has high gap likelihood, LLM should naturally prefer web search (if available) or warn user.
 
 ---
 
-### 💡 Suggestions & Ideas
+### 💡 Suggestions & Ideas (Archive)
 
-#### Suggestion 10: Validation Guidelines for knowledgeGapLikelihood
+#### Suggestion 10: Validation Guidelines for knowledgeGapLikelihood ✅ ACCEPTED
 
-**Problem**: Who decides if a topic is "low" vs "medium" vs "high"?
-
-**Proposed Decision Criteria:**
-
-```markdown
-**Deciding Knowledge Gap Likelihood:**
-
-**Low** - Choose when topic is:
-- Fundamental, standardized concept (e.g., "what are tokens?")
-- Slow-changing best practice (e.g., "don't commit secrets")
-- Well-established protocol (e.g., HTTP basics)
-- Unlikely to have changed significantly since LLM training cutoff
-
-**Medium** - Choose when topic is:
-- Best practices that evolve over years (e.g., authentication patterns)
-- Technology with incremental updates (e.g., OAuth versions)
-- May have new recommendations but core principles stable
-
-**High** - Choose when topic:
-- Has had major developments in last 12-18 months
-- Is an emerging standard or protocol (e.g., MCP, A2A)
-- Is actively evolving with frequent changes
-- Represents cutting-edge research or practice
-
-**If uncertain**: Default to "medium" and include recent `lastChecked` date
-```
+**Resolution**: **Add to docs/05-guides/development/**. The decision criteria should be documented for entry creators. Entry creators must know what they're doing - they're responsible for making these decisions.
 
 ---
 
-#### Suggestion 11: Auto-Generate index.json
+#### Suggestion 11: Auto-Generate index.json ✅ NOT NEEDED
 
-**Proposal**: Instead of manually maintaining `index.json`, create a build script:
-
-```bash
-# Node.js version
-npm run generate-knowledge-index
-
-# .NET version
-dotnet run --project Tools/KnowledgeIndexBuilder
-```
-
-**What it does:**
-1. Reads all `wwwroot/knowledge/entries/*.json`
-2. Validates each against schema
-3. Extracts metadata (id, topic, category, summary, knowledgeGapLikelihood, timestamps)
-4. Generates `index.json`
-5. Validates no duplicate IDs
-
-**Benefits:**
-- Single source of truth (individual entries)
-- No sync problems
-- Run in CI/CD to prevent drift
-- Can add validation rules (e.g., warn if `lastChecked > 6 months`)
-
-**Drawback**: Extra tooling, but seems worth it for correctness
+**Resolution**: **Eliminated by directory scanning approach**. No index.json file at all! App scans directory at startup. Problem solved at the root.
 
 ---
 
-#### Suggestion 12: Add "Freshness Indicator" to System Prompt
+#### Suggestion 12: Add "Freshness Indicator" to System Prompt 📋 DEFERRED
 
-**Proposal**: For high-gap topics in the system prompt listing, mark them visually:
-
-```text
-Available knowledge topics:
-- api-key-security: API Key Security [reliable ✓]
-- context-windows: Context Windows and Message Limits [reliable ✓]
-- mcp-overview: Model Context Protocol [evolving ⚠️ - prefer web search]
-- multi-agent-orchestration: Multi-Agent Orchestration [evolving ⚠️ - prefer web search]
-```
-
-**Benefits:**
-- Makes it visually clear which topics need extra care
-- Reminds LLM to use web search for high-gap topics
-- Low cognitive overhead (just symbols)
-
-**Alternative**: Use color coding or categories in prompt
+**Resolution**: **Librarians' concern, not app runtime concern**. If freshness indicators are needed, they go in the maintenance/documentation layer, not in app behavior. Can revisit during implementation if needed.
 
 ---
 
-#### Suggestion 13: Priority Topics Need Updating
+#### Suggestion 13: Priority Topics Need Updating ✅ ACCEPTED
 
-**Observation**: The "Initial Knowledge Topics" section (line 1026) doesn't include AI-agent-specific topics like:
-- multi-agent-orchestration
-- agent-to-agent-protocols
-- agent-communication-patterns
-
-**Proposal**: Given teaching mode's purpose (educating about AI agents), shouldn't these be Priority 1 or 2?
-
-**Suggested Restructure:**
-
-**Priority 1: AI Agent Topics** (Teaching Mode Core)
-1. multi-agent-orchestration
-2. agent-to-agent-protocols
-3. teaching-mode
-4. transparency-logging
-
-**Priority 2: Critical Security Topics**
-5. api-key-security
-6. tool-security
-7. environment-variables
-
-**Priority 3: Core LLM Concepts**
-8. context-windows
-9. tokens
-10. prompt-engineering
+**Resolution**: **Will brainstorm concrete list once design is finalized**. Agree that AI agent topics should be higher priority given teaching mode's purpose.
 
 ---
 
-#### Suggestion 14: Consider "updatedBy" Field
+#### Suggestion 14: Consider "updatedBy" Field ✅ RESOLVED
 
-**Proposal**: Add authorship tracking for maintenance:
-
-```json
-{
-  "lastUpdated": "2025-11-14",
-  "lastChecked": "2025-11-14",
-  "updatedBy": "user@domain.com",
-  "checkedBy": "reviewer@domain.com"
-}
-```
-
-**Benefits:**
-- Know who to ask when reviewing old entries
-- Accountability for content quality
-- Easier to track subject matter experts
-
-**Drawback**: Adds complexity, may not be needed for small teams
+**Resolution**: **Git already handles authorship**. Git commit history shows who modified each entry and when. No need for redundant tracking in the JSON structure.
 
 ---
 
-#### Suggestion 15: LLM Behavior Template
+#### Suggestion 15: LLM Behavior Template ✅ ACCEPTED
 
-**Proposal**: Add a section showing exactly how the LLM should respond based on knowledge gap.
-
-**LLM Response Patterns by Knowledge Gap:**
-
-**Low Gap Topics:**
-```
-1. Query library for guardrails
-2. Teach confidently using library + built-in knowledge
-3. No special warnings needed
-4. Example: "Let me explain API key security. The most critical rule is..."
-```
-
-**Medium Gap Topics:**
-```
-1. Query library for guardrails
-2. Mention: "Let me get the latest guidelines on this..."
-3. Consider web search for very recent developments
-4. Example: "Let me check the current best practices for authentication. [queries library] Based on the latest guidelines..."
-```
-
-**High Gap Topics:**
-```
-1. Query library first for guardrails
-2. Explicitly state: "This is a rapidly evolving area. The guardrails I have are from [lastChecked date]."
-3. Strongly recommend/use web search if available
-4. If no web search: "My knowledge may be limited; consider checking [references from library]"
-5. Example: "Multi-agent orchestration is evolving rapidly. Let me get the foundational principles [queries library], but I recommend also checking recent research as this field changes quickly."
-```
+**Resolution**: **Include in tool description or teaching mode system instructions**. Fine-tune based on functional testing results. This guidance helps LLM understand how to use the gap likelihood field effectively.
 
 ---
 
-### ❓ Questions for Discussion
+### ❓ Questions for Discussion (All Resolved!)
 
-**Question Set A: Technical Decisions**
-1. **Index duplication**: Should we auto-generate `index.json`, or keep manual sync with validation?
-2. **Tool response metadata**: Should LLM see knowledgeGapLikelihood and timestamps when querying?
-3. **C# model fields**: Should `KnowledgeEntrySummary` include the new metadata fields?
+**Question Set A: Technical Decisions** ✅
+1. **Index duplication**: ✅ RESOLVED - Eliminated index.json entirely (See Issue 1)
+2. **Tool response metadata**: 📋 DEFERRED - Too detailed for design phase (See Issue 3)
+3. **C# model fields**: ✅ RESOLVED - Fields added to KnowledgeEntrySummary (See Issue 2)
 
-**Question Set B: Integration & Behavior**
-4. **Web search integration**: How should we guide the LLM to use web search for high-gap topics?
-5. **Stale entry alerts**: How should we handle entries with old `lastChecked` dates?
-6. **Teaching mode only**: Confirm that knowledge library is ONLY for teaching mode, not general conversations?
+**Question Set B: Integration & Behavior** ✅
+4. **Web search integration**: ✅ RESOLVED - LLM sees tool list, figures it out (See Question 7)
+5. **Stale entry alerts**: ✅ RESOLVED - Git/CI/CD concern, not app runtime (See Issue 5)
+6. **Teaching mode only**: ✅ RESOLVED - Yes, teaching mode only (See Question 8)
 
-**Question Set C: Content & Priorities**
-7. **Priority topics**: Should we add multi-agent topics to the Priority 1-2 list?
-8. **Freshness indicators**: Should system prompt show visual indicators for high-gap topics?
-9. **LLM behavior**: Do we need explicit behavior guidelines for each gap level in the system prompt?
+**Question Set C: Content & Priorities** ✅
+7. **Priority topics**: ✅ ACCEPTED - Will brainstorm once design finalized (See Suggestion 13)
+8. **Freshness indicators**: 📋 DEFERRED - Librarians' concern (See Suggestion 12)
+9. **LLM behavior**: ✅ ACCEPTED - Include in tool description/system instructions (See Suggestion 15)
 
 ---
 
-### 📝 Next Steps for This Session
+### 📝 Session Summary
 
-1. Discuss and decide on critical questions (especially #1, #2, #4, #6)
-2. Update design document with decisions
-3. Add resolved items to appropriate sections
-4. Keep unresolved items here for future discussion
-5. Commit frequently to preserve decisions
+**Major Decision**: Eliminated `index.json` file entirely! App scans `wwwroot/knowledge/entries/` at startup.
+
+**All questions resolved or deferred appropriately**. Design is now solid and ready for implementation phase.
+
+**Next Steps**:
+1. Begin Phase 1 implementation (Foundation)
+2. Create development guide in docs/05-guides/development/ with gap likelihood criteria
+3. Fine-tune LLM behavior during functional testing
 
 ---
 
