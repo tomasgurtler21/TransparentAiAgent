@@ -9,7 +9,13 @@ public class LlmTextMessage : LlmMessage
 {
     public override string MessageTypeDiscriminator => "Llm.Text";
 
-    public LlmTextMessage(string content)
+    /// <summary>
+    /// Extended thinking content from the LLM (e.g., Anthropic's thinking blocks).
+    /// This represents the model's internal reasoning process.
+    /// </summary>
+    public string? Thinking { get; set; }
+
+    public LlmTextMessage(string content, string? thinking = null)
     {
         // Allow empty content, but not null (empty content is valid for responses that only contain tool calls)
         if (content == null)
@@ -17,6 +23,7 @@ public class LlmTextMessage : LlmMessage
 
         Id = Guid.NewGuid();
         Content = content;
+        Thinking = thinking;
         Timestamp = DateTime.UtcNow;
         ContextStatus = MessageContextStatus.InContext;
     }

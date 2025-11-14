@@ -28,6 +28,17 @@
         <span class="message-timestamp">@Message.Timestamp.ToString("HH:mm:ss")</span>
     </div>
     <div class="message-content">
+        @* Display thinking content if present *@
+        @if (!string.IsNullOrWhiteSpace(Message.Thinking))
+        {
+            <details class="thinking-section">
+                <summary class="thinking-summary">💭 Model's Thinking</summary>
+                <div class="thinking-content">
+                    <MarkdownDisplay Content="@Message.Thinking" />
+                </div>
+            </details>
+        }
+
         @if (Message.IsToolCall)
         {
             <div class="tool-call-container">

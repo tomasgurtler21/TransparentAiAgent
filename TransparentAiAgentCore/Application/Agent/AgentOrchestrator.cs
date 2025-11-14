@@ -109,6 +109,7 @@ public class AgentOrchestrator : IAgentOrchestrator
             await ExecuteToolCallsAsync(
                 llmResponse.Content ?? string.Empty,
                 llmResponse.ToolCalls,
+                llmResponse.Thinking,
                 cancellationToken);
 
             // Continue loop with tool results
@@ -142,6 +143,7 @@ public class AgentOrchestrator : IAgentOrchestrator
     private async Task ExecuteToolCallsAsync(
         string assistantContent,
         List<LLMToolCall> llmToolCalls,
+        string? thinking,
         CancellationToken cancellationToken)
     {
         if (_toolManager == null)
@@ -163,7 +165,8 @@ public class AgentOrchestrator : IAgentOrchestrator
             // Create ONE assistant message with ALL tool calls
             var assistantToolCallMessage = new LlmToolCallMessage(
                 assistantContent,
-                toolCalls);
+                toolCalls,
+                thinking);
             _conversationManager.AddMessage(assistantToolCallMessage);
         }
         catch (Exception ex)
@@ -248,6 +251,7 @@ public class AgentOrchestrator : IAgentOrchestrator
 
         var contentBuilder = new StringBuilder();
         List<LLMToolCall>? accumulatedToolCalls = null;
+        string? accumulatedThinking = null;
 
         await foreach (var chunk in _llmProvider.StreamRequestAsync(llmRequest, cancellationToken))
         {
@@ -264,6 +268,12 @@ public class AgentOrchestrator : IAgentOrchestrator
             {
                 accumulatedToolCalls = chunk.AccumulatedToolCalls;
                 LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, Tool calls: {accumulatedToolCalls.Count}");
+            }
+
+            // Capture accumulated thinking from final chunk
+            if (!string.IsNullOrEmpty(chunk.AccumulatedThinking))
+            {
+                accumulatedThinking = chunk.AccumulatedThinking;
             }
 
             // Check if stream is complete
@@ -288,6 +298,7 @@ public class AgentOrchestrator : IAgentOrchestrator
             await ExecuteToolCallsAsync(
                 contentBuilder.ToString(),
                 accumulatedToolCalls,
+                accumulatedThinking,
                 cancellationToken);
 
             LogEvent("ToolExecutionCompleted", $"Completed execution of {accumulatedToolCalls.Count} tool(s)");
@@ -301,7 +312,7 @@ public class AgentOrchestrator : IAgentOrchestrator
         else
         {
             // No tool calls - add assistant message and complete
-            var assistantMessage = new LlmTextMessage(contentBuilder.ToString());
+            var assistantMessage = new LlmTextMessage(contentBuilder.ToString(), accumulatedThinking);
             _conversationManager.AddMessage(assistantMessage);
 
             // Yield final completion chunk

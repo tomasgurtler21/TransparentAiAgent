@@ -18,6 +18,12 @@ public class LlmToolCallMessage : LlmMessage
     public List<ToolCall> ToolCalls { get; init; } = new List<ToolCall>();
 
     /// <summary>
+    /// Extended thinking content from the LLM (e.g., Anthropic's thinking blocks).
+    /// This represents the model's internal reasoning process that occurred before or during tool calling.
+    /// </summary>
+    public string? Thinking { get; set; }
+
+    /// <summary>
     /// Parameterless constructor for deserialization.
     /// </summary>
     [JsonConstructor]
@@ -31,8 +37,9 @@ public class LlmToolCallMessage : LlmMessage
     /// </summary>
     /// <param name="content">Message content (can be empty when LLM only requests tools)</param>
     /// <param name="toolCalls">List of tool calls (must contain at least one)</param>
+    /// <param name="thinking">Extended thinking content (optional)</param>
     /// <exception cref="ArgumentException">Thrown when toolCalls is null or empty</exception>
-    public LlmToolCallMessage(string content, List<ToolCall> toolCalls)
+    public LlmToolCallMessage(string content, List<ToolCall> toolCalls, string? thinking = null)
     {
         if (toolCalls == null || toolCalls.Count == 0)
             throw new ArgumentException("Must have at least one tool call", nameof(toolCalls));
@@ -42,6 +49,7 @@ public class LlmToolCallMessage : LlmMessage
 
         Id = Guid.NewGuid();
         Content = content ?? string.Empty;
+        Thinking = thinking;
         Timestamp = DateTime.UtcNow;
         ContextStatus = MessageContextStatus.InContext;
     }

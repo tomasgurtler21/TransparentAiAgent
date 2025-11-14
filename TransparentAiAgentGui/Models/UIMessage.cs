@@ -32,6 +32,12 @@ public class UIMessage
     public string? Annotation { get; set; }
 
     /// <summary>
+    /// Extended thinking content from the LLM (e.g., Anthropic's thinking blocks).
+    /// This represents the model's internal reasoning process.
+    /// </summary>
+    public string? Thinking { get; set; }
+
+    /// <summary>
     /// Note appended to all annotations to clarify they are not sent to the LLM.
     /// CONTROL POINT: This string is appended in FromDomainMessage() where annotations
     /// are extracted from domain messages. If we ever change the behavior to include
@@ -128,6 +134,7 @@ public class UIMessage
         else if (message is LlmToolCallMessage llmToolCallMsg)
         {
             uiMessage.IsToolCall = true;
+            uiMessage.Thinking = llmToolCallMsg.Thinking;
             uiMessage.ToolCalls = llmToolCallMsg.ToolCalls
                 .Select(tc => new UIToolCall
                 {
@@ -136,6 +143,12 @@ public class UIMessage
                     Arguments = tc.Arguments
                 })
                 .ToList();
+        }
+        // === LLM-originated text messages ===
+        // LlmTextMessage (new hierarchy)
+        else if (message is LlmTextMessage llmTextMsg)
+        {
+            uiMessage.Thinking = llmTextMsg.Thinking;
         }
 
         // === Tool-originated result messages ===
