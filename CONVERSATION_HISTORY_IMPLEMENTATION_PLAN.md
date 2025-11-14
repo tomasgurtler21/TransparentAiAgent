@@ -48,13 +48,11 @@ Each session:
 
 1. `TransparentAiAgentCore/Domain/ConversationHistory/Conversation.cs`
 2. `TransparentAiAgentCore/Domain/ConversationHistory/ConversationMetadata.cs`
-3. `TransparentAiAgentCore/Domain/ConversationHistory/ConversationConfiguration.cs`
-4. `TransparentAiAgentCore/Domain/ConversationHistory/IConversationRepository.cs`
+3. `TransparentAiAgentCore/Domain/ConversationHistory/IConversationRepository.cs`
 
 **Test File to Create**:
 
 1. `TransparentAiAgentCore_Tests/Domain/ConversationHistory/ConversationTests.cs`
-2. `TransparentAiAgentCore_Tests/Domain/ConversationHistory/ConversationConfigurationTests.cs`
 
 ### What to Test (Lean TDD)
 
@@ -67,11 +65,6 @@ Each session:
 - `Conversation.SanitizeFileName()` - Transformation logic
   - Removes invalid characters
   - Handles edge cases (empty, all-invalid, etc.)
-- `ConversationConfiguration.CreateSnapshot()` - Complex transformation
-  - Copies all relevant fields from AppConfiguration
-  - Excludes sensitive data (API keys, TenantId)
-  - Handles Anthropic vs Azure OpenAI conditionally
-  - Handles null ExtendedThinking configuration
 
 **❌ Skip These** (no logic):
 - Simple property getters/setters (ConversationId, Name, CreatedAt, etc.)
@@ -150,57 +143,9 @@ public class ConversationTests
         // Verify timestamp format
     }
 }
-
-[TestClass]
-public class ConversationConfigurationTests
-{
-    [TestMethod]
-    public void CreateSnapshot_AnthropicProvider_ExcludesApiKey()
-    {
-        // Arrange
-        var appConfig = CreateAnthropicAppConfig();
-
-        // Act
-        var snapshot = ConversationConfiguration.CreateSnapshot(appConfig);
-
-        // Assert
-        Assert.IsNotNull(snapshot.Anthropic);
-        Assert.AreEqual("claude-sonnet-4-5", snapshot.Anthropic.Model);
-        // Verify API key is NOT in snapshot (check serialized JSON doesn't contain it)
-    }
-
-    [TestMethod]
-    public void CreateSnapshot_AzureOpenAIProvider_ExcludesApiKeyAndTenantId()
-    {
-        // Arrange
-        var appConfig = CreateAzureOpenAIAppConfig();
-
-        // Act
-        var snapshot = ConversationConfiguration.CreateSnapshot(appConfig);
-
-        // Assert
-        Assert.IsNotNull(snapshot.AzureOpenAI);
-        Assert.AreEqual("https://my-endpoint", snapshot.AzureOpenAI.Endpoint);
-        // Verify API key and TenantId are NOT in snapshot
-    }
-
-    [TestMethod]
-    public void CreateSnapshot_CopiesAgentConfiguration()
-    {
-        // Arrange
-        var appConfig = CreateAppConfig();
-        appConfig.Agent.SystemPrompt = "Test prompt";
-        appConfig.Agent.ContextWindowSize = 50;
-
-        // Act
-        var snapshot = ConversationConfiguration.CreateSnapshot(appConfig);
-
-        // Assert
-        Assert.AreEqual("Test prompt", snapshot.SystemPrompt);
-        Assert.AreEqual(50, snapshot.ContextWindowSize);
-    }
-}
 ```
+
+**Note**: ConversationConfiguration has been removed from design (config snapshot not needed).
 
 ### Implementation Order (TDD)
 
@@ -208,10 +153,7 @@ public class ConversationConfigurationTests
 2. **Write tests for `Conversation.GenerateName()`** (RED)
 3. **Implement `Conversation.GenerateName()`** (GREEN)
 4. **Refactor** name generation logic (REFACTOR)
-5. **Write tests for `ConversationConfiguration.CreateSnapshot()`** (RED)
-6. **Implement snapshot creation** (GREEN)
-7. **Refactor** snapshot logic if needed (REFACTOR)
-8. **Create other classes** (ConversationMetadata, IConversationRepository - no tests needed, pure DTOs/interfaces)
+5. **Create other classes** (ConversationMetadata, IConversationRepository - no tests needed, pure DTOs/interfaces)
 
 ### Exit Criteria
 
@@ -502,7 +444,6 @@ public class JsonConversationRepositoryTests
 - `SaveCurrentConversationAsync()` - Orchestration logic
   - Skips empty conversations (no messages)
   - Generates name from messages
-  - Creates configuration snapshot
   - Preserves CreatedAt for existing conversations
   - Calls repository.SaveAsync()
   - Handles save failures gracefully (logs, doesn't throw)
@@ -547,10 +488,9 @@ public class ConversationHistoryManagerTests
         // Arrange
         var conversationId = Guid.NewGuid();
         var messages = new List<IMessage>();
-        var config = CreateTestAppConfig();
 
         // Act
-        await _manager.SaveCurrentConversationAsync(conversationId, messages, config);
+        await _manager.SaveCurrentConversationAsync(conversationId, messages);
 
         // Assert
         _mockRepository.Verify(r => r.SaveAsync(It.IsAny<Conversation>()), Times.Never);
@@ -562,10 +502,9 @@ public class ConversationHistoryManagerTests
         // Arrange
         var conversationId = Guid.NewGuid();
         var messages = new List<IMessage> { new UserMessage("Test") };
-        var config = CreateTestAppConfig();
 
         // Act
-        await _manager.SaveCurrentConversationAsync(conversationId, messages, config);
+        await _manager.SaveCurrentConversationAsync(conversationId, messages);
 
         // Assert
         _mockRepository.Verify(
@@ -583,7 +522,6 @@ public class ConversationHistoryManagerTests
         // Arrange
         var conversationId = Guid.NewGuid();
         var messages = new List<IMessage> { new UserMessage("Test") };
-        var config = CreateTestAppConfig();
 
         var existingConversation = new Conversation
         {
@@ -597,7 +535,7 @@ public class ConversationHistoryManagerTests
             .ReturnsAsync(existingConversation);
 
         // Act
-        await _manager.SaveCurrentConversationAsync(conversationId, messages, config);
+        await _manager.SaveCurrentConversationAsync(conversationId, messages);
 
         // Assert
         _mockRepository.Verify(
@@ -614,13 +552,12 @@ public class ConversationHistoryManagerTests
         // Arrange
         var conversationId = Guid.NewGuid();
         var messages = new List<IMessage> { new UserMessage("Test") };
-        var config = CreateTestAppConfig();
 
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<Conversation>()))
             .ThrowsAsync(new IOException("Disk full"));
 
         // Act - should not throw
-        await _manager.SaveCurrentConversationAsync(conversationId, messages, config);
+        await _manager.SaveCurrentConversationAsync(conversationId, messages);
 
         // Assert - verify error was logged
         // (Use logger verification if needed)
@@ -664,27 +601,6 @@ public class ConversationHistoryManagerTests
 
         // Assert
         _mockRepository.Verify(r => r.SaveAsync(It.IsAny<Conversation>()), Times.Never);
-    }
-
-    private AppConfiguration CreateTestAppConfig()
-    {
-        return new AppConfiguration
-        {
-            Agent = new AgentConfiguration
-            {
-                SystemPrompt = "Test prompt",
-                ContextWindowSize = 50
-            },
-            LLM = new LLMConfiguration
-            {
-                Provider = "Anthropic",
-                Temperature = 1.0,
-                Anthropic = new AnthropicConfiguration
-                {
-                    Model = "claude-sonnet-4-5"
-                }
-            }
-        };
     }
 }
 ```
@@ -886,7 +802,6 @@ When running the application:
 
 **✅ Test These**:
 - `ConversationUIService.AutoSaveConversationAsync()` - New private method
-  - Retrieves current configuration
   - Gets messages from ConversationManager
   - Calls ConversationHistoryManager.SaveCurrentConversationAsync()
   - Handles failures gracefully (logs, doesn't throw)
@@ -895,7 +810,7 @@ When running the application:
   - Auto-save called after SendMessageAsync()
   - Auto-save failures don't crash the app
 
-**Test Strategy**: Use mocks for IConversationHistoryManager and IConfigurationService.
+**Test Strategy**: Use mocks for IConversationHistoryManager.
 
 ### Test Examples
 
@@ -904,23 +819,15 @@ When running the application:
 public class ConversationUIServiceAutoSaveTests
 {
     private Mock<IConversationHistoryManager> _mockHistoryManager;
-    private Mock<IConfigurationService> _mockConfigService;
     private ConversationUIService _service;
 
     [TestInitialize]
     public void Setup()
     {
         _mockHistoryManager = new Mock<IConversationHistoryManager>();
-        _mockConfigService = new Mock<IConfigurationService>();
-
-        _mockConfigService.Setup(c => c.GetConfiguration())
-            .Returns(CreateTestAppConfig());
 
         // Create service with mocked dependencies
-        _service = CreateServiceWithMocks(
-            _mockHistoryManager.Object,
-            _mockConfigService.Object
-        );
+        _service = CreateServiceWithMocks(_mockHistoryManager.Object);
     }
 
     [TestMethod]
@@ -937,8 +844,7 @@ public class ConversationUIServiceAutoSaveTests
         _mockHistoryManager.Verify(
             h => h.SaveCurrentConversationAsync(
                 It.IsAny<Guid>(),
-                It.IsAny<IReadOnlyList<IMessage>>(),
-                It.IsAny<AppConfiguration>()
+                It.IsAny<IReadOnlyList<IMessage>>()
             ),
             Times.Once
         );
@@ -951,8 +857,7 @@ public class ConversationUIServiceAutoSaveTests
         _mockHistoryManager
             .Setup(h => h.SaveCurrentConversationAsync(
                 It.IsAny<Guid>(),
-                It.IsAny<IReadOnlyList<IMessage>>(),
-                It.IsAny<AppConfiguration>()
+                It.IsAny<IReadOnlyList<IMessage>>()
             ))
             .ThrowsAsync(new IOException("Save failed"));
 
@@ -965,45 +870,22 @@ public class ConversationUIServiceAutoSaveTests
         // No exception should be thrown - failure is logged
     }
 
-    [TestMethod]
-    public async Task AutoSave_PassesCurrentConfiguration()
-    {
-        // Arrange
-        var expectedConfig = CreateTestAppConfig();
-        _mockConfigService.Setup(c => c.GetConfiguration())
-            .Returns(expectedConfig);
-
-        var userMessage = "Test message";
-
-        // Act
-        await _service.SendMessageStreamingAsync(userMessage);
-        await Task.Delay(100);
-
-        // Assert
-        _mockHistoryManager.Verify(
-            h => h.SaveCurrentConversationAsync(
-                It.IsAny<Guid>(),
-                It.IsAny<IReadOnlyList<IMessage>>(),
-                It.Is<AppConfiguration>(c => c == expectedConfig)
-            ),
-            Times.Once
-        );
-    }
 }
 ```
+
+**Note**: Configuration parameter removed from auto-save (no config snapshot needed).
 
 ### Implementation Order (TDD)
 
 1. **Write tests for auto-save integration** (RED)
-2. **Add IConversationHistoryManager and IConfigurationService to ConversationUIService constructor**
+2. **Add IConversationHistoryManager to ConversationUIService constructor**
 3. **Implement AutoSaveConversationAsync() private method** (GREEN)
 4. **Add auto-save calls after RefreshMessages() in both streaming and non-streaming methods**
 5. **Run tests and verify** (GREEN)
 6. **Register IConversationRepository → JsonConversationRepository in DI**
 7. **Register IConversationHistoryManager → ConversationHistoryManager in DI**
-8. **Add IConfigurationService to ConversationUIService if not already present**
-9. **Integration testing**: Run full application
-10. **Verify auto-save works end-to-end**
+8. **Integration testing**: Run full application
+9. **Verify auto-save works end-to-end**
 
 ### Dependency Registration Example
 
@@ -1021,7 +903,6 @@ builder.Services.AddScoped<IConversationHistoryManager, ConversationHistoryManag
 
 // UI services (existing)
 builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
-builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 ```
 
 ### Integration Testing Checklist
@@ -1031,14 +912,14 @@ Run the full application and verify:
 - [ ] Application starts without errors
 - [ ] Can send messages normally
 - [ ] After each message, ./conversations/ directory has a file
-- [ ] File contains correct JSON structure
-- [ ] Configuration snapshot excludes API keys
+- [ ] File contains correct JSON structure (conversationId, name, createdAt, lastModifiedAt, messages)
 - [ ] Conversation name is extracted from first user message
 - [ ] Can load conversation from dropdown
 - [ ] Loaded conversation shows all previous messages
 - [ ] Can switch between conversations
 - [ ] "+ New" button creates new conversation
 - [ ] Auto-save failures (if simulated) don't crash app
+- [ ] Loading old conversation uses CURRENT configuration (doesn't restore old config)
 
 ### Exit Criteria
 
@@ -1058,7 +939,7 @@ Run the full application and verify:
 
 | Session | Focus | Files Created | Tests | Complexity |
 |---------|-------|---------------|-------|------------|
-| 1 | Domain entities | 4 classes | 2 test files | Low |
+| 1 | Domain entities | 3 classes | 1 test file | Low |
 | 2 | JSON repository | 1 class | 1 test file | Medium |
 | 3 | History manager | 2 classes | 1 test file | Medium |
 | 4 | UI component | 2 components, service updates | Service tests + manual | Medium |
@@ -1075,7 +956,7 @@ After completing all 5 sessions:
 - ✅ Users can create new conversations
 - ✅ Conversations auto-save after every message
 - ✅ Conversation names are extracted from first user message
-- ✅ Configuration snapshots are stored (without API keys)
+- ✅ Conversations saved with minimal metadata (no config snapshot)
 - ✅ All tests passing
 - ✅ No errors or exceptions during normal use
 - ✅ Code follows Clean Architecture principles
