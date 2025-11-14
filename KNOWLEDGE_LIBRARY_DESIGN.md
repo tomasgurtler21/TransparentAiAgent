@@ -26,7 +26,7 @@ The Knowledge Library is a curated collection of information that the teaching a
 2. **Knowledge Library** - Curated, application-specific information (this system)
 3. **Web Search** - Live information from the internet
 
-### Key Principle: LLM-First Design
+### Key Principle #1: LLM-First Design
 
 **Critical insight**: The library is primarily accessed by the LLM via tools, not by users directly. This fundamentally changes the design:
 
@@ -34,6 +34,100 @@ The Knowledge Library is a curated collection of information that the teaching a
 - ✅ Tool-first design: simple, focused retrieval for LLM consumption
 - ✅ User never directly "browses" entries (at least not initially)
 - ✅ LLM receives information and presents it to user in teaching context
+
+### Key Principle #2: Guardrails, Not Encyclopedias
+
+**CRITICAL INSIGHT**: Knowledge entries are **guardrails**, not comprehensive documentation.
+
+**Philosophy:**
+- Modern LLMs already have vast knowledge from training data
+- Web search provides access to current information
+- **Knowledge entries exist to:**
+  - ✅ **Correct** common misconceptions or mistakes in LLM training
+  - ✅ **Establish** critical principles and "red lines" (security, privacy)
+  - ✅ **Guide** the LLM toward correct approaches
+  - ✅ **Prevent** dangerous or incorrect teaching
+  - ✅ **Provide** application-specific context not in training data
+
+**What Knowledge Entries Are NOT:**
+- ❌ Exhaustive tutorials or documentation
+- ❌ Complete technical references
+- ❌ Replacements for LLM's built-in knowledge
+- ❌ Step-by-step how-to guides
+
+**Example: API Key Security**
+
+**❌ Bad (Encyclopedia Approach):**
+- 5000 words covering every aspect of API key management
+- Detailed history of authentication methods
+- Complete list of all key rotation tools
+- Extensive code examples for 10 different languages
+- **Problem**: Huge maintenance burden, content gets stale, overwhelming
+
+**✅ Good (Guardrails Approach):**
+- 300 words hitting critical points:
+  - "Never commit keys to version control"
+  - "Use environment variables or vaults"
+  - "Rotate immediately if compromised"
+  - Brief code example (one language)
+  - Link to official docs for details
+- **Benefit**: LLM uses these principles + built-in knowledge to teach comprehensively
+
+**Design Implications:**
+- **Entry length**: Target ~200-400 tokens (not 500-1000)
+- **Content focus**: "Must-knows" and "must-not-dos", not "nice-to-knows"
+- **Maintenance**: Much easier - only update when principles change (rare)
+- **LLM behavior**: Quick guardrail check → teach using full knowledge
+- **Quality bar**: "Is this critical guidance?" not "Is this complete?"
+
+### Why Guardrails Work Better Than Encyclopedias
+
+**1. Leverages LLM Strengths**
+- LLMs are already trained on vast amounts of documentation, tutorials, and best practices
+- No need to duplicate what they already know well
+- Guardrails just **correct** and **constrain** where needed
+
+**2. Addresses Real Risks**
+- **LLM training includes conflicting information**: Web has good and bad advice mixed
+- **LLM training includes outdated patterns**: Security practices evolve
+- **LLM training lacks app-specific context**: How *this* app works
+- **Guardrails fix these specific problems** without rebuilding entire knowledge base
+
+**3. Practical Benefits**
+- **Maintainability**: 15 entries × 300 tokens = 4,500 tokens total (easily maintainable)
+  - vs. 15 entries × 800 tokens = 12,000 tokens (becomes burden)
+- **Token efficiency**: More room for conversation context
+- **Faster to write**: Focus on critical points only
+- **Easier to review**: Can thoroughly review 300 tokens; might skim 800
+- **Stays current**: Principles age well; implementation details don't
+
+**4. Better Teaching Experience**
+- **Natural conversation**: LLM teaches fluidly, not reading from script
+- **Adaptive**: LLM adjusts depth based on user level
+- **Comprehensive**: LLM knows more than we could write
+- **Context-aware**: LLM relates to user's specific situation
+
+**Example: Teaching API Key Security**
+
+**With Guardrails:**
+1. LLM queries library, gets 3 critical principles
+2. LLM: "Let me explain API key security. The most critical rule is to never commit keys to version control—this is the #1 mistake developers make. Instead, use environment variables or secure vaults. If a key is exposed, rotate it immediately, assuming it's compromised."
+3. User: "What about Azure Key Vault vs AWS Secrets Manager?"
+4. LLM: [Uses built-in knowledge] "Both are excellent choices. Azure Key Vault integrates seamlessly with .NET..."
+5. **Result**: Natural, comprehensive teaching grounded by guardrails
+
+**Without Guardrails (Built-in Knowledge Only):**
+1. User: "How do I handle API keys?"
+2. LLM: "There are several approaches... you can store them in config files, databases, or environment variables..."
+3. **Risk**: Might suggest insecure patterns (config files) without strong warning
+4. **Result**: Potentially teaches bad practices
+
+**With Encyclopedia (Old Approach):**
+1. LLM queries library, gets 800-token detailed entry
+2. LLM: [Reads from entry] "API keys are sensitive credentials..." [repeats entry]
+3. User: "What about Azure Key Vault?"
+4. LLM: [Constrained by entry] "The library mentions secure vaults like Azure Key Vault..."
+5. **Result**: Feels scripted, less adaptive, LLM doesn't use full capabilities
 
 ---
 
@@ -223,25 +317,36 @@ The LLM tool interface for this would be:
 When teaching mode is active, inject a section into the system prompt:
 
 ```text
-# Knowledge Library
+# Knowledge Library - Guardrails for Teaching
 
-You have access to a curated knowledge library for teaching. When teaching critical concepts,
-use the `knowledge_library_query` tool to retrieve accurate, comprehensive information.
+You have access to a knowledge library containing GUARDRAILS for teaching critical concepts.
+These entries provide essential principles, red lines, and corrections - NOT comprehensive documentation.
+
+**How to use:**
+1. Query the library to get critical guardrails on a topic
+2. Use the guardrails to guide your teaching
+3. Fill in details using your built-in knowledge
+4. The library tells you what's CRITICAL; you provide the comprehensive teaching
 
 Available knowledge topics:
-- api-key-security: API Key Security Best Practices
-- context-windows: Context Windows and Message Limits
-- mcp-overview: Model Context Protocol Overview
-- tool-security: Secure Tool Usage
-- transparency-logging: Understanding Transparency Logs
+- api-key-security: Critical security principles for API keys
+- context-windows: Key facts about context limits and message truncation
+- mcp-overview: Essential MCP concepts for this application
+- tool-security: Security red lines for tool usage
+- transparency-logging: Core transparency principles
 ... (all topics from index.json)
 
-Guidelines for using the knowledge library:
-1. Query the library when teaching security, privacy, or best practices
-2. Present information in a friendly, accessible way
-3. Include examples when available
-4. Always mention warnings/cautions from the library
-5. Suggest related topics to deepen learning
+**When to query the library:**
+1. Teaching security, privacy, or safety-critical topics (ALWAYS query for guardrails)
+2. Application-specific features (context windows, MCP, teaching mode)
+3. When you need to correct potential misconceptions
+4. Before teaching best practices (get the "must-dos" and "must-not-dos")
+
+**After querying:**
+- Treat the entry as GUARDRAILS, not exhaustive content
+- Teach comprehensively using the guardrails + your knowledge
+- Always respect warnings and red lines from the library
+- Use your judgment to expand on principles with relevant details
 
 Critical topics that REQUIRE knowledge library lookup:
 - API key handling → query "api-key-security"
@@ -310,68 +415,68 @@ Critical topics that REQUIRE knowledge library lookup:
 - LLM adapts based on what's present
 - Allows minimal entries for simple topics, rich entries for complex ones
 
-**Example Entry: api-key-security.json**
+**Example Entry: api-key-security.json (Guardrails Approach)**
 ```json
 {
   "id": "api-key-security",
   "topic": "API Key Security",
   "category": "Security",
-  "keywords": ["api", "key", "secrets", "security", "authentication", "environment-variables"],
-  "summary": "Best practices for handling API keys securely in applications",
+  "keywords": ["api", "key", "secrets", "security", "authentication"],
+  "summary": "Critical security guardrails for API key handling",
   "content": {
-    "overview": "API keys are sensitive credentials that authenticate your application to external services. Mishandling them can lead to security breaches, unauthorized access, and financial losses. Proper API key management is a fundamental security practice.",
+    "overview": "API keys are sensitive credentials. Mishandling leads to security breaches and unauthorized access.",
     "keyPoints": [
-      "Never commit API keys to version control (Git, SVN, etc.)",
-      "Store keys in environment variables or secure vaults (e.g., Azure Key Vault)",
-      "Rotate keys regularly and immediately if compromised",
-      "Limit key permissions to the minimum required (principle of least privilege)",
-      "Monitor key usage for anomalies or unexpected patterns",
-      "Use different keys for development, staging, and production environments"
+      "NEVER commit API keys to version control - this is the #1 mistake",
+      "Store in environment variables or secure vaults only",
+      "Rotate immediately if exposed (assume compromise)"
     ],
     "examples": [
       {
-        "title": "Storing API Key in Environment Variable (C#)",
-        "code": "var apiKey = Environment.GetEnvironmentVariable(\"ANTHROPIC_API_KEY\");\nif (string.IsNullOrEmpty(apiKey))\n{\n    throw new InvalidOperationException(\"API key not configured\");\n}",
-        "explanation": "This approach keeps the key out of source code. The key is configured in the environment (e.g., via appsettings.json user secrets, Azure App Service settings, or .env files with .gitignore)."
-      },
-      {
-        "title": "Using .NET User Secrets (Development)",
-        "code": "# Set secret\ndotnet user-secrets set \"Anthropic:ApiKey\" \"sk-ant-...\"\n\n# Access in code\nvar apiKey = configuration[\"Anthropic:ApiKey\"];",
-        "explanation": "User Secrets store keys outside the project directory, preventing accidental commits. Ideal for local development."
+        "title": "Correct: Environment Variable",
+        "code": "var key = Environment.GetEnvironmentVariable(\"ANTHROPIC_API_KEY\");",
+        "explanation": "Keeps key out of source code"
       }
     ],
     "warnings": [
-      "Never share API keys in screenshots, demos, or documentation",
-      "Never log API keys (even partially) to console or log files",
-      "Revoke and rotate keys immediately if compromised or exposed",
-      "Be cautious with third-party libraries that might log requests including keys"
+      "Never log API keys (even partially masked)",
+      "Never share in screenshots or documentation",
+      "Revoke immediately if accidentally committed"
     ],
-    "bestPractices": [
-      "Use a secrets management service (Azure Key Vault, AWS Secrets Manager, HashiCorp Vault) for production",
-      "Implement key rotation policies (e.g., rotate every 90 days)",
-      "Use service accounts with scoped keys rather than personal keys in shared systems",
-      "Audit key access and usage regularly",
-      "Document where keys are stored and who has access"
-    ],
-    "relatedTopics": ["environment-variables", "authentication-methods", "security-best-practices"],
+    "relatedTopics": ["environment-variables"],
     "references": [
       {
-        "title": "OWASP API Security Top 10",
+        "title": "OWASP API Security",
         "url": "https://owasp.org/www-project-api-security/"
-      },
-      {
-        "title": "Microsoft - Safe storage of app secrets (User Secrets)",
-        "url": "https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets"
       }
     ]
   }
 }
 ```
 
-**Notes:**
-- Rich content, but LLM can extract what's relevant for the conversation
-- `references` field acknowledges external sources (transparency)
-- Structure guides LLM to cover important points without being prescriptive
+**Notes on Guardrails Approach:**
+- **Concise**: ~200 tokens vs. 800+ tokens in encyclopedia approach
+- **Focused**: Only the "must-knows" and "never-dos"
+- **Actionable**: Clear principles, minimal fluff
+- **Maintainable**: Principles rarely change; LLM fills in details
+- **LLM-friendly**: Quick to parse, leaves room for LLM to expand naturally
+
+**What's NOT in this entry (LLM provides from built-in knowledge):**
+- Detailed rotation procedures (LLM knows this)
+- Comprehensive list of vault services (LLM knows Azure Key Vault, AWS Secrets Manager, etc.)
+- Different languages' syntax (LLM knows C#, Python, etc.)
+- History of authentication (not critical for guardrails)
+
+**Comparison:**
+
+| Aspect | Encyclopedia (Old) | Guardrails (New) |
+|--------|-------------------|------------------|
+| **Length** | ~800 tokens | ~200 tokens |
+| **Key Points** | 6 comprehensive | 3 critical |
+| **Examples** | 2 detailed | 1 minimal |
+| **Warnings** | 4 exhaustive | 3 essential |
+| **Best Practices** | 5 detailed | (Omitted - LLM knows these) |
+| **Purpose** | Replace LLM knowledge | Guide LLM knowledge |
+| **Maintenance** | High (details change) | Low (principles stable) |
 
 ---
 
@@ -594,8 +699,9 @@ namespace TransparentAiAgent.Core.Tools.BuiltIn
         public string Name => "knowledge_library_query";
 
         public string Description =>
-            "Retrieve detailed information from the knowledge library on a specific topic. " +
-            "Use this when teaching critical concepts (security, privacy, best practices) to ensure accuracy.";
+            "Retrieve critical guardrails from the knowledge library for a specific topic. " +
+            "Returns essential principles and red lines. Use when teaching security, privacy, or safety-critical concepts. " +
+            "The guardrails guide your teaching; fill in details using your own knowledge.";
 
         public object InputSchema => new
         {
@@ -827,6 +933,95 @@ TransparentAiAgentGui/
 
 ---
 
+## What Should Go in the Knowledge Library?
+
+### Criteria for Inclusion
+
+A topic belongs in the knowledge library if it meets **at least one** of these criteria:
+
+**1. Safety-Critical / Security Red Lines**
+- Topics where mistakes have serious consequences
+- Clear "never do this" rules that must be followed
+- Examples: API key handling, authentication security, data privacy
+
+**2. Application-Specific Knowledge**
+- Information about how *this specific application* works
+- Not found in LLM's general training data
+- Examples: How context windows work in this app, transparency logging specifics, teaching mode features
+
+**3. Correcting Common LLM Misconceptions**
+- Topics where LLM training data contains conflicting or outdated information
+- Need to establish "ground truth" for this application
+- Examples: Preferred patterns in this codebase, specific tool usage
+
+**4. Regulatory/Compliance Requirements**
+- Must-follow rules for legal or compliance reasons
+- Non-negotiable guardrails
+- Examples: GDPR requirements, accessibility standards, audit logging
+
+### What Should NOT Go in the Library
+
+**❌ General Programming Knowledge**
+- LLM already knows how to use variables, loops, functions
+- LLM knows C#, .NET, Blazor fundamentals
+- **Don't add**: "How to use async/await in C#"
+- **Only add if**: "Critical async/await pattern for this app's architecture"
+
+**❌ Comprehensive Tutorials**
+- Library is not a replacement for documentation
+- LLM can teach comprehensively using built-in knowledge
+- **Don't add**: "Complete guide to MCP protocol"
+- **Only add if**: "Critical MCP security considerations for this app"
+
+**❌ Implementation Details**
+- Specific implementation steps that change frequently
+- Code walkthroughs or detailed procedures
+- **Don't add**: "Step-by-step: How to add a new MCP server"
+- **Only add if**: "Security checklist before adding MCP servers"
+
+**❌ Well-Documented Public APIs**
+- LLM trained on official documentation
+- Links to official docs are sufficient
+- **Don't add**: "Complete Anthropic API reference"
+- **Only add if**: "Critical Anthropic API usage patterns for rate limiting"
+
+### Decision Framework: "Is This a Guardrail?"
+
+When considering a new entry, ask:
+
+1. **"What happens if the LLM teaches this wrong?"**
+   - Security breach / data loss / legal issue → **YES, add it**
+   - User gets suboptimal code → **NO, LLM can handle**
+
+2. **"Does the LLM already know this well?"**
+   - No, it's app-specific → **YES, add it**
+   - Yes, it's general knowledge → **NO, don't add**
+
+3. **"Can I express this in 3-5 critical principles?"**
+   - Yes, clear guardrails → **YES, add it**
+   - No, it's too complex/detailed → **NO, don't add** (or link to external docs)
+
+4. **"Will this need frequent updates?"**
+   - No, principles are stable → **YES, add it**
+   - Yes, details change often → **NO, don't add** (maintenance burden)
+
+### Examples: Include vs. Exclude
+
+| Topic | Include? | Rationale |
+|-------|----------|-----------|
+| API key security principles | ✅ YES | Safety-critical, clear red lines |
+| How to use Azure Key Vault | ❌ NO | LLM knows, link to docs sufficient |
+| Context window limits in this app | ✅ YES | App-specific, not in LLM training |
+| General C# async/await | ❌ NO | LLM knows this well |
+| MCP security checklist | ✅ YES | Safety-critical, app-specific |
+| Complete MCP protocol spec | ❌ NO | Too detailed, link to spec instead |
+| This app's transparency logging | ✅ YES | App-specific feature |
+| How to use JSON in C# | ❌ NO | General knowledge |
+| Teaching mode usage | ✅ YES | App-specific feature |
+| Blazor component lifecycle | ❌ NO | LLM knows, well-documented |
+
+---
+
 ## Initial Knowledge Topics (Seed Content)
 
 ### Priority 1: Critical Security Topics
@@ -1022,21 +1217,28 @@ Only query related topics if the user expresses interest.
 
 **Concern:** Long entries consume tokens and might overwhelm the LLM.
 
-**Guidelines:**
-- **Overview**: 2-4 sentences max
-- **Key Points**: 5-10 bullets max
-- **Examples**: 2-4 examples max, each <20 lines of code
-- **Warnings**: 3-5 warnings max
-- **Best Practices**: 5-8 practices max
+**Guardrails Approach Guidelines:**
+- **Overview**: 1-2 sentences (just the critical context)
+- **Key Points**: 3-5 bullets max (only the "must-knows")
+- **Examples**: 0-1 examples (minimal code, just the principle)
+- **Warnings**: 2-4 warnings max (only the "never-dos")
+- **Best Practices**: Often OMIT (LLM knows best practices, just correct misconceptions)
 
-**Total Target:** ~500-1000 tokens per entry when formatted
+**Total Target:** ~200-400 tokens per entry when formatted
 
 **Rationale:**
-- LLM can easily process and teach from this
-- Not overwhelming for user when presented
-- Specific enough to be useful
+- **Guardrails, not documentation**: Only critical principles, not comprehensive coverage
+- **LLM fills the gaps**: Agent expands using built-in knowledge
+- **Token efficient**: More room for conversation context
+- **Easy to maintain**: Principles change rarely
+- **Quick to parse**: LLM gets guardrails fast, continues teaching
 
-**Validation:** Could add a token-counting test to warn if entry exceeds ~1500 tokens.
+**Examples by Token Count:**
+- **Too Long** (800+ tokens): Encyclopedia approach, too comprehensive
+- **Just Right** (200-400 tokens): Critical guardrails + brief example
+- **Too Short** (<100 tokens): Not enough guidance, defeats the purpose
+
+**Validation:** Token-counting test should warn if entry exceeds ~500 tokens (indicates encyclopedia creep)
 
 ---
 
