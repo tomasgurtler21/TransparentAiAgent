@@ -107,26 +107,26 @@ The Knowledge Library is a curated collection of information that the teaching a
 - **Comprehensive**: LLM knows more than we could write
 - **Context-aware**: LLM relates to user's specific situation
 
-**Example: Teaching API Key Security**
+**Example: Teaching Multi-Agent Orchestration**
 
 **With Guardrails:**
-1. LLM queries library, gets 3 critical principles
-2. LLM: "Let me explain API key security. The most critical rule is to never commit keys to version control—this is the #1 mistake developers make. Instead, use environment variables or secure vaults. If a key is exposed, rotate it immediately, assuming it's compromised."
-3. User: "What about Azure Key Vault vs AWS Secrets Manager?"
-4. LLM: [Uses built-in knowledge] "Both are excellent choices. Azure Key Vault integrates seamlessly with .NET..."
+1. LLM queries library, gets critical principles about agent coordination
+2. LLM: "Let me explain multi-agent orchestration. The most critical principle is ensuring clear communication protocols between agents—without this, you get unpredictable behavior. Each agent should have a well-defined responsibility, and you need a coordinator to manage task delegation."
+3. User: "What about using message queues vs direct API calls?"
+4. LLM: [Uses built-in knowledge] "Both approaches work. Message queues like RabbitMQ provide better decoupling and fault tolerance..."
 5. **Result**: Natural, comprehensive teaching grounded by guardrails
 
 **Without Guardrails (Built-in Knowledge Only):**
-1. User: "How do I handle API keys?"
-2. LLM: "There are several approaches... you can store them in config files, databases, or environment variables..."
-3. **Risk**: Might suggest insecure patterns (config files) without strong warning
-4. **Result**: Potentially teaches bad practices
+1. User: "How do multi-agent systems work?"
+2. LLM: "Agents can communicate in various ways... you might have them share a database or call each other's APIs..."
+3. **Risk**: Might suggest outdated patterns or miss critical coordination principles
+4. **Result**: Potentially teaches suboptimal practices
 
 **With Encyclopedia (Old Approach):**
 1. LLM queries library, gets 800-token detailed entry
-2. LLM: [Reads from entry] "API keys are sensitive credentials..." [repeats entry]
-3. User: "What about Azure Key Vault?"
-4. LLM: [Constrained by entry] "The library mentions secure vaults like Azure Key Vault..."
+2. LLM: [Reads from entry] "Multi-agent systems are architectures where multiple agents..." [repeats entry]
+3. User: "What about error handling between agents?"
+4. LLM: [Constrained by entry] "The library mentions error handling strategies..."
 5. **Result**: Feels scripted, less adaptive, LLM doesn't use full capabilities
 
 ---
@@ -247,6 +247,9 @@ The LLM tool interface for this would be:
   "category": "Security",                    // Keep for future use
   "keywords": ["api", "key", "security"],    // Keep for search/index
   "summary": "Best practices for API keys",  // Show in index
+  "knowledgeGapLikelihood": "low",           // How likely LLM's knowledge is outdated: "low", "medium", "high"
+  "lastUpdated": "2025-11-14",               // When content was last updated
+  "lastChecked": "2025-11-14",               // When accuracy was last verified
   "content": {
     "overview": "...",                       // Main explanation
     "keyPoints": [...],                      // Bullet points
@@ -262,6 +265,36 @@ The LLM tool interface for this would be:
 - LLM can easily parse and present information
 - Fits well with tool-based retrieval
 - Future-proof: can add fields later without breaking existing entries
+
+**Knowledge Gap Likelihood Field:**
+
+The `knowledgeGapLikelihood` field helps the LLM understand how reliable its built-in knowledge is for a topic:
+
+- **"low"**: LLM's training data is likely accurate and current
+  - Examples: "tokens", "context-windows", "basic-security-principles"
+  - LLM can confidently rely on inner knowledge
+  - Web search generally not needed unless very specific
+
+- **"medium"**: LLM's knowledge may be partially outdated
+  - Examples: "api-security-standards", "authentication-methods"
+  - LLM should cross-reference with knowledge library
+  - Web search helpful for latest updates
+
+- **"high"**: LLM's knowledge is very likely outdated or incomplete
+  - Examples: "mcp-tools", "agent-to-agent-protocols", "multi-agent-orchestration"
+  - Rapidly evolving topics with recent developments
+  - LLM should strongly prefer web search if available
+  - If no web search: warn user about potential outdated information
+
+**Timestamp Fields:**
+
+- **lastUpdated**: When the entry content was last modified
+  - Helps identify stale entries that need review
+  - Should be updated whenever content changes
+
+- **lastChecked**: When accuracy was last verified (even if no changes made)
+  - Allows periodic validation without content updates
+  - Useful for evolving topics to confirm information is still current
 
 ---
 
@@ -348,10 +381,18 @@ Available knowledge topics:
 - Always respect warnings and red lines from the library
 - Use your judgment to expand on principles with relevant details
 
+**Understanding Knowledge Gap Likelihood:**
+Each topic includes a "knowledgeGapLikelihood" field indicating how reliable your built-in knowledge is:
+- **Low**: Your training data is likely current (e.g., "tokens", "context-windows") - rely on inner knowledge confidently
+- **Medium**: Your knowledge may be partially outdated (e.g., "authentication-methods") - cross-reference with library
+- **High**: Your knowledge is very likely outdated (e.g., "mcp-tools", "multi-agent-orchestration") - prefer web search if available; if not, warn user about potential outdated information
+
 Critical topics that REQUIRE knowledge library lookup:
-- API key handling → query "api-key-security"
-- Security best practices → query "tool-security"
-- Context management → query "context-windows"
+- API key handling → query "api-key-security" (low gap)
+- Security best practices → query "tool-security" (low gap)
+- Context management → query "context-windows" (low gap)
+- MCP tools and protocols → query "mcp-overview" (high gap - consider web search)
+- Multi-agent orchestration → query "multi-agent-orchestration" (high gap - consider web search)
 ```
 
 **Implementation:**
@@ -423,6 +464,9 @@ Critical topics that REQUIRE knowledge library lookup:
   "category": "Security",
   "keywords": ["api", "key", "secrets", "security", "authentication"],
   "summary": "Critical security guardrails for API key handling",
+  "knowledgeGapLikelihood": "low",
+  "lastUpdated": "2025-11-14",
+  "lastChecked": "2025-11-14",
   "content": {
     "overview": "API keys are sensitive credentials. Mishandling leads to security breaches and unauthorized access.",
     "keyPoints": [
@@ -905,21 +949,40 @@ TransparentAiAgentGui/
       "topic": "API Key Security",
       "category": "Security",
       "summary": "Best practices for handling API keys securely in applications",
-      "keywords": ["api", "key", "secrets", "security", "authentication"]
+      "keywords": ["api", "key", "secrets", "security", "authentication"],
+      "knowledgeGapLikelihood": "low",
+      "lastUpdated": "2025-11-14",
+      "lastChecked": "2025-11-14"
     },
     {
       "id": "context-windows",
       "topic": "Context Windows and Message Limits",
       "category": "LLM Concepts",
       "summary": "Understanding how conversation context works and managing message history",
-      "keywords": ["context", "window", "messages", "limits", "truncation"]
+      "keywords": ["context", "window", "messages", "limits", "truncation"],
+      "knowledgeGapLikelihood": "low",
+      "lastUpdated": "2025-11-14",
+      "lastChecked": "2025-11-14"
     },
     {
       "id": "mcp-overview",
       "topic": "Model Context Protocol Overview",
       "category": "Tools",
       "summary": "Introduction to MCP and how it enables tool integration",
-      "keywords": ["mcp", "tools", "protocol", "integration"]
+      "keywords": ["mcp", "tools", "protocol", "integration"],
+      "knowledgeGapLikelihood": "high",
+      "lastUpdated": "2025-11-14",
+      "lastChecked": "2025-11-14"
+    },
+    {
+      "id": "multi-agent-orchestration",
+      "topic": "Multi-Agent Orchestration",
+      "category": "AI Agents",
+      "summary": "Principles for coordinating multiple AI agents in complex systems",
+      "keywords": ["multi-agent", "orchestration", "coordination", "agents"],
+      "knowledgeGapLikelihood": "high",
+      "lastUpdated": "2025-11-14",
+      "lastChecked": "2025-11-14"
     }
   ]
 }
@@ -1218,27 +1281,35 @@ Only query related topics if the user expresses interest.
 **Concern:** Long entries consume tokens and might overwhelm the LLM.
 
 **Guardrails Approach Guidelines:**
-- **Overview**: 1-2 sentences (just the critical context)
-- **Key Points**: 3-5 bullets max (only the "must-knows")
-- **Examples**: 0-1 examples (minimal code, just the principle)
-- **Warnings**: 2-4 warnings max (only the "never-dos")
+- **Overview**: 1-2 sentences for simple topics, 3-4 sentences for complex topics
+- **Key Points**: 3-5 bullets for simple topics, up to 10 for complex topics
+- **Examples**: 0-1 examples for simple topics, 2-3 for complex topics
+- **Warnings**: 2-4 warnings (only the critical "never-dos")
 - **Best Practices**: Often OMIT (LLM knows best practices, just correct misconceptions)
 
-**Total Target:** ~200-400 tokens per entry when formatted
+**Token Target Flexibility:**
+
+The token count should match the topic's complexity:
+
+- **Simple topics** (~100-200 tokens): Topics like "tokens" or "basic authentication" that can be explained concisely
+- **Moderate topics** (~200-400 tokens): Most security topics, standard best practices
+- **Complex topics** (~400-800 tokens): Rapidly evolving areas like "multi-agent orchestration", "MCP tools", "agent-to-agent protocols" where LLM has limited current knowledge
 
 **Rationale:**
 - **Guardrails, not documentation**: Only critical principles, not comprehensive coverage
-- **LLM fills the gaps**: Agent expands using built-in knowledge
+- **Flexibility for complexity**: Some topics genuinely need more content to be useful
+- **LLM fills the gaps**: Agent expands using built-in knowledge where it can
 - **Token efficient**: More room for conversation context
 - **Easy to maintain**: Principles change rarely
 - **Quick to parse**: LLM gets guardrails fast, continues teaching
 
 **Examples by Token Count:**
-- **Too Long** (800+ tokens): Encyclopedia approach, too comprehensive
-- **Just Right** (200-400 tokens): Critical guardrails + brief example
-- **Too Short** (<100 tokens): Not enough guidance, defeats the purpose
+- **Simple topic** (~100-200 tokens): "Tokens" - fundamental concept, unlikely to change
+- **Moderate topic** (~200-400 tokens): "API Key Security" - critical guardrails + brief example
+- **Complex topic** (~400-800 tokens): "Multi-Agent Orchestration" - rapidly evolving, needs comprehensive guardrails
+- **Too Long** (>800 tokens): Indicates encyclopedia creep, should be split or trimmed
 
-**Validation:** Token-counting test should warn if entry exceeds ~500 tokens (indicates encyclopedia creep)
+**Note:** Don't artificially limit content if a topic genuinely needs detailed guardrails. The goal is to provide what the LLM needs, not to hit arbitrary token counts.
 
 ---
 
@@ -1544,7 +1615,7 @@ Only query related topics if the user expresses interest.
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "KnowledgeEntry",
   "type": "object",
-  "required": ["id", "topic", "category", "summary", "content"],
+  "required": ["id", "topic", "category", "summary", "knowledgeGapLikelihood", "lastUpdated", "lastChecked", "content"],
   "properties": {
     "id": {
       "type": "string",
@@ -1569,13 +1640,28 @@ Only query related topics if the user expresses interest.
       "maxLength": 200,
       "description": "Brief summary (shown in index)"
     },
+    "knowledgeGapLikelihood": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "How likely the LLM's built-in knowledge is outdated: low (reliable), medium (may be outdated), high (very likely outdated)"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when entry content was last modified (YYYY-MM-DD)"
+    },
+    "lastChecked": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when entry accuracy was last verified (YYYY-MM-DD)"
+    },
     "content": {
       "type": "object",
       "required": ["overview"],
       "properties": {
         "overview": {
           "type": "string",
-          "description": "High-level explanation (2-4 sentences)"
+          "description": "High-level explanation (1-4 sentences depending on complexity)"
         },
         "keyPoints": {
           "type": "array",
