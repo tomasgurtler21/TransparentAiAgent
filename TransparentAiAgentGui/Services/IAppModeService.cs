@@ -17,11 +17,10 @@ public interface IAppModeService
     /// This coordinates:
     /// - UI state changes via UIControlService
     /// - System prompt updates via ConversationManager
-    /// - Configuration persistence via ConfigurationService
     /// </summary>
     /// <param name="newMode">The mode to switch to</param>
-    /// <param name="clearConversation">Whether to clear the conversation history on mode switch (default: true)</param>
-    Task SwitchModeAsync(AppMode newMode, bool clearConversation = true);
+    /// <param name="clearConversation">Whether to clear the conversation history on mode switch (default: false)</param>
+    Task SwitchModeAsync(AppMode newMode, bool clearConversation = false);
 
     /// <summary>
     /// Event raised when the application mode changes.
