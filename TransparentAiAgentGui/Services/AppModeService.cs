@@ -40,7 +40,7 @@ public class AppModeService : IAppModeService
         _logger.LogInformation("AppModeService created (Scoped)");
     }
 
-    public async Task SwitchModeAsync(AppMode newMode, bool clearConversation = true)
+    public Task SwitchModeAsync(AppMode newMode, bool clearConversation = true)
     {
         lock (_modeLock)
         {
@@ -50,7 +50,7 @@ public class AppModeService : IAppModeService
             if (currentMode == newMode)
             {
                 _logger.LogInformation("Already in {Mode} mode, skipping switch", newMode);
-                return;
+                return Task.CompletedTask;
             }
 
             _logger.LogInformation("Switching from {CurrentMode} to {NewMode} mode", currentMode, newMode);
@@ -68,24 +68,26 @@ public class AppModeService : IAppModeService
             // Step 2: Get the appropriate system prompt for the new mode
             var systemPrompt = GetSystemPromptForMode(newMode);
 
-            // Step 3: Update system prompt in conversation manager (in-memory, hot reload)
+            // Step 3: Update system prompt in conversation manager (in-memory only)
+            // IMPORTANT: We do NOT persist to configuration here. Teaching mode uses a hardcoded
+            // prompt that should never be saved to config. Normal mode always uses the original
+            // config value from appsettings.json. Only manual user edits via Configuration page
+            // should persist to config.
             _conversationManager.UpdateSystemPrompt(systemPrompt);
-            _logger.LogInformation("Updated system prompt in ConversationManager");
+            _logger.LogInformation("Updated system prompt in ConversationManager (in-memory only)");
 
-            // Step 4: Persist system prompt to configuration
-            await _configService.UpdateSystemPromptAsync(systemPrompt);
-            _logger.LogInformation("Persisted system prompt to configuration");
-
-            // Step 5: Optionally clear conversation history
+            // Step 4: Optionally clear conversation history
             if (clearConversation)
             {
                 _conversationManager.ClearConversation();
                 _logger.LogInformation("Cleared conversation history");
             }
 
-            // Step 6: Fire mode changed event
+            // Step 5: Fire mode changed event
             ModeChanged?.Invoke(this, newMode);
             _logger.LogInformation("Successfully switched to {Mode} mode", newMode);
+
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
