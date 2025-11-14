@@ -2,7 +2,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using TransparentAiAgentCore.Application.Agent;
 using TransparentAiAgentCore.Application.Conversation;
+using TransparentAiAgentCore.Application.ConversationHistory;
 using TransparentAiAgentCore.Application.Scenarios;
+using TransparentAiAgentCore.Domain.ConversationHistory;
 using TransparentAiAgentCore.Domain.Enums;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentGui.Services;
@@ -15,6 +17,7 @@ public class ConversationUIServiceTests
     private Mock<IAgentOrchestrator> _mockOrchestrator = null!;
     private Mock<IConversationManager> _mockConversationManager = null!;
     private Mock<IScenarioExecutor> _mockScenarioExecutor = null!;
+    private Mock<IConversationHistoryManager> _mockHistoryManager = null!;
     private ConversationUIService _service = null!;
 
     [TestInitialize]
@@ -23,12 +26,15 @@ public class ConversationUIServiceTests
         _mockOrchestrator = new Mock<IAgentOrchestrator>();
         _mockConversationManager = new Mock<IConversationManager>();
         _mockScenarioExecutor = new Mock<IScenarioExecutor>();
+        _mockHistoryManager = new Mock<IConversationHistoryManager>();
 
         // Setup default return for GetAllMessages
         _mockConversationManager.Setup(x => x.GetAllMessages())
             .Returns(new List<IMessage>().AsReadOnly());
 
-        _service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object);
+        // Note: Constructor will fail until we update ConversationUIService to accept IConversationHistoryManager
+        // This is expected in RED phase
+        _service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
     }
 
     [TestMethod]
@@ -39,7 +45,7 @@ public class ConversationUIServiceTests
 
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(null!, _mockConversationManager.Object, _mockScenarioExecutor.Object));
+            new ConversationUIService(null!, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object));
     }
 
     [TestMethod]
@@ -47,7 +53,15 @@ public class ConversationUIServiceTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(_mockOrchestrator.Object, null!, _mockScenarioExecutor.Object));
+            new ConversationUIService(_mockOrchestrator.Object, null!, _mockScenarioExecutor.Object, _mockHistoryManager.Object));
+    }
+
+    [TestMethod]
+    public void Constructor_NullHistoryManager_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentNullException>(() =>
+            new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, null!));
     }
 
     [TestMethod]
@@ -138,7 +152,7 @@ public class ConversationUIServiceTests
             .Returns(messages.AsReadOnly());
 
         // Create new service to pick up the message
-        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object);
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
         Assert.AreEqual(1, service.Messages.Count); // Verify message was loaded
 
         var eventRaised = false;
@@ -174,7 +188,7 @@ public class ConversationUIServiceTests
             .Returns(messages.AsReadOnly());
 
         // Act
-        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object);
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
 
         // Assert
         Assert.AreEqual(2, service.Messages.Count);
@@ -187,5 +201,230 @@ public class ConversationUIServiceTests
     {
         // Assert
         Assert.IsFalse(_service.IsProcessing);
+    }
+
+    [TestMethod]
+    public async Task LoadConversationAsync_ClearsCurrentConversation()
+    {
+        // Arrange
+        var existingMessages = new List<IMessage> { new DirectUserMessage("Old message") };
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(existingMessages.AsReadOnly());
+
+        // Create service with existing messages
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
+        Assert.AreEqual(1, service.Messages.Count); // Verify old message is there
+
+        // Setup conversation to load
+        var newConversation = new Conversation
+        {
+            ConversationId = Guid.NewGuid(),
+            Name = "New Conversation",
+            CreatedAt = DateTime.UtcNow,
+            LastModifiedAt = DateTime.UtcNow,
+            Messages = new List<IMessage>
+            {
+                new DirectUserMessage("New message")
+            }
+        };
+
+        // Update mock to return new messages after ClearConversation and AddMessage calls
+        var newMessages = new List<IMessage> { new DirectUserMessage("New message") };
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(newMessages.AsReadOnly());
+
+        // Act
+        await service.LoadConversationAsync(newConversation);
+
+        // Assert
+        Assert.AreEqual(1, service.Messages.Count);
+        Assert.AreEqual("New message", service.Messages[0].Content);
+        _mockConversationManager.Verify(x => x.ClearConversation(), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task LoadConversationAsync_RaisesMessagesChangedEvent()
+    {
+        // Arrange
+        var eventRaised = false;
+        _service.MessagesChanged += (sender, args) => eventRaised = true;
+
+        var conversation = new Conversation
+        {
+            ConversationId = Guid.NewGuid(),
+            Name = "Test Conversation",
+            CreatedAt = DateTime.UtcNow,
+            LastModifiedAt = DateTime.UtcNow,
+            Messages = new List<IMessage>
+            {
+                new DirectUserMessage("Test")
+            }
+        };
+
+        var messages = new List<IMessage> { new DirectUserMessage("Test") };
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(messages.AsReadOnly());
+
+        // Act
+        await _service.LoadConversationAsync(conversation);
+
+        // Assert
+        Assert.IsTrue(eventRaised);
+    }
+
+    [TestMethod]
+    public void CurrentConversationId_ReturnsConversationManagerId()
+    {
+        // Arrange
+        var expectedId = Guid.NewGuid();
+        _mockConversationManager.Setup(x => x.ConversationId)
+            .Returns(expectedId);
+
+        // Act
+        var actualId = _service.CurrentConversationId;
+
+        // Assert
+        Assert.AreEqual(expectedId, actualId);
+    }
+
+    // Auto-Save Tests
+
+    [TestMethod]
+    public async Task SendMessageAsync_CallsAutoSave()
+    {
+        // Arrange
+        var mockMessage = new LlmTextMessage("Response");
+        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockMessage);
+
+        var conversationId = Guid.NewGuid();
+        _mockConversationManager.Setup(x => x.ConversationId)
+            .Returns(conversationId);
+
+        var messages = new List<IMessage> { new DirectUserMessage("Hello"), mockMessage };
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(messages.AsReadOnly());
+
+        // Act
+        await _service.SendMessageAsync("Hello");
+
+        // Wait for potential fire-and-forget auto-save
+        await Task.Delay(200);
+
+        // Assert
+        _mockHistoryManager.Verify(
+            h => h.SaveCurrentConversationAsync(
+                conversationId,
+                It.Is<IReadOnlyList<IMessage>>(m => m.Count == 2)
+            ),
+            Times.Once
+        );
+    }
+
+    [TestMethod]
+    public async Task SendMessageStreamingAsync_CallsAutoSave()
+    {
+        // Arrange
+        var conversationId = Guid.NewGuid();
+        _mockConversationManager.Setup(x => x.ConversationId)
+            .Returns(conversationId);
+
+        var streamingChunks = new[]
+        {
+            new StreamingResponseChunk("Hello", false),
+            new StreamingResponseChunk(" world", true)
+        };
+
+        _mockOrchestrator.Setup(x => x.ProcessUserInputStreamingAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(AsyncEnumerable(streamingChunks));
+
+        var messages = new List<IMessage>
+        {
+            new DirectUserMessage("Test"),
+            new LlmTextMessage("Hello world")
+        };
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(messages.AsReadOnly());
+
+        // Act
+        await _service.SendMessageStreamingAsync("Test");
+
+        // Wait for potential fire-and-forget auto-save
+        await Task.Delay(200);
+
+        // Assert
+        _mockHistoryManager.Verify(
+            h => h.SaveCurrentConversationAsync(
+                conversationId,
+                It.Is<IReadOnlyList<IMessage>>(m => m.Count == 2)
+            ),
+            Times.Once
+        );
+    }
+
+    [TestMethod]
+    public async Task AutoSave_SaveFails_DoesNotThrow()
+    {
+        // Arrange
+        _mockHistoryManager
+            .Setup(h => h.SaveCurrentConversationAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<IReadOnlyList<IMessage>>()
+            ))
+            .ThrowsAsync(new IOException("Save failed"));
+
+        var mockMessage = new LlmTextMessage("Response");
+        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockMessage);
+
+        var messages = new List<IMessage> { new DirectUserMessage("Hello"), mockMessage };
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(messages.AsReadOnly());
+
+        // Act & Assert - should not throw despite auto-save failure
+        await _service.SendMessageAsync("Hello");
+
+        // Wait for fire-and-forget auto-save to fail
+        await Task.Delay(200);
+
+        // No exception should be thrown - failure is logged
+    }
+
+    [TestMethod]
+    public async Task AutoSave_SkipsEmptyConversation()
+    {
+        // Arrange
+        var mockMessage = new LlmTextMessage("Response");
+        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockMessage);
+
+        // Return empty message list
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(new List<IMessage>().AsReadOnly());
+
+        // Act
+        await _service.SendMessageAsync("Hello");
+
+        // Wait for potential auto-save
+        await Task.Delay(200);
+
+        // Assert - auto-save should not be called for empty conversations
+        _mockHistoryManager.Verify(
+            h => h.SaveCurrentConversationAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<IReadOnlyList<IMessage>>()
+            ),
+            Times.Never
+        );
+    }
+
+    // Helper method to create async enumerable for streaming tests
+    private static async IAsyncEnumerable<T> AsyncEnumerable<T>(IEnumerable<T> items)
+    {
+        foreach (var item in items)
+        {
+            await Task.Yield();
+            yield return item;
+        }
     }
 }

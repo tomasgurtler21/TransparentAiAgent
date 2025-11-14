@@ -1,6 +1,8 @@
 using TransparentAiAgentCore.Application.Agent;
 using TransparentAiAgentCore.Application.Conversation;
+using TransparentAiAgentCore.Application.ConversationHistory;
 using TransparentAiAgentCore.Application.Scenarios;
+using TransparentAiAgentCore.Domain.ConversationHistory;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Infrastructure.Streaming;
 using TransparentAiAgentGui.Models;
@@ -12,6 +14,7 @@ public class ConversationUIService : IConversationUIService
     private readonly IAgentOrchestrator _orchestrator;
     private readonly IConversationManager _conversationManager;
     private readonly IScenarioExecutor _scenarioExecutor;
+    private readonly IConversationHistoryManager _historyManager;
     private readonly List<UIMessage> _messages = new();
     private bool _isProcessing;
     private UIMessage? _currentStreamingMessage;
@@ -35,6 +38,8 @@ public class ConversationUIService : IConversationUIService
 
     public bool IsProcessing => _isProcessing;
 
+    public Guid CurrentConversationId => _conversationManager.ConversationId;
+
     public event EventHandler? MessagesChanged;
     public event EventHandler<bool>? ProcessingStateChanged;
     public event EventHandler<StreamingMessageUpdate>? StreamingMessageUpdated;
@@ -42,11 +47,13 @@ public class ConversationUIService : IConversationUIService
     public ConversationUIService(
         IAgentOrchestrator orchestrator,
         IConversationManager conversationManager,
-        IScenarioExecutor scenarioExecutor)
+        IScenarioExecutor scenarioExecutor,
+        IConversationHistoryManager historyManager)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _scenarioExecutor = scenarioExecutor ?? throw new ArgumentNullException(nameof(scenarioExecutor));
+        _historyManager = historyManager ?? throw new ArgumentNullException(nameof(historyManager));
 
         // Subscribe to context status changes
         _conversationManager.ContextStatusChanged += OnContextStatusChanged;
@@ -75,6 +82,9 @@ public class ConversationUIService : IConversationUIService
 
             // Refresh UI messages from conversation manager
             RefreshMessages();
+
+            // Auto-save conversation after message processing
+            _ = Task.Run(async () => await AutoSaveConversationAsync());
         }
         catch
         {
@@ -217,6 +227,9 @@ public class ConversationUIService : IConversationUIService
 
             // Refresh messages from conversation manager to sync state
             RefreshMessages();
+
+            // Auto-save conversation after message processing
+            _ = Task.Run(async () => await AutoSaveConversationAsync());
         }
         catch
         {
@@ -249,6 +262,26 @@ public class ConversationUIService : IConversationUIService
             _pendingAutoMessages.Clear();
         }
         OnMessagesChanged();
+        await Task.CompletedTask;
+    }
+
+    public async Task LoadConversationAsync(Conversation conversation)
+    {
+        if (conversation == null)
+            throw new ArgumentNullException(nameof(conversation));
+
+        // Clear current conversation
+        _conversationManager.ClearConversation();
+
+        // Load messages from the conversation
+        foreach (var message in conversation.Messages)
+        {
+            _conversationManager.AddMessage(message);
+        }
+
+        // Refresh UI messages
+        RefreshMessages();
+
         await Task.CompletedTask;
     }
 
@@ -368,6 +401,34 @@ public class ConversationUIService : IConversationUIService
                 SetProcessing(false);
                 RefreshMessages();
             }
+        }
+    }
+
+    /// <summary>
+    /// Auto-saves the current conversation to persistent storage.
+    /// Runs asynchronously without blocking UI and handles failures gracefully.
+    /// </summary>
+    private async Task AutoSaveConversationAsync()
+    {
+        try
+        {
+            var messages = _conversationManager.GetAllMessages();
+
+            // Skip saving if conversation is empty
+            if (messages.Count == 0)
+            {
+                return;
+            }
+
+            var conversationId = _conversationManager.ConversationId;
+
+            // Fire-and-forget: save in background without blocking
+            await _historyManager.SaveCurrentConversationAsync(conversationId, messages);
+        }
+        catch (Exception)
+        {
+            // Log error but don't throw - auto-save failures shouldn't crash the app
+            // In production, this would log to ILogger
         }
     }
 }

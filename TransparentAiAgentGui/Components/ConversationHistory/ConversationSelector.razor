@@ -1,0 +1,182 @@
+@using TransparentAiAgentCore.Domain.ConversationHistory
+@using TransparentAiAgentCore.Application.ConversationHistory
+@using TransparentAiAgentCore.Application.Conversation
+@using TransparentAiAgentGui.Services
+@inject IConversationHistoryManager ConversationHistoryManager
+@inject IConversationUIService ConversationService
+@inject IConversationManager ConversationManager
+@implements IDisposable
+
+<div class="conversation-selector">
+    <div class="selector-controls">
+        <!-- Dropdown showing current/selected conversation -->
+        <select class="conversation-dropdown"
+                @bind="SelectedConversationId"
+                @bind:after="OnConversationSelected"
+                disabled="@IsLoading">
+            @if (CurrentConversationName != null)
+            {
+                <option value="@CurrentConversationId">@CurrentConversationName (Current)</option>
+            }
+            else
+            {
+                <option value="">New Conversation</option>
+            }
+
+            @if (Conversations != null)
+            {
+                @foreach (var conv in Conversations)
+                {
+                    @if (conv.ConversationId != CurrentConversationId)
+                    {
+                        <option value="@conv.ConversationId">
+                            @conv.Name (@conv.LastModifiedAt.ToString("MMM dd, HH:mm"))
+                        </option>
+                    }
+                }
+            }
+        </select>
+
+        <!-- New Conversation button -->
+        <button class="new-conversation-button"
+                @onclick="OnNewConversationClick"
+                disabled="@IsLoading">
+            + New
+        </button>
+    </div>
+
+    @if (IsLoading)
+    {
+        <span class="loading-indicator">Loading...</span>
+    }
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="error-message">@ErrorMessage</div>
+    }
+</div>
+
+@code {
+    private List<ConversationMetadata>? Conversations;
+    private Guid? SelectedConversationId;
+    private Guid? CurrentConversationId;
+    private string? CurrentConversationName;
+    private bool IsLoading;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConversationListAsync();
+
+        // Initialize current conversation ID and name
+        CurrentConversationId = ConversationService.CurrentConversationId;
+        var messages = ConversationManager.GetAllMessages();
+        if (messages != null && messages.Any())
+        {
+            CurrentConversationName = Conversation.GenerateName(messages);
+        }
+
+        // Subscribe to conversation changes
+        ConversationService.MessagesChanged += OnMessagesChanged;
+    }
+
+    private async Task LoadConversationListAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            Conversations = (await ConversationHistoryManager.GetConversationListAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load conversations: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task OnConversationSelected()
+    {
+        if (SelectedConversationId == null || SelectedConversationId == CurrentConversationId)
+            return;
+
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            // Load conversation
+            var conversation = await ConversationHistoryManager.LoadConversationAsync(SelectedConversationId.Value);
+
+            // Update ConversationService with loaded messages
+            await ConversationService.LoadConversationAsync(conversation);
+
+            CurrentConversationId = conversation.ConversationId;
+            CurrentConversationName = conversation.Name;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load conversation: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task OnNewConversationClick()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            // Current conversation auto-saves (already designed)
+            // Just clear the current conversation
+            await ConversationService.ClearConversationAsync();
+
+            // Reset state
+            CurrentConversationId = null;
+            CurrentConversationName = null;
+            SelectedConversationId = null;
+
+            // Refresh list to show newly saved conversation
+            await LoadConversationListAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to create new conversation: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void OnMessagesChanged(object? sender, EventArgs e)
+    {
+        // Update current conversation ID and name when messages change
+        CurrentConversationId = ConversationService.CurrentConversationId;
+
+        var messages = ConversationManager.GetAllMessages();
+        if (messages != null && messages.Any())
+        {
+            CurrentConversationName = Conversation.GenerateName(messages);
+        }
+        else
+        {
+            CurrentConversationName = null;
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ConversationService.MessagesChanged -= OnMessagesChanged;
+    }
+}

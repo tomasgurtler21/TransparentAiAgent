@@ -1,3 +1,4 @@
+using TransparentAiAgentCore.Domain.ConversationHistory;
 using TransparentAiAgentGui.Models;
 
 namespace TransparentAiAgentGui.Services;
@@ -15,6 +16,11 @@ public interface IConversationUIService
     bool IsProcessing { get; }
 
     /// <summary>
+    /// Gets the current conversation ID
+    /// </summary>
+    Guid CurrentConversationId { get; }
+
+    /// <summary>
     /// Send user message to agent
     /// </summary>
     Task SendMessageAsync(string content);
@@ -23,6 +29,11 @@ public interface IConversationUIService
     /// Clear conversation
     /// </summary>
     Task ClearConversationAsync();
+
+    /// <summary>
+    /// Load a conversation from history
+    /// </summary>
+    Task LoadConversationAsync(Conversation conversation);
 
     /// <summary>
     /// Send user message to agent with streaming response

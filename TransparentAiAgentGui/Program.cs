@@ -26,6 +26,9 @@ using TransparentAiAgentCore.Infrastructure.Scenarios;
 using TransparentAiAgentCore.Domain.Knowledge;
 using TransparentAiAgentCore.Infrastructure.Knowledge;
 using TransparentAiAgentCore.Application.Teaching;
+using TransparentAiAgentCore.Domain.ConversationHistory;
+using TransparentAiAgentCore.Application.ConversationHistory;
+using TransparentAiAgentCore.Infrastructure.ConversationHistory;
 
 // Force InvariantCulture for the entire application to avoid locale-specific number parsing issues
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -49,6 +52,17 @@ builder.Services.AddSingleton<ITransparencyService, TransparencyService>();
 builder.Services.AddSingleton<ISerializationService, SerializationService>();
 builder.Services.AddSingleton<IToolUsageStatistics, ToolUsageStatistics>();
 builder.Services.AddSingleton<ToolSchemaValidator>();
+
+// Register Conversation History services
+builder.Services.AddSingleton<MessageSerializer>();
+builder.Services.AddSingleton<IConversationRepository>(sp =>
+{
+    var messageSerializer = sp.GetRequiredService<MessageSerializer>();
+    var logger = sp.GetRequiredService<ILogger<JsonConversationRepository>>();
+    var conversationsPath = Path.Combine(builder.Environment.ContentRootPath, "conversations");
+    return new JsonConversationRepository(messageSerializer, logger, conversationsPath);
+});
+builder.Services.AddScoped<IConversationHistoryManager, ConversationHistoryManager>();
 
 // Load configuration
 var configService = new ConfigurationService();
