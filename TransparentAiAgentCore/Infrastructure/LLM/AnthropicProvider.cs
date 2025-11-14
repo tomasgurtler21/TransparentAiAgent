@@ -602,6 +602,68 @@ public class AnthropicProvider : ILLMProvider
             messageParams.System = new SystemModel(finalSystemPrompt);
         }
 
+        // Configure extended thinking if enabled
+        var thinkingConfig = _appConfig.LLM.Anthropic?.ExtendedThinking;
+        if (thinkingConfig != null && thinkingConfig.Enabled)
+        {
+            // Validate budget is less than max_tokens
+            if (thinkingConfig.BudgetTokens >= request.MaxTokens)
+            {
+                _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                    Domain.Transparency.TransparencyEventType.Error,
+                    $"ExtendedThinking.BudgetTokens ({thinkingConfig.BudgetTokens}) must be less than MaxTokens ({request.MaxTokens}). " +
+                    $"Extended thinking will be disabled for this request.",
+                    "Extended Thinking Configuration Error"));
+            }
+            else
+            {
+                // Use reflection to set thinking parameter (SDK may not have direct property)
+                try
+                {
+                    var messageParamsType = messageParams.GetType();
+                    var thinkingProperty = messageParamsType.GetProperty("Thinking");
+
+                    if (thinkingProperty != null)
+                    {
+                        // SDK has Thinking property - create thinking config object dynamically
+                        var thinkingType = thinkingProperty.PropertyType;
+                        var thinkingInstance = Activator.CreateInstance(thinkingType);
+
+                        if (thinkingInstance != null)
+                        {
+                            // Set type to "enabled"
+                            var typeProperty = thinkingType.GetProperty("Type");
+                            if (typeProperty != null)
+                            {
+                                typeProperty.SetValue(thinkingInstance, "enabled");
+                            }
+
+                            // Set budget_tokens
+                            var budgetProperty = thinkingType.GetProperty("BudgetTokens");
+                            if (budgetProperty != null)
+                            {
+                                budgetProperty.SetValue(thinkingInstance, thinkingConfig.BudgetTokens);
+                            }
+
+                            thinkingProperty.SetValue(messageParams, thinkingInstance);
+
+                            _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                                Domain.Transparency.TransparencyEventType.Info,
+                                $"Extended thinking enabled with budget: {thinkingConfig.BudgetTokens} tokens",
+                                "Extended Thinking Configuration"));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                        Domain.Transparency.TransparencyEventType.Error,
+                        $"Failed to configure extended thinking: {ex.Message}. SDK may not support this feature yet.",
+                        "Extended Thinking Configuration Error"));
+                }
+            }
+        }
+
         // Add tools if present
         if (request.Tools != null && request.Tools.Count > 0)
         {
