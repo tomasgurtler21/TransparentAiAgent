@@ -65,7 +65,7 @@ Design a conversation history system that integrates cleanly with existing archi
 ### 2.4 Architecture Integration
 
 **Domain Layer**:
-- Conversation entity (metadata + message collection + config snapshot)
+- Conversation entity (metadata + message collection)
 - IConversationRepository interface
 
 **Infrastructure Layer**:
@@ -131,54 +131,30 @@ Design a conversation history system that integrates cleanly with existing archi
 **Decision**: Single active conversation (Option A)
 **Rationale**: Simpler implementation, matches current UI model, sufficient for MVP
 
-### Q6: System Messages & Context Window ✅ DECIDED
-**Question**: How do we handle system prompts and context window settings per conversation?
-- **Decision**: Store full lightweight configuration snapshot with each conversation:
-  - Model name
-  - Endpoint URL
-  - System message/prompt
-  - Context window size settings
-  - Any other relevant LLM configuration
+### Q6: Configuration Snapshot ✅ DECIDED - REMOVED
+**Question**: Should we store configuration (system prompt, model, etc.) with each conversation?
+- **Decision**: NO - Do not store configuration snapshot
 
-**Rationale**: More complex but provides complete conversation context restoration. Essential for reproducing exact conversation conditions.
+**Rationale**:
+- Configuration can change multiple times during a single conversation
+- Snapshot would only capture final state, not what was actually used
+- Restoring old config when loading conversation would be confusing
+- Conversation history is about messages, not settings
+- Simpler implementation, clearer semantics
+- **When loading conversation, use current/active configuration**
 
 ---
 
 ## 4. Ideas & Design Notes
 
-### 4.1 Conversation Metadata Structure (FINALIZED)
+### 4.1 Conversation Metadata Structure (FINALIZED) ✅ REVISED
+
 ```json
 {
   "conversationId": "guid",
   "name": "What is clean architecture?",
   "createdAt": "2025-11-14T10:30:00Z",
   "lastModifiedAt": "2025-11-14T11:45:00Z",
-  "configuration": {
-    // Agent Configuration
-    "systemPrompt": "You are a helpful assistant...",
-    "contextWindowSize": 50,
-    "enableTools": true,
-    "toolExecutionMode": "Sequential",
-
-    // LLM Configuration
-    "provider": "Anthropic",
-    "temperature": 1.0,
-    "topP": null,
-    "maxTokens": 4096,
-
-    // Provider-specific (Anthropic example)
-    "anthropic": {
-      "model": "claude-sonnet-4-5-20250929",
-      "extendedThinking": {
-        "enabled": false,
-        "budgetTokens": 5000
-      }
-    },
-
-    // Provider-specific (Azure OpenAI example - null if not using)
-    "azureOpenAI": null
-    // When used, would contain: endpoint, deploymentName, apiVersion, isReasoningModel, authenticationMode
-  },
   "messages": [
     { /* serialized IMessage using MessageSerializer */ },
     { /* serialized IMessage using MessageSerializer */ }
@@ -186,7 +162,12 @@ Design a conversation history system that integrates cleanly with existing archi
 }
 ```
 
-**Security Note**: API keys and TenantId are deliberately excluded from snapshot. Users will need valid credentials in their current configuration when loading old conversations.
+**Design Rationale**: Configuration snapshot was removed because:
+- Configuration can change multiple times during a single conversation
+- Snapshot would only capture final state, not what was used for each message
+- Restoring old configuration when loading conversation would be confusing (overwrites user's current settings)
+- **Conversation history is about messages, not the settings used to generate them**
+- Simpler implementation, smaller files, clearer semantics
 
 ### 4.2 Potential Issues to Consider
 - **Concurrent Access**: What if multiple instances try to modify same conversation file?
@@ -297,72 +278,24 @@ Place **ConversationSelector** as a **separate div BETWEEN chat-header and Messa
 - Line 240-252: `ClearConversationAsync()` - clears conversation
 - Events: `MessagesChanged`, `ProcessingStateChanged`, `StreamingMessageUpdated`
 
-### 5.2 Configuration System Investigation - COMPLETED
+### 5.2 Configuration System Investigation - ~~COMPLETED~~ OBSOLETE
 
-**Configuration Hierarchy**:
-```
-AppConfiguration (root)
-├── AgentConfiguration
-│   ├── SystemPrompt: string
-│   ├── ContextWindowSize: int
-│   ├── EnableTools: bool
-│   └── ToolExecutionMode: enum (Sequential/Parallel)
-├── LLMConfiguration
-│   ├── Provider: string ("Anthropic" or "AzureOpenAI")
-│   ├── Temperature: double?
-│   ├── TopP: double?
-│   ├── MaxTokens: int
-│   ├── AnthropicConfiguration?
-│   │   ├── ApiKey: string (exclude from snapshot!)
-│   │   ├── Model: string
-│   │   └── ExtendedThinking?
-│   │       ├── Enabled: bool
-│   │       └── BudgetTokens: int
-│   └── AzureOpenAIConfiguration?
-│       ├── Endpoint: string
-│       ├── AuthenticationMode: enum
-│       ├── ApiKey: string? (exclude from snapshot!)
-│       ├── DeploymentName: string
-│       ├── ApiVersion: string
-│       ├── TenantId: string?
-│       └── IsReasoningModel: bool
-└── MCPConfiguration (not relevant for conversation snapshot)
-```
+**Status**: ❌ **REMOVED FROM DESIGN**
 
-**Access Pattern**:
-- Interface: `IConfigurationService.GetConfiguration()` returns `AppConfiguration`
-- Location: Injected as dependency, available throughout application
-- Thread-safe: Yes, service manages configuration state
+**Original plan**: Store configuration snapshot with each conversation.
 
-**Configuration Snapshot Strategy**:
-```csharp
-// Capture these fields for conversation snapshot:
-- Agent.SystemPrompt
-- Agent.ContextWindowSize
-- Agent.EnableTools
-- Agent.ToolExecutionMode
-- LLM.Provider
-- LLM.Temperature
-- LLM.TopP
-- LLM.MaxTokens
-- If Provider == "Anthropic":
-  - Anthropic.Model
-  - Anthropic.ExtendedThinking.Enabled
-  - Anthropic.ExtendedThinking.BudgetTokens
-- If Provider == "AzureOpenAI":
-  - AzureOpenAI.Endpoint
-  - AzureOpenAI.DeploymentName
-  - AzureOpenAI.ApiVersion
-  - AzureOpenAI.IsReasoningModel
-  - AzureOpenAI.AuthenticationMode (enum value only)
+**Revised decision**: Do NOT store configuration snapshot.
 
-// EXCLUDE from snapshot (security):
-- AnthropicConfiguration.ApiKey
-- AzureOpenAIConfiguration.ApiKey
-- AzureOpenAIConfiguration.TenantId (potentially sensitive)
-```
+**Rationale**:
+- Configuration can change multiple times during a single conversation
+- Snapshot would only capture final state, not what was used for each message
+- Restoring old config when loading conversation would be confusing
+- Conversation history is about messages, not settings
+- Simpler implementation
 
-### 5.3 Auto-Save Hook Points Investigation - COMPLETED
+**This section is preserved for historical context only.**
+
+### 5.3 Auto-Save Hook Points Investigation - COMPLETED ✅ REVISED
 
 **Identified Hook Points**:
 
@@ -379,21 +312,19 @@ AppConfiguration (root)
    - Line 240-252: When user clears conversation
    - Should trigger "New Conversation" creation
 
-**Recommended Auto-Save Strategy**:
+**Recommended Auto-Save Strategy** (Simplified - No Config):
 ```csharp
 // Add to ConversationUIService after RefreshMessages():
 private async Task AutoSaveConversationAsync()
 {
     try
     {
-        var currentConfig = _configurationService.GetConfiguration();
         var messages = _conversationManager.GetAllMessages();
         var conversationId = _conversationManager.ConversationId;
 
         await _conversationHistoryManager.SaveCurrentConversationAsync(
             conversationId,
-            messages,
-            currentConfig
+            messages
         );
     }
     catch (Exception ex)
@@ -407,7 +338,7 @@ private async Task AutoSaveConversationAsync()
 
 **Integration Points**:
 - Inject `IConversationHistoryManager` into `ConversationUIService`
-- Inject `IConfigurationService` into `ConversationUIService` (for config snapshot)
+- ~~Inject `IConfigurationService`~~ NOT NEEDED (no config snapshot)
 - Call `AutoSaveConversationAsync()` after line 218 and line 77
 - Make it fire-and-forget (don't block UI), but log failures
 
@@ -482,7 +413,8 @@ With auto-save, the Modified state essentially triggers immediate transition bac
 | 2025-11-14 | Auto-save after every message | Maximum safety, no lost work, transparent |
 | 2025-11-14 | Single active conversation | Simpler, matches current UI, sufficient for MVP |
 | 2025-11-14 | Separate ConversationHistoryManager | Clean separation of concerns, ConversationManager stays focused |
-| 2025-11-14 | Store full config snapshot | Complete context restoration, essential for reproducibility |
+| 2025-11-14 | ~~Store full config snapshot~~ REVERSED | ~~Complete context restoration~~ Config changes mid-conversation, snapshot is meaningless |
+| 2025-11-14 | Do NOT store configuration | Config can change during conversation, only messages matter |
 | 2025-11-14 | Terminology: "Conversation" over "Session" | More intuitive, better describes the feature |
 | 2025-11-14 | UI placement: Between chat-header and MessageList | Always visible, below title, above scrollable messages, separate non-scrolling div |
 | 2025-11-14 | Auto-save hooks: After RefreshMessages() in ConversationUIService | Ensures UI and ConversationManager are synced before save |
@@ -617,7 +549,7 @@ User provided answers to all key questions:
 namespace TransparentAiAgentCore.Domain.ConversationHistory;
 
 /// <summary>
-/// Represents a complete conversation with messages and configuration snapshot.
+/// Represents a complete conversation with messages.
 /// </summary>
 public class Conversation
 {
@@ -625,7 +557,6 @@ public class Conversation
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime LastModifiedAt { get; set; }
-    public ConversationConfiguration Configuration { get; set; } = new();
     public List<IMessage> Messages { get; set; } = new();
 
     /// <summary>
@@ -680,107 +611,11 @@ public class ConversationMetadata
 }
 ```
 
-**File**: `TransparentAiAgentCore/Domain/ConversationHistory/ConversationConfiguration.cs`
-```csharp
-namespace TransparentAiAgentCore.Domain.ConversationHistory;
+~~**File**: `TransparentAiAgentCore/Domain/ConversationHistory/ConversationConfiguration.cs`~~ ❌ **REMOVED**
 
-/// <summary>
-/// Configuration snapshot for a conversation.
-/// Excludes sensitive data (API keys, tenant IDs).
-/// </summary>
-public class ConversationConfiguration
-{
-    // Agent Configuration
-    public string SystemPrompt { get; set; } = string.Empty;
-    public int ContextWindowSize { get; set; }
-    public bool EnableTools { get; set; }
-    public string ToolExecutionMode { get; set; } = "Sequential";
+**Status**: This class has been removed from the design.
 
-    // LLM Configuration
-    public string Provider { get; set; } = string.Empty;
-    public double? Temperature { get; set; }
-    public double? TopP { get; set; }
-    public int MaxTokens { get; set; }
-
-    // Provider-specific configurations
-    public AnthropicSnapshot? Anthropic { get; set; }
-    public AzureOpenAISnapshot? AzureOpenAI { get; set; }
-
-    /// <summary>
-    /// Creates configuration snapshot from AppConfiguration.
-    /// Excludes sensitive data (API keys, tenant IDs).
-    /// </summary>
-    public static ConversationConfiguration CreateSnapshot(AppConfiguration appConfig)
-    {
-        var snapshot = new ConversationConfiguration
-        {
-            // Agent
-            SystemPrompt = appConfig.Agent.SystemPrompt,
-            ContextWindowSize = appConfig.Agent.ContextWindowSize,
-            EnableTools = appConfig.Agent.EnableTools,
-            ToolExecutionMode = appConfig.Agent.ToolExecutionMode.ToString(),
-
-            // LLM
-            Provider = appConfig.LLM.Provider,
-            Temperature = appConfig.LLM.Temperature,
-            TopP = appConfig.LLM.TopP,
-            MaxTokens = appConfig.LLM.MaxTokens
-        };
-
-        // Provider-specific config (excluding API keys!)
-        if (appConfig.LLM.Provider == "Anthropic" && appConfig.LLM.Anthropic != null)
-        {
-            snapshot.Anthropic = new AnthropicSnapshot
-            {
-                Model = appConfig.LLM.Anthropic.Model,
-                ExtendedThinking = appConfig.LLM.Anthropic.ExtendedThinking != null
-                    ? new ExtendedThinkingSnapshot
-                    {
-                        Enabled = appConfig.LLM.Anthropic.ExtendedThinking.Enabled,
-                        BudgetTokens = appConfig.LLM.Anthropic.ExtendedThinking.BudgetTokens
-                    }
-                    : null
-            };
-        }
-        else if (appConfig.LLM.Provider == "AzureOpenAI" && appConfig.LLM.AzureOpenAI != null)
-        {
-            snapshot.AzureOpenAI = new AzureOpenAISnapshot
-            {
-                Endpoint = appConfig.LLM.AzureOpenAI.Endpoint,
-                DeploymentName = appConfig.LLM.AzureOpenAI.DeploymentName,
-                ApiVersion = appConfig.LLM.AzureOpenAI.ApiVersion,
-                IsReasoningModel = appConfig.LLM.AzureOpenAI.IsReasoningModel,
-                AuthenticationMode = appConfig.LLM.AzureOpenAI.AuthenticationMode.ToString()
-                // Deliberately exclude: ApiKey, TenantId
-            };
-        }
-
-        return snapshot;
-    }
-}
-
-public class AnthropicSnapshot
-{
-    public string Model { get; set; } = string.Empty;
-    public ExtendedThinkingSnapshot? ExtendedThinking { get; set; }
-}
-
-public class ExtendedThinkingSnapshot
-{
-    public bool Enabled { get; set; }
-    public int BudgetTokens { get; set; }
-}
-
-public class AzureOpenAISnapshot
-{
-    public string Endpoint { get; set; } = string.Empty;
-    public string DeploymentName { get; set; } = string.Empty;
-    public string ApiVersion { get; set; } = string.Empty;
-    public bool IsReasoningModel { get; set; }
-    public string AuthenticationMode { get; set; } = string.Empty;
-    // ApiKey and TenantId deliberately excluded for security
-}
-```
+**Rationale**: Configuration snapshot removed because config can change multiple times during a conversation. Conversation history is about messages, not settings.
 
 **File**: `TransparentAiAgentCore/Domain/ConversationHistory/IConversationRepository.cs`
 ```csharp
@@ -1045,13 +880,12 @@ namespace TransparentAiAgentCore.Application.ConversationHistory;
 public interface IConversationHistoryManager
 {
     /// <summary>
-    /// Saves the current conversation with config snapshot.
+    /// Saves the current conversation.
     /// Auto-called after every message.
     /// </summary>
     Task SaveCurrentConversationAsync(
         Guid conversationId,
-        IReadOnlyList<IMessage> messages,
-        AppConfiguration currentConfig);
+        IReadOnlyList<IMessage> messages);
 
     /// <summary>
     /// Loads a conversation and restores it as the current conversation.
@@ -1098,8 +932,7 @@ public class ConversationHistoryManager : IConversationHistoryManager
 
     public async Task SaveCurrentConversationAsync(
         Guid conversationId,
-        IReadOnlyList<IMessage> messages,
-        AppConfiguration currentConfig)
+        IReadOnlyList<IMessage> messages)
     {
         try
         {
@@ -1116,7 +949,6 @@ public class ConversationHistoryManager : IConversationHistoryManager
                 Name = Conversation.GenerateName(messages),
                 CreatedAt = DateTime.UtcNow, // Will be preserved if loading existing
                 LastModifiedAt = DateTime.UtcNow,
-                Configuration = ConversationConfiguration.CreateSnapshot(currentConfig),
                 Messages = messages.ToList()
             };
 
@@ -1169,12 +1001,12 @@ public class ConversationHistoryManager : IConversationHistoryManager
 }
 ```
 
-### 11.2 Auto-Save Integration Points (DETAILED)
-**Implementation in ConversationUIService.cs**:
+### 11.2 Auto-Save Integration Points (DETAILED) ✅ REVISED
+
+**Implementation in ConversationUIService.cs** (Simplified - No Config):
 ```csharp
-// Add dependencies to constructor:
+// Add dependency to constructor:
 private readonly IConversationHistoryManager _conversationHistoryManager;
-private readonly IConfigurationService _configurationService;
 
 // Call after line 218 (streaming):
 RefreshMessages();
@@ -1188,14 +1020,12 @@ private async Task AutoSaveConversationAsync()
 {
     try
     {
-        var currentConfig = _configurationService.GetConfiguration();
         var messages = _conversationManager.GetAllMessages();
         var conversationId = _conversationManager.ConversationId;
 
         await _conversationHistoryManager.SaveCurrentConversationAsync(
             conversationId,
-            messages,
-            currentConfig
+            messages
         );
     }
     catch (Exception ex)
@@ -1208,59 +1038,11 @@ private async Task AutoSaveConversationAsync()
 }
 ```
 
-### 11.3 Configuration Snapshot Strategy (IMPLEMENTED)
-**Source**: `IConfigurationService.GetConfiguration()` returns `AppConfiguration`
+### ~~11.3 Configuration Snapshot Strategy~~ ❌ **REMOVED**
 
-**Snapshot Process**:
-```csharp
-public static ConversationConfiguration CreateSnapshot(AppConfiguration appConfig)
-{
-    var snapshot = new ConversationConfiguration
-    {
-        // Agent
-        SystemPrompt = appConfig.Agent.SystemPrompt,
-        ContextWindowSize = appConfig.Agent.ContextWindowSize,
-        EnableTools = appConfig.Agent.EnableTools,
-        ToolExecutionMode = appConfig.Agent.ToolExecutionMode.ToString(),
+**Status**: Configuration snapshot has been removed from the design.
 
-        // LLM
-        Provider = appConfig.LLM.Provider,
-        Temperature = appConfig.LLM.Temperature,
-        TopP = appConfig.LLM.TopP,
-        MaxTokens = appConfig.LLM.MaxTokens
-    };
-
-    // Provider-specific config (excluding API keys!)
-    if (appConfig.LLM.Provider == "Anthropic" && appConfig.LLM.Anthropic != null)
-    {
-        snapshot.Anthropic = new AnthropicSnapshot
-        {
-            Model = appConfig.LLM.Anthropic.Model,
-            ExtendedThinking = appConfig.LLM.Anthropic.ExtendedThinking != null
-                ? new ExtendedThinkingSnapshot
-                {
-                    Enabled = appConfig.LLM.Anthropic.ExtendedThinking.Enabled,
-                    BudgetTokens = appConfig.LLM.Anthropic.ExtendedThinking.BudgetTokens
-                }
-                : null
-        };
-    }
-    else if (appConfig.LLM.Provider == "AzureOpenAI" && appConfig.LLM.AzureOpenAI != null)
-    {
-        snapshot.AzureOpenAI = new AzureOpenAISnapshot
-        {
-            Endpoint = appConfig.LLM.AzureOpenAI.Endpoint,
-            DeploymentName = appConfig.LLM.AzureOpenAI.DeploymentName,
-            ApiVersion = appConfig.LLM.AzureOpenAI.ApiVersion,
-            IsReasoningModel = appConfig.LLM.AzureOpenAI.IsReasoningModel,
-            AuthenticationMode = appConfig.LLM.AzureOpenAI.AuthenticationMode.ToString()
-            // Deliberately exclude: ApiKey, TenantId
-        };
-    }
-
-    return snapshot;
-}
-```
+**Rationale**: Configuration can change multiple times during a conversation, so snapshot is meaningless. Conversation history is about messages, not settings.
 
 ### 11.4 File Naming Strategy ✅
 
@@ -1588,9 +1370,8 @@ All design tasks completed. The conversation history feature is fully designed a
 **Domain Layer** (Section 11.1):
 - ✅ `Conversation` entity with name generation logic
 - ✅ `ConversationMetadata` for lightweight listing
-- ✅ `ConversationConfiguration` with security-conscious config snapshot
+- ~~`ConversationConfiguration`~~ ❌ REMOVED (no config snapshot)
 - ✅ `IConversationRepository` interface with full method signatures
-- ✅ Provider-specific snapshot classes (Anthropic, Azure OpenAI)
 
 **Infrastructure Layer** (Section 11.2):
 - ✅ `JsonConversationRepository` complete implementation
@@ -1618,7 +1399,7 @@ All design tasks completed. The conversation history feature is fully designed a
 **Integration Points** (Sections 5.3, 11.2):
 - ✅ Auto-save hooks after `RefreshMessages()`
 - ✅ ConversationUIService extensions
-- ✅ Configuration snapshot mechanism
+- ~~Configuration snapshot mechanism~~ ❌ REMOVED
 - ✅ UI placement: between chat-header and MessageList
 
 ### Key Decisions Made
@@ -1630,9 +1411,8 @@ All design tasks completed. The conversation history feature is fully designed a
 | **UI Placement** | Between chat-header and MessageList | Always visible, no scrolling issues |
 | **Auto-Save** | After every message | Maximum safety, transparent to user |
 | **File Naming** | `{guid}_{sanitized_name}.json` | Unique + human-readable |
-| **Security** | Exclude API keys/TenantId | Prevent credential leakage |
 | **Concurrency** | Single active conversation | Simpler, matches current UI |
-| **Config Snapshot** | Full lightweight config | Complete reproducibility |
+| **Config Snapshot** | ~~Full lightweight config~~ NO CONFIG | Config changes mid-conversation, snapshot is meaningless |
 
 ### Implementation Readiness
 
