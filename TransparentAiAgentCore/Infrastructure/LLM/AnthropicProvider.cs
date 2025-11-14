@@ -128,6 +128,7 @@ public class AnthropicProvider : ILLMProvider
         var textAccumulators = new Dictionary<int, System.Text.StringBuilder>();
         var toolCallInfo = new Dictionary<int, (string Id, string Name)>();
         var jsonAccumulators = new Dictionary<int, System.Text.StringBuilder>();
+        var thinkingAccumulators = new Dictionary<int, System.Text.StringBuilder>();
         string? stopReason = null;
 
         IAsyncEnumerable<Anthropic.Client.Models.Messages.RawMessageStreamEvent>? streamingResponse = null;
@@ -174,6 +175,43 @@ public class AnthropicProvider : ILLMProvider
                         toolCallInfo[index] = (toolBlock.ID, toolBlock.Name);
                         jsonAccumulators[index] = new System.Text.StringBuilder();
                     }
+                    else
+                    {
+                        // Try to detect thinking or redacted thinking blocks using reflection
+                        // The SDK has TryPickThinking and TryPickRedactedThinking methods
+                        var blockType = blockStart.ContentBlock.GetType();
+                        bool isThinkingBlock = false;
+
+                        // Try TryPickThinking first
+                        var tryPickThinkingMethod = blockType.GetMethod("TryPickThinking");
+                        if (tryPickThinkingMethod != null)
+                        {
+                            var parameters = new object?[] { null };
+                            var result = (bool?)tryPickThinkingMethod.Invoke(blockStart.ContentBlock, parameters);
+                            if (result == true)
+                            {
+                                // This is a thinking block
+                                thinkingAccumulators[index] = new System.Text.StringBuilder();
+                                isThinkingBlock = true;
+                            }
+                        }
+
+                        // Try TryPickRedactedThinking if not already a thinking block
+                        if (!isThinkingBlock)
+                        {
+                            var tryPickRedactedMethod = blockType.GetMethod("TryPickRedactedThinking");
+                            if (tryPickRedactedMethod != null)
+                            {
+                                var parameters = new object?[] { null };
+                                var result = (bool?)tryPickRedactedMethod.Invoke(blockStart.ContentBlock, parameters);
+                                if (result == true)
+                                {
+                                    // This is a redacted thinking block
+                                    thinkingAccumulators[index] = new System.Text.StringBuilder();
+                                }
+                            }
+                        }
+                    }
                 }
                 // Handle content_block_delta
                 else if (streamEvent.TryPickContentBlockDelta(out var deltaEvent))
@@ -187,11 +225,36 @@ public class AnthropicProvider : ILLMProvider
                             textAccumulators[index].Append(textDelta.Text);
                         }
                     }
-                    // Accumulate tool call input JSON deltas
+                    // Accumulate tool call input JSON deltas or thinking deltas
                     else
                     {
-                        // Try to extract input JSON delta - SDK uses TryPickInputJSON
                         var deltaType = deltaEvent.Delta.GetType();
+
+                        // Try to extract thinking delta (SDK has TryPickThinking method)
+                        var tryPickThinkingMethod = deltaType.GetMethod("TryPickThinking");
+                        if (tryPickThinkingMethod != null)
+                        {
+                            var thinkingParams = new object?[] { null };
+                            var thinkingResult = (bool?)tryPickThinkingMethod.Invoke(deltaEvent.Delta, thinkingParams);
+                            if (thinkingResult == true && thinkingParams[0] != null)
+                            {
+                                var thinkingDelta = thinkingParams[0]!;
+                                var thinkingDeltaType = thinkingDelta.GetType();
+
+                                // SDK defines ThinkingDelta.Thinking property (confirmed from SDK source)
+                                var thinkingProp = thinkingDeltaType.GetProperty("Thinking");
+                                if (thinkingProp != null && thinkingAccumulators.ContainsKey(index))
+                                {
+                                    var thinkingText = thinkingProp.GetValue(thinkingDelta) as string;
+                                    if (thinkingText != null)
+                                    {
+                                        thinkingAccumulators[index].Append(thinkingText);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Try to extract input JSON delta - SDK uses TryPickInputJSON
                         var tryPickMethod = deltaType.GetMethod("TryPickInputJSON");
                         if (tryPickMethod != null)
                         {
@@ -288,19 +351,28 @@ public class AnthropicProvider : ILLMProvider
                         }
                     }
 
-                    // Yield final chunk with tool calls
+                    // Accumulate thinking content
+                    string? accumulatedThinking = null;
+                    if (thinkingAccumulators.Count > 0)
+                    {
+                        accumulatedThinking = string.Join("", thinkingAccumulators.Values.Select(sb => sb.ToString()));
+                    }
+
+                    // Yield final chunk with tool calls and thinking
                     yield return new StreamingLLMChunk(
                         contentDelta: string.Empty,
                         toolCallDelta: null,
                         isComplete: true,
                         finishReason: stopReason ?? "unknown",
-                        accumulatedToolCalls: toolCalls
+                        accumulatedToolCalls: toolCalls,
+                        thinkingDelta: null,
+                        accumulatedThinking: accumulatedThinking
                     );
 
                     // Log complete accumulated response
                     var latency = DateTime.UtcNow - startTime;
                     var fullText = string.Join("", textAccumulators.Values.Select(sb => sb.ToString()));
-                    LogStreamingResponse(fullText, toolCalls, stopReason, correlationId, latency);
+                    LogStreamingResponse(fullText, toolCalls, stopReason, correlationId, latency, accumulatedThinking);
 
                     break;
                 }
@@ -323,6 +395,7 @@ public class AnthropicProvider : ILLMProvider
         // Extract text content from content blocks
         var textContent = string.Empty;
         List<LLMToolCall>? toolCalls = null;
+        var thinkingContent = string.Empty;
 
         foreach (var contentBlock in response.Content)
         {
@@ -345,6 +418,65 @@ public class AnthropicProvider : ILLMProvider
                 );
                 toolCalls.Add(toolCall);
             }
+            else
+            {
+                // Try to detect thinking or redacted thinking blocks using reflection
+                // SDK has TryPickThinking and TryPickRedactedThinking methods
+                var blockType = contentBlock.GetType();
+                bool handledThinking = false;
+
+                // Try TryPickThinking first
+                var tryPickThinkingMethod = blockType.GetMethod("TryPickThinking");
+                if (tryPickThinkingMethod != null)
+                {
+                    var parameters = new object?[] { null };
+                    var result = (bool?)tryPickThinkingMethod.Invoke(contentBlock, parameters);
+                    if (result == true && parameters[0] != null)
+                    {
+                        var thinkingBlock = parameters[0]!;
+                        var thinkingBlockType = thinkingBlock.GetType();
+
+                        // SDK defines ThinkingBlock.Thinking property (confirmed from SDK source)
+                        var thinkingProp = thinkingBlockType.GetProperty("Thinking");
+                        if (thinkingProp != null)
+                        {
+                            var thinkingText = thinkingProp.GetValue(thinkingBlock) as string;
+                            if (thinkingText != null)
+                            {
+                                thinkingContent += thinkingText;
+                                handledThinking = true;
+                            }
+                        }
+                    }
+                }
+
+                // Try TryPickRedactedThinking if not already handled
+                if (!handledThinking)
+                {
+                    var tryPickRedactedMethod = blockType.GetMethod("TryPickRedactedThinking");
+                    if (tryPickRedactedMethod != null)
+                    {
+                        var parameters = new object?[] { null };
+                        var result = (bool?)tryPickRedactedMethod.Invoke(contentBlock, parameters);
+                        if (result == true && parameters[0] != null)
+                        {
+                            var redactedBlock = parameters[0]!;
+                            var redactedBlockType = redactedBlock.GetType();
+
+                            // SDK defines RedactedThinkingBlock.Thinking property
+                            var thinkingProp = redactedBlockType.GetProperty("Thinking");
+                            if (thinkingProp != null)
+                            {
+                                var thinkingText = thinkingProp.GetValue(redactedBlock) as string;
+                                if (thinkingText != null)
+                                {
+                                    thinkingContent += thinkingText;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Map stop reason to finish reason
@@ -364,7 +496,8 @@ public class AnthropicProvider : ILLMProvider
             content: textContent,
             toolCalls: toolCalls,
             finishReason: finishReason,
-            usage: usage
+            usage: usage,
+            thinking: string.IsNullOrEmpty(thinkingContent) ? null : thinkingContent
         );
     }
 
@@ -373,7 +506,7 @@ public class AnthropicProvider : ILLMProvider
     /// </summary>
     private StreamingLLMChunk? ConvertStreamingEvent(Anthropic.Client.Models.Messages.RawMessageStreamEvent streamEvent)
     {
-        // Handle content block delta events (text chunks)
+        // Handle content block delta events (text chunks and thinking chunks)
         if (streamEvent.TryPickContentBlockDelta(out var deltaEvent))
         {
             // Check if this is a text delta
@@ -385,6 +518,38 @@ public class AnthropicProvider : ILLMProvider
                     isComplete: false,
                     finishReason: null
                 );
+            }
+
+            // Try to extract thinking delta using reflection (SDK has TryPickThinking method)
+            var deltaType = deltaEvent.Delta.GetType();
+            var tryPickThinkingMethod = deltaType.GetMethod("TryPickThinking");
+            if (tryPickThinkingMethod != null)
+            {
+                var thinkingParams = new object?[] { null };
+                var thinkingResult = (bool?)tryPickThinkingMethod.Invoke(deltaEvent.Delta, thinkingParams);
+                if (thinkingResult == true && thinkingParams[0] != null)
+                {
+                    var thinkingDelta = thinkingParams[0]!;
+                    var thinkingDeltaType = thinkingDelta.GetType();
+
+                    // SDK defines ThinkingDelta.Thinking property (confirmed from SDK source)
+                    var thinkingProp = thinkingDeltaType.GetProperty("Thinking");
+                    if (thinkingProp != null)
+                    {
+                        var thinkingText = thinkingProp.GetValue(thinkingDelta) as string;
+                        if (thinkingText != null)
+                        {
+                            return new StreamingLLMChunk(
+                                contentDelta: string.Empty,
+                                toolCallDelta: null,
+                                isComplete: false,
+                                finishReason: null,
+                                accumulatedToolCalls: null,
+                                thinkingDelta: thinkingText
+                            );
+                        }
+                    }
+                }
             }
         }
         // Handle message stop event (end of stream)
@@ -696,12 +861,18 @@ public class AnthropicProvider : ILLMProvider
     }
 
     /// <summary>
-    /// Log complete accumulated streaming response for transparency (includes tool calls)
+    /// Log complete accumulated streaming response for transparency (includes tool calls and thinking)
     /// </summary>
-    private void LogStreamingResponse(string accumulatedContent, List<LLMToolCall>? toolCalls, string? stopReason, string correlationId, TimeSpan latency)
+    private void LogStreamingResponse(string accumulatedContent, List<LLMToolCall>? toolCalls, string? stopReason, string correlationId, TimeSpan latency, string? thinking = null)
     {
         // Build response data with accumulated content and tool calls
         var contentItems = new List<object>();
+
+        // Add thinking content if present
+        if (!string.IsNullOrEmpty(thinking))
+        {
+            contentItems.Add(new { Type = "thinking", Text = thinking });
+        }
 
         // Add text content if present
         if (!string.IsNullOrEmpty(accumulatedContent))

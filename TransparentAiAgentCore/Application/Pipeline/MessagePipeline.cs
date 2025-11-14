@@ -92,6 +92,6 @@ public class MessagePipeline : IMessagePipeline
 
         // Note: Tool call messages are now handled directly in AgentOrchestrator
         // This method is only used for responses without tool calls
-        return new LlmTextMessage(response.Content);
+        return new LlmTextMessage(response.Content, response.Thinking);
     }
 }
