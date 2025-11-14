@@ -2,15 +2,14 @@ using TransparentAiAgentCore.Domain.Enums;
 
 namespace TransparentAiAgentCore.Domain.Models;
 
-public class AssistantMessage : IMessage
+/// <summary>
+/// Standard text response from LLM.
+/// </summary>
+public class LlmTextMessage : LlmMessage
 {
-    public Guid Id { get; }
-    public MessageRole Role => MessageRole.Assistant;
-    public string Content { get; }
-    public DateTime Timestamp { get; }
-    public MessageContextStatus ContextStatus { get; set; }
+    public override string MessageTypeDiscriminator => "Llm.Text";
 
-    public AssistantMessage(string content)
+    public LlmTextMessage(string content)
     {
         // Allow empty content, but not null (empty content is valid for responses that only contain tool calls)
         if (content == null)

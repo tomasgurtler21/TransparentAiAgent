@@ -39,6 +39,10 @@ Skip this skill for:
 ### What to Test ✅
 
 1. **Validation Logic** - Can fail if validation is removed or has bugs
+   - ✅ Test that validation fails/succeeds (e.g., `Assert.IsFalse(result.IsValid)`)
+   - ❌ DON'T test exact error message wording
+   - ✅ Test exception type thrown (e.g., `Assert.ThrowsException<ArgumentNullException>`)
+   - ❌ DON'T test exact exception message text
 2. **Constructor Initialization** - Tests that initialization logic is executed correctly
 3. **Transformations & Calculations** - Logic can have bugs
 4. **Conditional Logic** - Branches can be wrong
@@ -53,6 +57,8 @@ Skip this skill for:
 3. **Trivial Parameter Assignment** - No transformation, just storage
 4. **Interface Definitions** - No implementation to test
 5. **Framework Features** - Testing .NET, not your code
+6. **Exact Error Message Wording** - Implementation detail that changes frequently
+7. **Exact Exception Message Text** - Test exception type, not message content
 
 ---
 

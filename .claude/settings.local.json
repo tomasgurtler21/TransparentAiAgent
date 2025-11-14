@@ -7,7 +7,8 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "mcp__context7__get-library-docs",
-      "Skill(tdd)"
+      "Skill(tdd)",
+      "Bash(Select-String -Pattern \"(Failed|Passed:|Failed:)\" -Context 2,5)"
     ]
   },
   "enableAllProjectMcpServers": true,

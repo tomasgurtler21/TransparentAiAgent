@@ -58,18 +58,17 @@ public class AgentOrchestrator : IAgentOrchestrator
     }
 
     public async Task<IMessage> ProcessUserInputAsync(
-        string userInput,
+        UserMessage message,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(userInput))
-            throw new ArgumentException("User input cannot be null or whitespace", nameof(userInput));
+        if (message == null)
+            throw new ArgumentNullException(nameof(message));
 
         try
         {
             // 1. Add user message to conversation
-            var userMessage = new UserMessage(userInput);
-            _conversationManager.AddMessage(userMessage);
-            LogEvent("UserInput", $"User input: {userInput}");
+            _conversationManager.AddMessage(message);
+            LogEvent("UserInput", $"User input: {message.Content}");
 
             // 2. Tool calling loop (with max depth protection)
             IMessage finalMessage = await ProcessWithToolLoopAsync(0, cancellationToken);
@@ -89,7 +88,7 @@ public class AgentOrchestrator : IAgentOrchestrator
         if (depth >= MaxToolCallDepth)
         {
             LogEvent("ToolLoopMaxDepthReached", $"Maximum tool call depth ({MaxToolCallDepth}) reached");
-            var errorMessage = new AssistantMessage(
+            var errorMessage = new LlmTextMessage(
                 $"I've reached the maximum number of tool calls ({MaxToolCallDepth}). Please try rephrasing your request.");
             _conversationManager.AddMessage(errorMessage);
             return errorMessage;
@@ -162,7 +161,7 @@ public class AgentOrchestrator : IAgentOrchestrator
                 .ToList();
 
             // Create ONE assistant message with ALL tool calls
-            var assistantToolCallMessage = new AssistantToolCallMessage(
+            var assistantToolCallMessage = new LlmToolCallMessage(
                 assistantContent,
                 toolCalls);
             _conversationManager.AddMessage(assistantToolCallMessage);
@@ -189,8 +188,7 @@ public class AgentOrchestrator : IAgentOrchestrator
                     toolCall.Id,
                     toolCall.Name,
                     toolResult.Content,
-                    toolResult.IsSuccess,
-                    toolResult.ErrorMessage);
+                    !toolResult.IsSuccess); // IsError = !IsSuccess
                 _conversationManager.AddMessage(toolResultMessage);
             }
             catch (Exception ex)
@@ -199,12 +197,11 @@ public class AgentOrchestrator : IAgentOrchestrator
                 LogEvent("ToolExecutionError", $"Error executing tool {toolCall.Name}: {ex.Message}");
 
                 // Add error result message with error description as content
-                var errorResultMessage = new ToolResultMessage(
+                var errorResultMessage = new ToolErrorMessage(
                     toolCall.Id,
                     toolCall.Name,
-                    $"Tool execution failed: {ex.Message}",
-                    isSuccess: false,
-                    errorMessage: ex.Message);
+                    ex.Message,
+                    ex);
                 _conversationManager.AddMessage(errorResultMessage);
             }
         }
@@ -228,7 +225,7 @@ public class AgentOrchestrator : IAgentOrchestrator
             var errorMessage = $"I've reached the maximum number of tool calls ({MaxToolCallDepth}). Please try rephrasing your request.";
 
             // Add error message to conversation
-            var errorAssistantMessage = new AssistantMessage(errorMessage);
+            var errorAssistantMessage = new LlmTextMessage(errorMessage);
             _conversationManager.AddMessage(errorAssistantMessage);
 
             // Yield error chunk and complete
@@ -304,7 +301,7 @@ public class AgentOrchestrator : IAgentOrchestrator
         else
         {
             // No tool calls - add assistant message and complete
-            var assistantMessage = new AssistantMessage(contentBuilder.ToString());
+            var assistantMessage = new LlmTextMessage(contentBuilder.ToString());
             _conversationManager.AddMessage(assistantMessage);
 
             // Yield final completion chunk
@@ -313,16 +310,15 @@ public class AgentOrchestrator : IAgentOrchestrator
     }
 
     public async IAsyncEnumerable<StreamingResponseChunk> ProcessUserInputStreamingAsync(
-        string userInput,
+        UserMessage message,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(userInput))
-            throw new ArgumentException("User input cannot be null or whitespace", nameof(userInput));
+        if (message == null)
+            throw new ArgumentNullException(nameof(message));
 
         // 1. Add user message to conversation
-        var userMessage = new UserMessage(userInput);
-        _conversationManager.AddMessage(userMessage);
-        LogEvent("UserInput", $"User input (streaming): {userInput}");
+        _conversationManager.AddMessage(message);
+        LogEvent("UserInput", $"User input (streaming): {message.Content}");
 
         // 2. Start streaming tool loop from depth 0
         await foreach (var chunk in ProcessStreamingToolLoopAsync(0, cancellationToken))
@@ -340,6 +336,79 @@ public class AgentOrchestrator : IAgentOrchestrator
         _conversationManager.AddMessage(systemMessage);
 
         LogEvent("ConversationRestarted", "Started new conversation");
+    }
+
+    public async IAsyncEnumerable<StreamingResponseChunk> ProcessApplicationMessageAsync(
+        ApplicationMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (message == null)
+            throw new ArgumentNullException(nameof(message));
+
+        // Add application message to conversation
+        _conversationManager.AddMessage(message);
+        LogEvent("ApplicationMessageAdded", $"Application message added: {message.GetType().Name}");
+
+        // Route based on message type
+        switch (message)
+        {
+            case ScenarioUserMessage scenarioUserMessage:
+                // ScenarioUserMessage acts like user input - trigger LLM processing
+                LogEvent("ScenarioUserMessageProcessing", $"Processing scenario user message: {scenarioUserMessage.Content}");
+                await foreach (var chunk in ProcessStreamingToolLoopAsync(0, cancellationToken))
+                {
+                    yield return chunk;
+                }
+                break;
+
+            case ScenarioAssistantMessage scenarioAssistantMessage:
+                // ScenarioAssistantMessage is a scripted response - no LLM call needed
+                LogEvent("ScenarioAssistantMessageAdded", $"Added scenario assistant message: {scenarioAssistantMessage.Content}");
+                // Just yield completion chunk
+                yield return new StreamingResponseChunk(null, IsComplete: true, Status: StreamingStatus.Completed);
+                break;
+
+            default:
+                var errorMessage = $"Application message type {message.GetType().Name} is not supported";
+                LogEvent("UnsupportedApplicationMessageType", errorMessage);
+                throw new NotSupportedException(errorMessage);
+        }
+    }
+
+    public async IAsyncEnumerable<StreamingResponseChunk> ProcessToolMessageAsync(
+        ToolMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (message == null)
+            throw new ArgumentNullException(nameof(message));
+
+        // Add tool message to conversation
+        _conversationManager.AddMessage(message);
+        LogEvent("ToolMessageAdded", $"Tool message added: {message.GetType().Name}");
+
+        // Route based on message type for detailed logging
+        switch (message)
+        {
+            case ToolResultMessage toolResultMessage:
+                LogEvent("ToolResultMessageProcessing",
+                    $"Processing tool result from {toolResultMessage.ToolName} (success: {!toolResultMessage.IsError})");
+                break;
+
+            case ToolErrorMessage toolErrorMessage:
+                LogEvent("ToolErrorMessageProcessing",
+                    $"Processing tool error from {toolErrorMessage.ToolName}: {toolErrorMessage.ErrorMessage}");
+                break;
+
+            default:
+                LogEvent("UnknownToolMessageType", $"Processing unknown tool message type: {message.GetType().Name}");
+                break;
+        }
+
+        // Tool messages always trigger LLM processing (both results and errors need LLM response)
+        await foreach (var chunk in ProcessStreamingToolLoopAsync(0, cancellationToken))
+        {
+            yield return chunk;
+        }
     }
 
     private LLMRequest BuildLLMRequest()

@@ -14,7 +14,7 @@ public class ToolSchemaValidator
     /// <param name="schema">JSON Schema string defining the tool's parameters</param>
     /// <param name="argumentsJson">JSON string containing the tool arguments</param>
     /// <returns>ValidationResult indicating success or failure with error details</returns>
-    public ValidationResult ValidateArguments(string schema, string? argumentsJson)
+    public virtual ValidationResult ValidateArguments(string schema, string? argumentsJson)
     {
         // 1. Validate arguments is not null
         if (argumentsJson == null)

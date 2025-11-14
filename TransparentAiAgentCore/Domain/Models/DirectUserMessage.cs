@@ -2,16 +2,14 @@ using TransparentAiAgentCore.Domain.Enums;
 
 namespace TransparentAiAgentCore.Domain.Models;
 
-public class SystemMessage : IMessage
+/// <summary>
+/// Standard message typed by human user in chat interface.
+/// </summary>
+public class DirectUserMessage : UserMessage
 {
-    public Guid Id { get; }
-    public MessageRole Role => MessageRole.System;
-    public string Content { get; }
-    public DateTime Timestamp { get; }
-    public MessageContextStatus ContextStatus { get; set; }
-    public string MessageTypeDiscriminator => "System"; // Temporary discriminator
+    public override string MessageTypeDiscriminator => "User.Direct";
 
-    public SystemMessage(string content)
+    public DirectUserMessage(string content)
     {
         if (string.IsNullOrWhiteSpace(content))
             throw new ArgumentException("Content cannot be null or whitespace", nameof(content));

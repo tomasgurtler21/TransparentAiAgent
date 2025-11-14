@@ -76,7 +76,7 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         public void AddMessage_ValidMessage_AddsToHistory()
         {
             var manager = new ConversationManager(10, _transparencyService);
-            var message = new UserMessage("Hello");
+            var message = new DirectUserMessage("Hello");
 
             manager.AddMessage(message);
 
@@ -91,7 +91,7 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
             var manager = new ConversationManager(10, _transparencyService);
             _transparencyService.ClearEvents(); // Clear constructor event
 
-            var message = new UserMessage("Hello");
+            var message = new DirectUserMessage("Hello");
             manager.AddMessage(message);
 
             var events = _transparencyService.GetEvents();
@@ -107,9 +107,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(2, _transparencyService);
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -123,7 +123,7 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         public void GetAllMessages_ReturnsDefensiveCopy()
         {
             var manager = new ConversationManager(10, _transparencyService);
-            var message = new UserMessage("Hello");
+            var message = new DirectUserMessage("Hello");
             manager.AddMessage(message);
 
             var messages1 = manager.GetAllMessages();
@@ -142,9 +142,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(2, _transparencyService);
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -160,9 +160,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(2, _transparencyService);
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -183,13 +183,13 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
 
             Assert.AreEqual(0, manager.InContextMessageCount);
 
-            manager.AddMessage(new UserMessage("One"));
+            manager.AddMessage(new DirectUserMessage("One"));
             Assert.AreEqual(1, manager.InContextMessageCount);
 
-            manager.AddMessage(new UserMessage("Two"));
+            manager.AddMessage(new DirectUserMessage("Two"));
             Assert.AreEqual(2, manager.InContextMessageCount);
 
-            manager.AddMessage(new UserMessage("Three"));
+            manager.AddMessage(new DirectUserMessage("Three"));
             Assert.AreEqual(3, manager.InContextMessageCount);
         }
 
@@ -202,8 +202,8 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(3, _transparencyService);
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -217,9 +217,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(2, _transparencyService);
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -235,10 +235,10 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(2, _transparencyService);
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
-            var msg4 = new UserMessage("Four");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
+            var msg4 = new DirectUserMessage("Four");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -264,9 +264,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
                 changedMessageId = args.MessageId;
             };
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -289,9 +289,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
                 newStatus = args.NewStatus;
             };
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -307,9 +307,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
             var manager = new ConversationManager(2, _transparencyService);
             _transparencyService.ClearEvents();
 
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -325,9 +325,9 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
             var manager = new ConversationManager(3, _transparencyService);
 
             var systemMsg = new SystemMessage("System prompt");
-            var msg1 = new UserMessage("One");
-            var msg2 = new UserMessage("Two");
-            var msg3 = new UserMessage("Three");
+            var msg1 = new DirectUserMessage("One");
+            var msg2 = new DirectUserMessage("Two");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(systemMsg);
             manager.AddMessage(msg1);
@@ -345,11 +345,11 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(2, _transparencyService);
 
-            var msg1 = new UserMessage("One");
+            var msg1 = new DirectUserMessage("One");
             Thread.Sleep(10); // Ensure different timestamps
-            var msg2 = new UserMessage("Two");
+            var msg2 = new DirectUserMessage("Two");
             Thread.Sleep(10);
-            var msg3 = new UserMessage("Three");
+            var msg3 = new DirectUserMessage("Three");
 
             manager.AddMessage(msg1);
             manager.AddMessage(msg2);
@@ -370,8 +370,8 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         {
             var manager = new ConversationManager(10, _transparencyService);
 
-            manager.AddMessage(new UserMessage("One"));
-            manager.AddMessage(new UserMessage("Two"));
+            manager.AddMessage(new DirectUserMessage("One"));
+            manager.AddMessage(new DirectUserMessage("Two"));
 
             manager.ClearConversation();
 
@@ -382,7 +382,7 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
         public void ClearConversation_LogsClearedEvent()
         {
             var manager = new ConversationManager(10, _transparencyService);
-            manager.AddMessage(new UserMessage("One"));
+            manager.AddMessage(new DirectUserMessage("One"));
             _transparencyService.ClearEvents();
 
             manager.ClearConversation();
@@ -406,7 +406,7 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
                 int index = i;
                 tasks.Add(Task.Run(() =>
                 {
-                    manager.AddMessage(new UserMessage($"Message {index}"));
+                    manager.AddMessage(new DirectUserMessage($"Message {index}"));
                 }));
             }
 
@@ -502,7 +502,7 @@ namespace TransparentAiAgentCore_Tests.Application.Conversation
             // Arrange
             var manager = new ConversationManager(10, _transparencyService);
             manager.AddMessage(new SystemMessage("First system prompt"));
-            manager.AddMessage(new UserMessage("User message"));
+            manager.AddMessage(new DirectUserMessage("User message"));
             manager.AddMessage(new SystemMessage("Second system prompt"));
 
             var newPrompt = "Updated system prompt";

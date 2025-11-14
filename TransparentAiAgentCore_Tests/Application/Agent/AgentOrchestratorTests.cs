@@ -5,6 +5,7 @@ using TransparentAiAgentCore.Application.Pipeline;
 using TransparentAiAgentCore.Domain.LLM;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Exceptions;
+using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 
@@ -107,21 +108,12 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
         #region ProcessUserInputAsync Tests
 
         [TestMethod]
-        public async Task ProcessUserInputAsync_NullInput_ThrowsArgumentException()
+        public async Task ProcessUserInputAsync_NullInput_ThrowsArgumentNullException()
         {
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
+            await Assert.ThrowsExceptionAsync<ArgumentNullException>(() =>
                 orchestrator.ProcessUserInputAsync(null!));
-        }
-
-        [TestMethod]
-        public async Task ProcessUserInputAsync_WhitespaceInput_ThrowsArgumentException()
-        {
-            var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
-
-            await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
-                orchestrator.ProcessUserInputAsync("   "));
         }
 
         [TestMethod]
@@ -130,7 +122,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             _mockLLMProvider.SetNextResponse(new LLMResponse("Response"));
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            await orchestrator.ProcessUserInputAsync("Hello");
+            await orchestrator.ProcessUserInputAsync(new DirectUserMessage("Hello"));
 
             var messages = _conversationManager.GetAllMessages();
             Assert.IsTrue(messages.Any(m => m.Content == "Hello"));
@@ -142,7 +134,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             _mockLLMProvider.SetNextResponse(new LLMResponse("AI Response"));
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            await orchestrator.ProcessUserInputAsync("Test input");
+            await orchestrator.ProcessUserInputAsync(new DirectUserMessage("Test input"));
 
             Assert.IsTrue(_mockLLMProvider.WasSendRequestCalled);
         }
@@ -153,7 +145,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             _mockLLMProvider.SetNextResponse(new LLMResponse("AI Response"));
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            await orchestrator.ProcessUserInputAsync("Hello");
+            await orchestrator.ProcessUserInputAsync(new DirectUserMessage("Hello"));
 
             var messages = _conversationManager.GetAllMessages();
             Assert.IsTrue(messages.Any(m => m.Content == "AI Response"));
@@ -165,7 +157,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             _mockLLMProvider.SetNextResponse(new LLMResponse("AI Response"));
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            var result = await orchestrator.ProcessUserInputAsync("Hello");
+            var result = await orchestrator.ProcessUserInputAsync(new DirectUserMessage("Hello"));
 
             Assert.AreEqual("AI Response", result.Content);
         }
@@ -177,7 +169,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
             _transparencyService.ClearEvents();
 
-            await orchestrator.ProcessUserInputAsync("Test");
+            await orchestrator.ProcessUserInputAsync(new DirectUserMessage("Test"));
 
             var events = _transparencyService.GetEvents();
             Assert.IsTrue(events.Any(e => e.AdditionalInfo != null && e.AdditionalInfo.Contains("User input")));
@@ -190,7 +182,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
             _transparencyService.ClearEvents();
 
-            await orchestrator.ProcessUserInputAsync("Test");
+            await orchestrator.ProcessUserInputAsync(new DirectUserMessage("Test"));
 
             var events = _transparencyService.GetEvents();
             Assert.IsTrue(events.Any(e => e.AdditionalInfo != null && e.AdditionalInfo.Contains("request to LLM")));
@@ -203,7 +195,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             _mockLLMProvider.SetNextResponse(new LLMResponse("Response"));
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            await orchestrator.ProcessUserInputAsync("Hello");
+            await orchestrator.ProcessUserInputAsync(new DirectUserMessage("Hello"));
 
             var lastRequest = _mockLLMProvider.LastRequest;
             Assert.IsNotNull(lastRequest);
@@ -218,7 +210,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
             await Assert.ThrowsExceptionAsync<AgentException>(() =>
-                orchestrator.ProcessUserInputAsync("Test"));
+                orchestrator.ProcessUserInputAsync(new DirectUserMessage("Test")));
         }
 
         [TestMethod]
@@ -228,7 +220,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
             await Assert.ThrowsExceptionAsync<LLMException>(() =>
-                orchestrator.ProcessUserInputAsync("Test"));
+                orchestrator.ProcessUserInputAsync(new DirectUserMessage("Test")));
         }
 
         #endregion
@@ -236,11 +228,11 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
         #region ProcessUserInputStreamingAsync Tests
 
         [TestMethod]
-        public async Task ProcessUserInputStreamingAsync_NullInput_ThrowsArgumentException()
+        public async Task ProcessUserInputStreamingAsync_NullInput_ThrowsArgumentNullException()
         {
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            await Assert.ThrowsExceptionAsync<ArgumentException>(async () =>
+            await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () =>
             {
                 await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(null!))
                 {
@@ -261,7 +253,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
             var chunks = new List<string?>();
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Test"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Test")))
             {
                 chunks.Add(chunk.ContentDelta);
             }
@@ -284,7 +276,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             });
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Test"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Test")))
             {
                 // Consume chunks
             }
@@ -304,7 +296,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             var orchestrator = new AgentOrchestrator(_mockLLMProvider, _conversationManager, _messagePipeline, _transparencyService, _configuration);
 
             // Add some messages
-            orchestrator.ProcessUserInputAsync("Test1").Wait();
+            orchestrator.ProcessUserInputAsync(new DirectUserMessage("Test1")).Wait();
 
             orchestrator.StartNewConversation();
 
@@ -376,7 +368,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
 
             // Act
             var streamedChunks = new List<StreamingResponseChunk>();
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Use a tool"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Use a tool")))
             {
                 streamedChunks.Add(chunk);
             }
@@ -436,7 +428,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             });
 
             // Act
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Test"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Test")))
             {
                 // Consume chunks
             }
@@ -489,7 +481,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             });
 
             // Act
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Test"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Test")))
             {
                 // Consume chunks
             }
@@ -550,7 +542,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             });
 
             // Act
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Start tool loop"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Start tool loop")))
             {
                 // Consume chunks
             }
@@ -585,7 +577,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
 
             // Act
             var streamedChunks = new List<StreamingResponseChunk>();
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Infinite loop"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Infinite loop")))
             {
                 streamedChunks.Add(chunk);
                 // Safety: break after reasonable number of chunks
@@ -621,7 +613,7 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
 
             // Act
             var streamedChunks = new List<StreamingResponseChunk>();
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Hello"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Hello")))
             {
                 streamedChunks.Add(chunk);
             }
@@ -671,16 +663,16 @@ namespace TransparentAiAgentCore_Tests.Application.Agent
             });
 
             // Act
-            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync("Test"))
+            await foreach (var chunk in orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage("Test")))
             {
                 // Consume chunks - should not throw
             }
 
             // Assert
             var messages = _conversationManager.GetAllMessages();
-            var toolResultMessages = messages.Where(m => m.GetType().Name.Contains("ToolResult")).ToList();
-            Assert.IsTrue(toolResultMessages.Count > 0, "Should have tool result message");
-            // The error should be captured in the tool result message
+            var toolErrorMessages = messages.Where(m => m is ToolErrorMessage).ToList();
+            Assert.IsTrue(toolErrorMessages.Count > 0, "Should have tool error message");
+            // The error should be captured in the tool error message
         }
 
         #endregion

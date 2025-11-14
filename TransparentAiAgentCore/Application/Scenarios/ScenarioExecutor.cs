@@ -200,7 +200,7 @@ public class ScenarioExecutor : IScenarioExecutor
             return;
 
         // Process the user input through the orchestrator (streaming)
-        await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(step.Content, cancellationToken))
+        await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(step.Content), cancellationToken))
         {
             // Forward streaming chunks as events for UI to consume
             StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(

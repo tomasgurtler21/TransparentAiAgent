@@ -28,4 +28,11 @@ public interface IMessage
     /// Whether message is currently in LLM context window
     /// </summary>
     MessageContextStatus ContextStatus { get; set; }
+
+    /// <summary>
+    /// Type discriminator for polymorphic serialization/deserialization.
+    /// Format: "{OriginCategory}.{ConcreteType}"
+    /// Examples: "User.Direct", "Application.ScenarioUser", "Llm.Text", "Tool.Result"
+    /// </summary>
+    string MessageTypeDiscriminator { get; }
 }

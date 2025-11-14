@@ -74,7 +74,12 @@ public class UIMessage
     };
 
     /// <summary>
-    /// Create UIMessage from domain message
+    /// Create UIMessage from domain message.
+    /// Supports all message types in the 4-tier hierarchy:
+    /// - User: DirectUserMessage
+    /// - Application: ScenarioUserMessage, ScenarioAssistantMessage
+    /// - LLM: LlmTextMessage, LlmToolCallMessage
+    /// - Tool: ToolResultMessage, ToolErrorMessage
     /// </summary>
     public static UIMessage FromDomainMessage(IMessage message)
     {
@@ -90,13 +95,25 @@ public class UIMessage
             ContextStatus = message.ContextStatus
         };
 
-        // Handle tool-specific messages
-        if (message is AssistantToolCallMessage toolCallMsg)
+        // === Application-originated scenario messages ===
+        // These are auto-generated messages from teaching scenarios
+        if (message is ScenarioUserMessage scenarioUserMsg)
+        {
+            uiMessage.IsAutoMessage = true;
+            uiMessage.Annotation = scenarioUserMsg.Annotation;
+        }
+        else if (message is ScenarioAssistantMessage scenarioAssistantMsg)
+        {
+            uiMessage.IsAutoMessage = true;
+            uiMessage.Annotation = scenarioAssistantMsg.Annotation;
+        }
+
+        // === LLM-originated tool call messages ===
+        // LlmToolCallMessage (new hierarchy)
+        else if (message is LlmToolCallMessage llmToolCallMsg)
         {
             uiMessage.IsToolCall = true;
-
-            // Convert all tool calls to UI model
-            uiMessage.ToolCalls = toolCallMsg.ToolCalls
+            uiMessage.ToolCalls = llmToolCallMsg.ToolCalls
                 .Select(tc => new UIToolCall
                 {
                     Id = tc.Id,
@@ -105,13 +122,28 @@ public class UIMessage
                 })
                 .ToList();
         }
+
+        // === Tool-originated result messages ===
+        // ToolResultMessage (new hierarchy - successful result, may have IsError flag)
         else if (message is ToolResultMessage toolResult)
         {
             uiMessage.IsToolResult = true;
             uiMessage.ToolName = toolResult.ToolName;
-            uiMessage.ToolResultSuccess = toolResult.IsSuccess;
-            uiMessage.ToolErrorMessage = toolResult.ErrorMessage;
+            uiMessage.ToolResultSuccess = !toolResult.IsError; // Invert: IsError=false means success=true
+            uiMessage.ToolErrorMessage = toolResult.IsError ? toolResult.Result : null;
         }
+        // ToolErrorMessage (new hierarchy - explicit error message)
+        else if (message is ToolErrorMessage toolError)
+        {
+            uiMessage.IsToolResult = true;
+            uiMessage.ToolName = toolError.ToolName;
+            uiMessage.ToolResultSuccess = false;
+            uiMessage.ToolErrorMessage = toolError.ErrorMessage;
+        }
+
+        // === Basic message types ===
+        // DirectUserMessage, LlmTextMessage, SystemMessage - no special handling needed
+        // They use the basic properties already set above
 
         return uiMessage;
     }

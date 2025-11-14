@@ -78,25 +78,25 @@ public class ConversationUIServiceTests
     public async Task SendMessageAsync_ValidContent_CallsOrchestratorProcessUserInputAsync()
     {
         // Arrange
-        var mockMessage = new AssistantMessage("Response");
-        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        var mockMessage = new LlmTextMessage("Response");
+        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockMessage);
 
         // Act
         await _service.SendMessageAsync("Hello");
 
         // Assert
-        _mockOrchestrator.Verify(x => x.ProcessUserInputAsync("Hello", It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrchestrator.Verify(x => x.ProcessUserInputAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
     public async Task SendMessageAsync_ValidContent_RefreshesMessagesAfterProcessing()
     {
         // Arrange
-        var userMessage = new UserMessage("Hello");
-        var assistantMessage = new AssistantMessage("Response");
+        var userMessage = new DirectUserMessage("Hello");
+        var assistantMessage = new LlmTextMessage("Response");
 
-        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(assistantMessage);
 
         _mockConversationManager.Setup(x => x.GetAllMessages())
@@ -116,8 +116,8 @@ public class ConversationUIServiceTests
         var stateChanges = new List<bool>();
         _service.ProcessingStateChanged += (sender, isProcessing) => stateChanges.Add(isProcessing);
 
-        var mockMessage = new AssistantMessage("Response");
-        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        var mockMessage = new LlmTextMessage("Response");
+        _mockOrchestrator.Setup(x => x.ProcessUserInputAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockMessage);
 
         // Act
@@ -133,7 +133,7 @@ public class ConversationUIServiceTests
     public async Task ClearConversationAsync_ClearsMessagesAndRaisesEvent()
     {
         // Arrange
-        var messages = new List<IMessage> { new UserMessage("Hello") };
+        var messages = new List<IMessage> { new DirectUserMessage("Hello") };
         _mockConversationManager.Setup(x => x.GetAllMessages())
             .Returns(messages.AsReadOnly());
 
@@ -166,8 +166,8 @@ public class ConversationUIServiceTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new UserMessage("Hello"),
-            new AssistantMessage("Hi there")
+            new DirectUserMessage("Hello"),
+            new LlmTextMessage("Hi there")
         };
 
         _mockConversationManager.Setup(x => x.GetAllMessages())

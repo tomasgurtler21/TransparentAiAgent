@@ -3,31 +3,31 @@ using TransparentAiAgentCore.Domain.Enums;
 namespace TransparentAiAgentCore.Domain.Models;
 
 /// <summary>
-/// Successful tool execution result.
+/// Tool execution error.
 /// Part of the 4-tier message hierarchy - inherits from ToolMessage.
 /// </summary>
-public class ToolResultMessage : ToolMessage
+public class ToolErrorMessage : ToolMessage
 {
-    public override string MessageTypeDiscriminator => "Tool.Result";
+    public override string MessageTypeDiscriminator => "Tool.Error";
 
     /// <summary>
-    /// Result data from the tool execution.
+    /// Error message describing what went wrong.
     /// </summary>
-    public string Result { get; }
+    public string ErrorMessage { get; }
 
     /// <summary>
-    /// Whether this result represents an error.
+    /// Optional exception that caused the error.
     /// </summary>
-    public bool IsError { get; }
+    public Exception? Exception { get; }
 
     /// <summary>
-    /// Creates a new tool result message.
+    /// Creates a new tool error message.
     /// </summary>
     /// <param name="toolCallId">ID of the tool call this message is responding to</param>
     /// <param name="toolName">Name of the tool that was executed</param>
-    /// <param name="result">Result data from the tool</param>
-    /// <param name="isError">Whether this result represents an error</param>
-    public ToolResultMessage(string toolCallId, string toolName, string result, bool isError = false)
+    /// <param name="errorMessage">Error message describing what went wrong</param>
+    /// <param name="exception">Optional exception that caused the error</param>
+    public ToolErrorMessage(string toolCallId, string toolName, string errorMessage, Exception? exception = null)
     {
         // Validate parameters
         if (toolCallId == null)
@@ -38,8 +38,10 @@ public class ToolResultMessage : ToolMessage
             throw new ArgumentNullException(nameof(toolName));
         if (string.IsNullOrWhiteSpace(toolName))
             throw new ArgumentException("Tool name cannot be empty or whitespace", nameof(toolName));
-        if (result == null)
-            throw new ArgumentNullException(nameof(result));
+        if (errorMessage == null)
+            throw new ArgumentNullException(nameof(errorMessage));
+        if (string.IsNullOrWhiteSpace(errorMessage))
+            throw new ArgumentException("Error message cannot be empty or whitespace", nameof(errorMessage));
 
         // Set properties from base class
         Id = Guid.NewGuid();
@@ -49,8 +51,8 @@ public class ToolResultMessage : ToolMessage
         ContextStatus = MessageContextStatus.InContext;
 
         // Set properties specific to this class
-        Result = result;
-        IsError = isError;
-        Content = result; // Tool result is the content
+        ErrorMessage = errorMessage;
+        Exception = exception;
+        Content = $"Error executing {toolName}: {errorMessage}";
     }
 }

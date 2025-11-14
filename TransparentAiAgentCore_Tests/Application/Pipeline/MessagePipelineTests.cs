@@ -30,7 +30,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         [TestMethod]
         public void ConvertToLLMMessage_UserMessage_ConvertsCorrectly()
         {
-            var userMessage = new UserMessage("Hello, AI!");
+            var userMessage = new DirectUserMessage("Hello, AI!");
 
             var llmMessage = _pipeline.ConvertToLLMMessage(userMessage);
 
@@ -43,7 +43,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         [TestMethod]
         public void ConvertToLLMMessage_AssistantMessage_ConvertsCorrectly()
         {
-            var assistantMessage = new AssistantMessage("Hello, human!");
+            var assistantMessage = new LlmTextMessage("Hello, human!");
 
             var llmMessage = _pipeline.ConvertToLLMMessage(assistantMessage);
 
@@ -70,7 +70,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         public void ConvertToLLMMessage_AssistantToolCallMessage_ConvertsCorrectly()
         {
             var toolCall = new ToolCall("call_123", "get_weather", "{\"city\":\"Prague\"}");
-            var toolCallMessage = new AssistantToolCallMessage("Calling weather API", new List<ToolCall> { toolCall });
+            var toolCallMessage = new LlmToolCallMessage("Calling weather API", new List<ToolCall> { toolCall });
 
             var llmMessage = _pipeline.ConvertToLLMMessage(toolCallMessage);
 
@@ -86,7 +86,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         [TestMethod]
         public void ConvertToLLMMessage_ToolResultMessage_ConvertsCorrectly()
         {
-            var toolResultMessage = new ToolResultMessage("call_123", "get_weather", "{\"temperature\":20}", true);
+            var toolResultMessage = new ToolResultMessage("call_123", "get_weather", "{\"temperature\":20}", false);
 
             var llmMessage = _pipeline.ConvertToLLMMessage(toolResultMessage);
 
@@ -114,7 +114,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         public void ConvertToLLMMessage_AssistantMessage_EmptyContent_ConvertsSuccessfully()
         {
             // Arrange - Assistant message with empty content (valid for tool-call-only responses)
-            var assistantMessage = new AssistantMessage("");
+            var assistantMessage = new LlmTextMessage("");
 
             // Act
             var llmMessage = _pipeline.ConvertToLLMMessage(assistantMessage);
@@ -130,7 +130,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         {
             // Arrange - Tool call message with empty content (common when LLM only calls tools)
             var toolCall = new ToolCall("call-1", "search", "{\"query\":\"test\"}");
-            var toolCallMessage = new AssistantToolCallMessage("", new List<ToolCall> { toolCall });
+            var toolCallMessage = new LlmToolCallMessage("", new List<ToolCall> { toolCall });
 
             // Act
             var llmMessage = _pipeline.ConvertToLLMMessage(toolCallMessage);
@@ -148,13 +148,13 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             // Arrange - Realistic scenario: conversation with mix of regular and tool-call messages
             var messages = new List<IMessage>
             {
-                new UserMessage("Search for weather"),
-                new AssistantToolCallMessage("", new List<ToolCall>
+                new DirectUserMessage("Search for weather"),
+                new LlmToolCallMessage("", new List<ToolCall>
                 {
                     new ToolCall("c1", "search", "{}")
                 }),
-                new ToolResultMessage("c1", "search", "{\"temp\":20}", true),
-                new AssistantMessage("The temperature is 20°C")
+                new ToolResultMessage("c1", "search", "{\"temp\":20}", false),
+                new LlmTextMessage("The temperature is 20°C")
             };
 
             // Act
@@ -173,7 +173,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
         [TestMethod]
         public void ConvertToLLMMessage_RoundTrip_AssistantMessageWithEmptyContent()
         {
-            // Arrange - Test round-trip: LLMResponse → AssistantMessage → LLMMessage
+            // Arrange - Test round-trip: LLMResponse → LlmToolCallMessage → LLMMessage
             var llmResponse = new LLMResponse("", new List<LLMToolCall>
             {
                 new LLMToolCall("c1", "tool", "{}")
@@ -183,7 +183,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             // 1. Create domain message from response (handled in AgentOrchestrator)
             var toolCalls = llmResponse.ToolCalls!.Select(tc =>
                 new ToolCall(tc.Id, tc.Name, tc.Arguments)).ToList();
-            var domainMessage = new AssistantToolCallMessage(llmResponse.Content, toolCalls);
+            var domainMessage = new LlmToolCallMessage(llmResponse.Content, toolCalls);
 
             // 2. Convert back to LLM message for next request
             var llmMessage = _pipeline.ConvertToLLMMessage(domainMessage);
@@ -193,6 +193,165 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             Assert.AreEqual("", llmMessage.Content);
             Assert.IsNotNull(llmMessage.ToolCalls);
             Assert.AreEqual(1, llmMessage.ToolCalls.Count);
+        }
+
+        #endregion
+
+        #region New Message Type Conversion Tests (Session 2.1)
+
+        [TestMethod]
+        public void ConvertToLLMMessage_LlmTextMessage_ConvertsToAssistantRole()
+        {
+            // Arrange
+            var llmTextMsg = new LlmTextMessage("This is an LLM response");
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(llmTextMsg);
+
+            // Assert
+            Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("This is an LLM response", llmMessage.Content);
+            Assert.IsNull(llmMessage.ToolCalls);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_LlmTextMessage_EmptyContent_IsValid()
+        {
+            // Arrange - Empty content is valid for tool-call-only responses
+            var llmTextMsg = new LlmTextMessage("");
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(llmTextMsg);
+
+            // Assert
+            Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("", llmMessage.Content);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_LlmToolCallMessage_ConvertsWithToolCalls()
+        {
+            // Arrange
+            var toolCalls = new List<ToolCall>
+            {
+                new ToolCall("call_1", "get_weather", "{\"city\":\"Prague\"}")
+            };
+            var llmToolCallMsg = new LlmToolCallMessage("Getting weather", toolCalls);
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(llmToolCallMsg);
+
+            // Assert
+            Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("Getting weather", llmMessage.Content);
+            Assert.IsNotNull(llmMessage.ToolCalls);
+            Assert.AreEqual(1, llmMessage.ToolCalls.Count);
+            Assert.AreEqual("call_1", llmMessage.ToolCalls[0].Id);
+            Assert.AreEqual("get_weather", llmMessage.ToolCalls[0].Name);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_ScenarioUserMessage_ConvertsToUserRole_StripsAnnotation()
+        {
+            // Arrange - Annotation is UI-only, should NOT go to LLM
+            var scenarioMsg = new ScenarioUserMessage("What is clean architecture?", "Teaching step 1: Introducing concepts");
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(scenarioMsg);
+
+            // Assert
+            Assert.AreEqual("user", llmMessage.Role);
+            Assert.AreEqual("What is clean architecture?", llmMessage.Content);
+            Assert.IsFalse(llmMessage.Content.Contains("Teaching"));
+            Assert.IsFalse(llmMessage.Content.Contains("annotation"));
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_ScenarioUserMessage_WithoutAnnotation_Works()
+        {
+            // Arrange
+            var scenarioMsg = new ScenarioUserMessage("Hello");
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(scenarioMsg);
+
+            // Assert
+            Assert.AreEqual("user", llmMessage.Role);
+            Assert.AreEqual("Hello", llmMessage.Content);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_ScenarioAssistantMessage_ConvertsToAssistantRole_StripsAnnotation()
+        {
+            // Arrange
+            var scenarioMsg = new ScenarioAssistantMessage("This is the ideal response", "Teaching: Model answer");
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(scenarioMsg);
+
+            // Assert
+            Assert.AreEqual("assistant", llmMessage.Role);
+            Assert.AreEqual("This is the ideal response", llmMessage.Content);
+            Assert.IsFalse(llmMessage.Content.Contains("Teaching"));
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_ToolResultMessage_New_ConvertsToToolRole()
+        {
+            // Arrange
+            var toolCallId = "tool_call_123";
+            var toolResultMsg = new ToolResultMessage(toolCallId, "get_weather", "{\"temperature\":20}", false);
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(toolResultMsg);
+
+            // Assert
+            Assert.AreEqual("tool", llmMessage.Role);
+            Assert.AreEqual("{\"temperature\":20}", llmMessage.Content);
+            Assert.AreEqual(toolCallId, llmMessage.ToolCallId);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessage_ToolErrorMessage_ConvertsToToolRole()
+        {
+            // Arrange
+            var toolCallId = "tool_call_456";
+            var toolErrorMsg = new ToolErrorMessage(toolCallId, "get_weather", "API timeout", new TimeoutException());
+
+            // Act
+            var llmMessage = _pipeline.ConvertToLLMMessage(toolErrorMsg);
+
+            // Assert
+            Assert.AreEqual("tool", llmMessage.Role);
+            Assert.IsTrue(llmMessage.Content.Contains("Error executing get_weather"));
+            Assert.AreEqual(toolCallId, llmMessage.ToolCallId);
+        }
+
+        [TestMethod]
+        public void ConvertToLLMMessages_MixedNewMessageTypes_ConvertsAllCorrectly()
+        {
+            // Arrange - Mix of new message types
+            var toolCallId = "tool_call_123";
+            var messages = new List<IMessage>
+            {
+                new DirectUserMessage("User input"),
+                new ScenarioUserMessage("Scenario input", "Teaching"),
+                new LlmTextMessage("LLM response"),
+                new LlmToolCallMessage("", new List<ToolCall> { new ToolCall("c1", "tool", "{}") }),
+                new ToolResultMessage(toolCallId, "tool", "result", false)
+            };
+
+            // Act
+            var llmMessages = _pipeline.ConvertToLLMMessages(messages);
+
+            // Assert
+            Assert.AreEqual(5, llmMessages.Count);
+            Assert.AreEqual("user", llmMessages[0].Role);
+            Assert.AreEqual("user", llmMessages[1].Role); // Scenario also maps to user role
+            Assert.AreEqual("assistant", llmMessages[2].Role);
+            Assert.AreEqual("assistant", llmMessages[3].Role);
+            Assert.IsNotNull(llmMessages[3].ToolCalls);
+            Assert.AreEqual("tool", llmMessages[4].Role);
         }
 
         #endregion
@@ -221,8 +380,8 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             var messages = new List<IMessage>
             {
                 new SystemMessage("System prompt"),
-                new UserMessage("Hello"),
-                new AssistantMessage("Hi there!")
+                new DirectUserMessage("Hello"),
+                new LlmTextMessage("Hi there!")
             };
 
             var llmMessages = _pipeline.ConvertToLLMMessages(messages);
@@ -242,8 +401,8 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             // Empty assistant message as the final message is valid per Anthropic API
             var messages = new List<IMessage>
             {
-                new UserMessage("Hello"),
-                new AssistantMessage("")
+                new DirectUserMessage("Hello"),
+                new LlmTextMessage("")
             };
 
             var llmMessages = _pipeline.ConvertToLLMMessages(messages);
@@ -261,11 +420,11 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             // This prevents "messages must have non-empty content except for optional final assistant message" error
             var messages = new List<IMessage>
             {
-                new UserMessage("Hello"),
-                new AssistantMessage("Hi!"),
-                new UserMessage("How are you?"),
-                new AssistantMessage(""), // Empty, not final - should be filtered
-                new UserMessage("Are you there?")
+                new DirectUserMessage("Hello"),
+                new LlmTextMessage("Hi!"),
+                new DirectUserMessage("How are you?"),
+                new LlmTextMessage(""), // Empty, not final - should be filtered
+                new DirectUserMessage("Are you there?")
             };
 
             var llmMessages = _pipeline.ConvertToLLMMessages(messages);
@@ -289,13 +448,13 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             // Should not be filtered even if not final
             var messages = new List<IMessage>
             {
-                new UserMessage("Get weather"),
-                new AssistantToolCallMessage("", new List<ToolCall>
+                new DirectUserMessage("Get weather"),
+                new LlmToolCallMessage("", new List<ToolCall>
                 {
                     new ToolCall("c1", "get_weather", "{}")
                 }),
-                new ToolResultMessage("c1", "get_weather", "{\"temp\":20}", true),
-                new AssistantMessage("It's 20°C")
+                new ToolResultMessage("c1", "get_weather", "{\"temp\":20}", false),
+                new LlmTextMessage("It's 20°C")
             };
 
             var llmMessages = _pipeline.ConvertToLLMMessages(messages);
@@ -327,7 +486,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
 
             var domainMessage = _pipeline.ConvertToDomainMessage(llmResponse);
 
-            Assert.IsInstanceOfType(domainMessage, typeof(AssistantMessage));
+            Assert.IsInstanceOfType(domainMessage, typeof(LlmTextMessage));
             Assert.AreEqual("This is a text response", domainMessage.Content);
         }
 
@@ -358,6 +517,7 @@ namespace TransparentAiAgentCore_Tests.Application.Pipeline
             public string Content => "Test";
             public DateTime Timestamp => DateTime.UtcNow;
             public MessageContextStatus ContextStatus { get; set; }
+            public string MessageTypeDiscriminator => "Test";
         }
 
         #endregion

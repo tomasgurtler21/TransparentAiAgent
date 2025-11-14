@@ -19,7 +19,7 @@ public class UIMessageTests
     public void FromDomainMessage_ValidMessage_MapsAllPropertiesCorrectly()
     {
         // Arrange
-        var domainMessage = new UserMessage("Hello, world!");
+        var domainMessage = new DirectUserMessage("Hello, world!");
 
         // Act
         var uiMessage = UIMessage.FromDomainMessage(domainMessage);

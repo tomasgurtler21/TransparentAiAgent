@@ -117,7 +117,7 @@ public class ConditionEvaluatorTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new UserMessage("Hello")
+            new DirectUserMessage("Hello")
         };
         _mockConversationManager.Setup(c => c.GetAllMessages()).Returns(messages);
 
@@ -139,7 +139,7 @@ public class ConditionEvaluatorTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new AssistantMessage("I don't know the answer to that question")
+            new LlmTextMessage("I don't know the answer to that question")
         };
         _mockConversationManager.Setup(c => c.GetAllMessages()).Returns(messages);
 
@@ -161,7 +161,7 @@ public class ConditionEvaluatorTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new AssistantMessage("The answer is 42")
+            new LlmTextMessage("The answer is 42")
         };
         _mockConversationManager.Setup(c => c.GetAllMessages()).Returns(messages);
 
@@ -183,7 +183,7 @@ public class ConditionEvaluatorTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new AssistantMessage("I DON'T KNOW that information")
+            new LlmTextMessage("I DON'T KNOW that information")
         };
         _mockConversationManager.Setup(c => c.GetAllMessages()).Returns(messages);
 
@@ -218,10 +218,10 @@ public class ConditionEvaluatorTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new UserMessage("Message 1"),
-            new AssistantMessage("Response 1"),
-            new UserMessage("Message 2"),
-            new AssistantMessage("Response 2")
+            new DirectUserMessage("Message 1"),
+            new LlmTextMessage("Response 1"),
+            new DirectUserMessage("Message 2"),
+            new LlmTextMessage("Response 2")
         };
         _mockConversationManager.Setup(c => c.GetAllMessages()).Returns(messages);
 
@@ -243,8 +243,8 @@ public class ConditionEvaluatorTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new UserMessage("Message 1"),
-            new AssistantMessage("Response 1")
+            new DirectUserMessage("Message 1"),
+            new LlmTextMessage("Response 1")
         };
         _mockConversationManager.Setup(c => c.GetAllMessages()).Returns(messages);
 
@@ -266,11 +266,11 @@ public class ConditionEvaluatorTests
         // Arrange
         var messages = new List<IMessage>
         {
-            new UserMessage("Message 1"),
-            new AssistantMessage("Response 1"),
-            new UserMessage("Message 2"),
-            new AssistantMessage("Response 2"),
-            new UserMessage("Message 3")
+            new DirectUserMessage("Message 1"),
+            new LlmTextMessage("Response 1"),
+            new DirectUserMessage("Message 2"),
+            new LlmTextMessage("Response 2"),
+            new DirectUserMessage("Message 3")
         };
         _mockConversationManager.Setup(c => c.GetAllMessages()).Returns(messages);
 

@@ -30,13 +30,13 @@ public class ScenarioExecutorTests
 
         // Setup streaming to return empty (completed immediately)
         _mockOrchestrator
-            .Setup(o => o.ProcessUserInputStreamingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(o => o.ProcessUserInputStreamingAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
             .Returns(GetEmptyStreamingResponse());
 
         // Setup conversation manager to return a completed conversation (for WaitForResponse)
         var messages = new List<IMessage>
         {
-            new AssistantMessage("Response") // Add an assistant message so WaitForResponse completes
+            new LlmTextMessage("Response") // Add an assistant message so WaitForResponse completes
         };
         _mockConversationManager.Setup(m => m.GetAllMessages()).Returns(messages);
     }

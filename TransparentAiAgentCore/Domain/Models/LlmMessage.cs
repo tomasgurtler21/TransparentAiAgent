@@ -3,15 +3,13 @@ using TransparentAiAgentCore.Domain.Enums;
 namespace TransparentAiAgentCore.Domain.Models;
 
 /// <summary>
-/// Messages originating from human user input.
-/// Represents direct human interaction with the agent.
-/// RULE: Use ONLY when user typed text, used voice input, or pasted text into chat.
-/// DO NOT use for system-generated messages even if user-initiated.
+/// Messages originating from LLM responses.
+/// Represents AI agent outputs.
 /// </summary>
-public abstract class UserMessage : IMessage
+public abstract class LlmMessage : IMessage
 {
     public Guid Id { get; protected set; }
-    public MessageRole Role => MessageRole.User;
+    public MessageRole Role => MessageRole.Assistant;
     public string Content { get; protected set; } = string.Empty;
     public DateTime Timestamp { get; protected set; }
     public MessageContextStatus ContextStatus { get; set; }

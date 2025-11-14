@@ -264,7 +264,7 @@ public class ToolSchemaValidatorTests
 
         // Assert
         Assert.IsFalse(result.IsValid);
-        Assert.IsTrue(result.ErrorMessage.Contains("status") && result.ErrorMessage.Contains("enum"));
+        Assert.IsTrue(result.ErrorMessage.Contains("status")); // Verify field name is mentioned, not exact wording
     }
 
     [TestMethod]

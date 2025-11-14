@@ -22,7 +22,7 @@ public class NotConfiguredAgentOrchestrator : IAgentOrchestrator
         _configurationError = configurationError;
     }
 
-    public Task<IMessage> ProcessUserInputAsync(string userInput, CancellationToken cancellationToken = default)
+    public Task<IMessage> ProcessUserInputAsync(UserMessage message, CancellationToken cancellationToken = default)
     {
         var errorMessage = "LLM is not configured. Please configure Azure OpenAI or Anthropic settings in appsettings.json.\n" +
                           "See docs/CONFIGURATION_SETUP.md for instructions.";
@@ -37,7 +37,7 @@ public class NotConfiguredAgentOrchestrator : IAgentOrchestrator
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators - intentional for stub implementation
     public async IAsyncEnumerable<StreamingResponseChunk> ProcessUserInputStreamingAsync(
-        string userInput,
+        UserMessage message,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var errorMessage = "LLM is not configured. Please configure Azure OpenAI or Anthropic settings in appsettings.json.\n" +
@@ -60,4 +60,43 @@ public class NotConfiguredAgentOrchestrator : IAgentOrchestrator
         // This operation is safe even without LLM config
         _conversationManager.ClearConversation();
     }
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators - intentional for stub implementation
+    public async IAsyncEnumerable<StreamingResponseChunk> ProcessApplicationMessageAsync(
+        ApplicationMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var errorMessage = "LLM is not configured. Please configure Azure OpenAI or Anthropic settings in appsettings.json.\n" +
+                          "See docs/CONFIGURATION_SETUP.md for instructions.";
+
+        if (!string.IsNullOrWhiteSpace(_configurationError))
+        {
+            errorMessage += $"\n\nConfiguration Error: {_configurationError}";
+        }
+
+        throw new ConfigurationException(errorMessage);
+#pragma warning disable CS0162 // Unreachable code - needed for compiler
+        yield break;
+#pragma warning restore CS0162
+    }
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators - intentional for stub implementation
+    public async IAsyncEnumerable<StreamingResponseChunk> ProcessToolMessageAsync(
+        ToolMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var errorMessage = "LLM is not configured. Please configure Azure OpenAI or Anthropic settings in appsettings.json.\n" +
+                          "See docs/CONFIGURATION_SETUP.md for instructions.";
+
+        if (!string.IsNullOrWhiteSpace(_configurationError))
+        {
+            errorMessage += $"\n\nConfiguration Error: {_configurationError}";
+        }
+
+        throw new ConfigurationException(errorMessage);
+#pragma warning disable CS0162 // Unreachable code - needed for compiler
+        yield break;
+#pragma warning restore CS0162
+    }
+#pragma warning restore CS1998
 }

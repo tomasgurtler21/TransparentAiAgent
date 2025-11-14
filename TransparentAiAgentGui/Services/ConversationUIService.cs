@@ -77,7 +77,7 @@ public class ConversationUIService : IConversationUIService
         try
         {
             // Process user input through orchestrator
-            await _orchestrator.ProcessUserInputAsync(content);
+            await _orchestrator.ProcessUserInputAsync(new DirectUserMessage(content));
 
             // Refresh UI messages from conversation manager
             RefreshMessages();
@@ -174,7 +174,7 @@ public class ConversationUIService : IConversationUIService
             const int ThrottleMilliseconds = 50; // Max 20 updates/second
 
             // Process streaming response
-            await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(content))
+            await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(content)))
             {
                 if (!string.IsNullOrEmpty(chunk.ContentDelta))
                 {

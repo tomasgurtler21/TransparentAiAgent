@@ -16,24 +16,37 @@ public class MessagePipeline : IMessagePipeline
 
         return message switch
         {
-            UserMessage userMsg => new LLMMessage("user", userMsg.Content),
+            // NEW MESSAGE TYPES (Session 2.1)
+            // CRITICAL: Check specific concrete types BEFORE base classes!
 
-            // CRITICAL: Check derived class BEFORE base class!
-            AssistantToolCallMessage toolCallMsg => new LLMMessage(
+            // User-originated messages
+            DirectUserMessage directUserMsg => new LLMMessage("user", directUserMsg.Content),
+            ScenarioUserMessage scenarioUserMsg => new LLMMessage("user", scenarioUserMsg.Content), // Annotation is UI-only
+
+            // LLM-originated messages
+            LlmToolCallMessage llmToolCallMsg => new LLMMessage(
                 "assistant",
-                toolCallMsg.Content,
-                toolCallMsg.ToolCalls
+                llmToolCallMsg.Content,
+                llmToolCallMsg.ToolCalls
                     .Select(tc => new LLMToolCall(tc.Id, tc.Name, tc.Arguments))
                     .ToList()),
+            LlmTextMessage llmTextMsg => new LLMMessage("assistant", llmTextMsg.Content),
 
-            AssistantMessage assistantMsg => new LLMMessage("assistant", assistantMsg.Content),
+            // Application-originated messages
+            ScenarioAssistantMessage scenarioAssistantMsg => new LLMMessage("assistant", scenarioAssistantMsg.Content), // Annotation is UI-only
 
-            SystemMessage systemMsg => new LLMMessage("system", systemMsg.Content),
-
+            // Tool-originated messages (new hierarchy)
             ToolResultMessage toolResultMsg => new LLMMessage(
                 "tool",
                 toolResultMsg.Result,
                 toolResultMsg.ToolCallId),
+            ToolErrorMessage toolErrorMsg => new LLMMessage(
+                "tool",
+                toolErrorMsg.Content, // Content already formatted with error message
+                toolErrorMsg.ToolCallId),
+
+            // System messages
+            SystemMessage systemMsg => new LLMMessage("system", systemMsg.Content),
 
             _ => throw new AgentException($"Unknown message type: {message.GetType().Name}")
         };
@@ -54,9 +67,13 @@ public class MessagePipeline : IMessagePipeline
 
             // Filter out empty assistant messages that are NOT the final message
             // Per Anthropic API: "all messages must have non-empty content except for the optional final assistant message"
-            if (message is AssistantMessage assistantMsg &&
-                string.IsNullOrEmpty(assistantMsg.Content) &&
-                !isLastMessage)
+            // BUT: Keep tool call messages even with empty content (tool calls are valid content)
+
+            bool isEmptyLlmText = message is LlmTextMessage llmTextMsg &&
+                                  string.IsNullOrEmpty(llmTextMsg.Content) &&
+                                  !isLastMessage;
+
+            if (isEmptyLlmText)
             {
                 // Skip this empty assistant message as it's not the final message
                 continue;
@@ -75,6 +92,6 @@ public class MessagePipeline : IMessagePipeline
 
         // Note: Tool call messages are now handled directly in AgentOrchestrator
         // This method is only used for responses without tool calls
-        return new AssistantMessage(response.Content);
+        return new LlmTextMessage(response.Content);
     }
 }

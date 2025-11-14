@@ -96,7 +96,7 @@ public class JsonScenarioLoaderTests
           "name": "Minimal Scenario",
           "steps": [
             {
-              "type": "completion_message",
+              "type": "agent_prompt",
               "content": "Done"
             }
           ]
@@ -223,7 +223,7 @@ public class JsonScenarioLoaderTests
         {
           "id": "scenario-2",
           "name": "Scenario 2",
-          "steps": [{"type": "completion_message", "content": "Done"}]
+          "steps": [{"type": "agent_prompt", "content": "Done"}]
         }
         """;
         await File.WriteAllTextAsync(Path.Combine(TestDataDirectory, "scenario1.json"), json1);
@@ -530,8 +530,9 @@ public class JsonScenarioLoaderTests
         Assert.AreEqual(ScenarioStepType.UIControl, step.Type);
         Assert.AreEqual("ui_control_context_indicators", step.UIControlTool);
         Assert.IsNotNull(step.UIControlArguments);
-        Assert.AreEqual(true, step.UIControlArguments["visible"]);
-        Assert.AreEqual(true, step.UIControlArguments["highlighted"]);
+        // JSON deserialization creates JsonElement values, need to convert
+        Assert.AreEqual(true, ((JsonElement)step.UIControlArguments["visible"]).GetBoolean());
+        Assert.AreEqual(true, ((JsonElement)step.UIControlArguments["highlighted"]).GetBoolean());
         Assert.AreEqual("Highlighting context indicators", step.Annotation);
     }
 
@@ -583,9 +584,9 @@ public class JsonScenarioLoaderTests
           "id": "test",
           "name": "Test",
           "steps": [
-            {"type": "scenario_system_message", "content": "Model only", "visibleTo": "model_only"},
-            {"type": "scenario_system_message", "content": "User only", "visibleTo": "user_only"},
-            {"type": "scenario_system_message", "content": "Both", "visibleTo": "both"}
+            {"type": "scenario_user_message", "content": "Model only", "visibleTo": "model_only"},
+            {"type": "scenario_user_message", "content": "User only", "visibleTo": "user_only"},
+            {"type": "scenario_user_message", "content": "Both", "visibleTo": "both"}
           ]
         }
         """;

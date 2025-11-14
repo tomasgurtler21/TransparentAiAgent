@@ -5,33 +5,53 @@ using TransparentAiAgentCore.Domain.Models;
 namespace TransparentAiAgentCore_Tests.Domain.Models;
 
 [TestClass]
-public class UserMessageTests
+public class DirectUserMessageTests
 {
     [TestMethod]
-    public void UserMessage_NullContent_ThrowsArgumentException()
+    public void Constructor_NullContent_ThrowsArgumentException()
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentException>(() => new DirectUserMessage(null!));
     }
 
     [TestMethod]
-    public void UserMessage_EmptyContent_ThrowsArgumentException()
+    public void Constructor_EmptyContent_ThrowsArgumentException()
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentException>(() => new DirectUserMessage(""));
     }
 
     [TestMethod]
-    public void UserMessage_WhitespaceContent_ThrowsArgumentException()
+    public void Constructor_WhitespaceContent_ThrowsArgumentException()
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentException>(() => new DirectUserMessage("   "));
     }
 
     [TestMethod]
-    public void UserMessage_ValidContent_DefaultsToInContext()
+    public void Constructor_ValidContent_SetsDiscriminator()
     {
-        // Act
+        // Arrange & Act
+        var msg = new DirectUserMessage("Test");
+
+        // Assert
+        Assert.AreEqual("User.Direct", msg.MessageTypeDiscriminator);
+    }
+
+    [TestMethod]
+    public void Role_IsUser()
+    {
+        // Arrange & Act
+        var msg = new DirectUserMessage("Test");
+
+        // Assert
+        Assert.AreEqual(MessageRole.User, msg.Role);
+    }
+
+    [TestMethod]
+    public void Constructor_ValidContent_DefaultsToInContext()
+    {
+        // Arrange & Act
         var message = new DirectUserMessage("Hello");
 
         // Assert
@@ -39,9 +59,9 @@ public class UserMessageTests
     }
 
     [TestMethod]
-    public void UserMessage_GeneratesUniqueIds()
+    public void Constructor_GeneratesUniqueIds()
     {
-        // Act
+        // Arrange & Act
         var msg1 = new DirectUserMessage("Hello");
         var msg2 = new DirectUserMessage("World");
 
@@ -52,7 +72,7 @@ public class UserMessageTests
     }
 
     [TestMethod]
-    public void UserMessage_ContextStatus_CanBeUpdated()
+    public void ContextStatus_CanBeUpdated()
     {
         // Arrange
         var message = new DirectUserMessage("Hello");

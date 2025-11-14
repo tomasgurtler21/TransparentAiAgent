@@ -109,6 +109,7 @@ public class ScenarioStep
             && type != ScenarioStepType.RestoreConfigOverlay
             && type != ScenarioStepType.EnableUserInput
             && type != ScenarioStepType.DisableUserInput
+            && type != ScenarioStepType.Delay
             && type != ScenarioStepType.UIControl;
     }
 
