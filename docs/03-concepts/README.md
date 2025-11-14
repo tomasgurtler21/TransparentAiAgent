@@ -1,6 +1,6 @@
 # Concepts Documentation
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-14
 **Status**: Active
 
 ---
@@ -28,6 +28,19 @@ This directory contains documentation for **cross-cutting concepts** - features 
 
 ## Concepts
 
+### [Message Hierarchy](message-hierarchy.md) 📬
+Four-tier message architecture categorizing messages by origin (User, LLM, Application, Tool).
+
+**Key Topics**:
+- Message origin categories
+- Design benefits (stable API, extensibility)
+- Common usage patterns
+- Role vs. origin distinction
+
+**Status**: ✅ Implemented (Phase 6.2)
+
+---
+
 ### [Teaching Mode](teaching-mode/README.md) 📚
 Transformational layer enabling agents to control UI and teach users interactively.
 
@@ -36,13 +49,23 @@ Transformational layer enabling agents to control UI and teach users interactive
 - [Architecture](teaching-mode/architecture.md)
 - [Implementation Roadmap](teaching-mode/implementation-roadmap.md)
 
+**Status**: 📋 Planning Complete
+
+---
+
+### [Tool System](tool-system.md) 🔧
+MCP-based tool integration and abstraction.
+
+**Status**: ✅ Implemented
+
+---
+
 ### Other Concepts (To be created)
 
 The following concept documents will be created as the documentation reorganization continues:
 
 - **Transparency** - What transparency means, how it's implemented across the system
 - **Context Management** - How conversation history is managed, truncation, indicators
-- **Tool System** - MCP integration, tool abstraction, UI control tools
 - **Streaming** - How LLM responses stream through the system
 - **MCP Protocol** - What MCP is, why we use it, how it integrates
 

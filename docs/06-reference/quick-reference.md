@@ -33,7 +33,7 @@ Presentation → Application → Domain → Infrastructure
 ### Domain (Core Abstractions)
 - `ILLMProvider` - LLM provider interface
 - `ITool` - Tool interface
-- `IMessage` - Message models with context status
+- `IMessage` - Message models with four-tier hierarchy (UserMessage, LlmMessage, ApplicationMessage, ToolMessage)
 - Exception hierarchy
 
 ### Infrastructure
@@ -106,16 +106,30 @@ Streaming Handler (buffer, format)
 
 ### Components to Implement (TDD)
 
-1. **Domain Models**:
+1. **Domain Models** (Four-Tier Message Hierarchy - Phase 6.2):
    ```csharp
-   // Message with context status
-   interface IMessage { }
-   class UserMessage : IMessage { }
-   class AssistantMessage : IMessage { }
-   class AssistantToolCallMessage : AssistantMessage { }  // Phase 5 Refactoring: Derived class for tool calls
-   class ToolResultMessage : IMessage { }
+   // Base interface with discriminator for serialization
+   interface IMessage {
+       string MessageTypeDiscriminator { get; }
+   }
 
-   // Phase 5: Supporting classes for tool calls
+   // Four abstract base classes by message origin
+   abstract class UserMessage : IMessage { }           // Human-originated
+   abstract class LlmMessage : IMessage { }            // LLM-originated
+   abstract class ApplicationMessage : IMessage { }    // Application-originated
+   abstract class ToolMessage : IMessage { }           // Tool-originated
+
+   // Concrete implementations
+   class DirectUserMessage : UserMessage { }           // User-typed messages
+   class LlmTextMessage : LlmMessage { }               // LLM text responses
+   class LlmToolCallMessage : LlmMessage { }           // LLM tool call requests
+   class ScenarioUserMessage : ApplicationMessage { } // Scenario user messages
+   class ScenarioAssistantMessage : ApplicationMessage { } // Scenario assistant messages
+   class ToolResultMessage : ToolMessage { }           // Tool success results
+   class ToolErrorMessage : ToolMessage { }            // Tool error results
+   class SystemMessage : IMessage { }                  // System prompts
+
+   // Supporting classes
    class ToolCall { }  // Value object for single tool call (Id, Name, Arguments)
 
    enum MessageContextStatus {
@@ -168,24 +182,31 @@ For each component:
 public class MessageTests
 {
     [TestMethod]
-    public void UserMessage_NullContent_ThrowsException() // ✅ GOOD - validation
+    public void DirectUserMessage_NullContent_ThrowsException() // ✅ GOOD - validation
     {
-        Assert.ThrowsException<ArgumentException>(() => new UserMessage(null));
+        Assert.ThrowsException<ArgumentException>(() => new DirectUserMessage(null));
     }
 
     [TestMethod]
-    public void UserMessage_GeneratesUniqueId() // ✅ GOOD - initialization behavior
+    public void DirectUserMessage_GeneratesUniqueId() // ✅ GOOD - initialization behavior
     {
-        var msg1 = new UserMessage("Hi");
-        var msg2 = new UserMessage("Hello");
+        var msg1 = new DirectUserMessage("Hi");
+        var msg2 = new DirectUserMessage("Hello");
         Assert.AreNotEqual(msg1.Id, msg2.Id);
     }
 
     [TestMethod]
-    public void UserMessage_DefaultsToInContext() // ✅ GOOD - business rule
+    public void DirectUserMessage_DefaultsToInContext() // ✅ GOOD - business rule
     {
-        var message = new UserMessage("Hello");
+        var message = new DirectUserMessage("Hello");
         Assert.AreEqual(MessageContextStatus.InContext, message.ContextStatus);
+    }
+
+    [TestMethod]
+    public void DirectUserMessage_HasCorrectDiscriminator() // ✅ GOOD - discriminator for serialization
+    {
+        var message = new DirectUserMessage("Hello");
+        Assert.AreEqual("User.Direct", message.MessageTypeDiscriminator);
     }
 
     // ❌ BAD - Don't test trivial property access:
@@ -383,4 +404,4 @@ Start with Phase 1:
 
 ---
 
-**Last Updated**: 2025-10-28
+**Last Updated**: 2025-11-14 (Updated for four-tier message hierarchy)

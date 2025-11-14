@@ -1,7 +1,7 @@
 # TransparentAiAgent Documentation
 
-**Last Updated**: 2025-11-09
-**Project Status**: Phase 9 In Progress (Overlay System Implemented)
+**Last Updated**: 2025-11-14
+**Project Status**: Phase 9 In Progress (Message Architecture Refactored)
 
 Welcome to the TransparentAiAgent documentation! This is your central navigation hub.
 
@@ -36,6 +36,7 @@ System design and structure
 
 ### 3. [Concepts](03-concepts/) 💡
 Cross-cutting features and ideas
+- **[Message Hierarchy](03-concepts/message-hierarchy.md)** - Four-tier message architecture (✅ Implemented Phase 6.2)
 - **[Teaching Mode](03-concepts/teaching-mode/)** - Interactive UI control and teaching
   - [Vision](03-concepts/teaching-mode/vision.md)
   - [Architecture](03-concepts/teaching-mode/architecture.md)
