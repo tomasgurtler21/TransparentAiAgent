@@ -231,61 +231,65 @@ With auto-save after every message:
 
 ## 5. Technical Investigation Results ✅
 
-### 5.1 UI Structure Investigation - REVISED ⚠️
+### 5.1 UI Structure Investigation - CORRECTED ✅
 
-**Initial Consideration - Chat Header** (`Home.razor:14-22`):
+**Current Layout Analysis** (`Home.razor`):
 ```razor
-<div class="chat-header">  <!-- ⚠️ This scrolls away when page scrolls! -->
-    <h1>Transparent AI Agent</h1>
-    @if (AppModeService.CurrentMode == AppMode.Teaching)
-    {
-        <ScenarioIndicator />
-    }
-    <button @onclick="HandleClearClick" class="clear-button">Clear Conversation</button>
+<div class="chat-container">
+    <!-- Line 15-22: Chat header with title -->
+    <div class="chat-header">
+        <h1>Transparent AI Agent</h1>
+        @if (AppModeService.CurrentMode == AppMode.Teaching)
+        {
+            <ScenarioIndicator />
+        }
+        <button @onclick="HandleClearClick">Clear Conversation</button>
+    </div>
+
+    <!-- Line 24: MessageList with internal scrolling -->
+    <MessageList Messages="..." IsProcessing="..." />
+    <!-- Inside MessageList: MessageFilterControls at top - SCROLLS AWAY with messages! -->
+
+    <!-- Line 26: ChatInput at bottom -->
+    <ChatInput OnSend="..." IsDisabled="..." />
 </div>
 ```
 
-**Issue Identified**: Chat header scrolls away with page scroll. Not ideal for conversation selector that should remain accessible.
+**Scrolling Behavior Issues**:
+1. **Chat header**: May scroll away with page scroll (depending on page height)
+2. **MessageFilterControls**: INSIDE MessageList scrollable area - scrolls away with messages ❌
+3. **MessageList**: Has `overflow-y: auto` and `height: 60vh` - internal scrolling
 
-**Better Pattern - MessageList Top** (`MessageList.razor:7-12`):
+**CORRECT UI Placement Decision**:
+Place **ConversationSelector** as a **separate div BETWEEN chat-header and MessageList**:
+
 ```razor
-<div class="message-list">  <!-- overflow-y: auto, height: 60vh, internal scrolling -->
-    @* Show filter controls if visible in UI state *@
-    @if (_uiState.ChatFilter.FilterControlsVisible)
-    {
-        <MessageFilterControls />  <!-- ✅ Placed at TOP of scrollable area, always visible -->
-    }
-    <!-- Messages scroll BELOW the controls -->
-</div>
-```
+<div class="chat-container">
+    <!-- Existing header with title -->
+    <div class="chat-header">
+        <h1>Transparent AI Agent</h1>
+        <button>Clear Conversation</button>
+    </div>
 
-**Revised Key Findings**:
-- ✅ **MessageFilterControls** placed at TOP of MessageList scrollable area
-- ✅ Always visible, doesn't scroll away (messages scroll below it)
-- ✅ Perfect pattern for conversation selector to follow
-- ✅ MessageList has internal scrolling (`overflow-y: auto`, `height: 60vh`)
-- ✅ Header scrolls away, but MessageList content stays accessible
+    <!-- NEW: Conversation selector - separate, non-scrolling area -->
+    <ConversationSelector />  <!-- ✅ Always visible, below title, above messages -->
 
-**REVISED UI Placement Decision**:
-Place **ConversationSelector** at top of MessageList component, following MessageFilterControls pattern:
-```razor
-<div class="message-list">
-    <ConversationSelector />  <!-- NEW: Always visible at top, with dropdown + "New" button -->
+    <!-- Existing scrollable message list -->
+    <MessageList Messages="..." IsProcessing="..." />
 
-    @if (_uiState.ChatFilter.FilterControlsVisible)
-    {
-        <MessageFilterControls />
-    }
-
-    <!-- Messages scroll below... -->
+    <!-- Existing input -->
+    <ChatInput OnSend="..." IsDisabled="..." />
 </div>
 ```
 
 **Benefits**:
-- Always accessible, even when scrolling through long conversations
-- Follows existing pattern (MessageFilterControls)
-- Clean separation: controls at top, content below
-- No UI changes needed to header
+- ✅ Always visible - not part of any scrolling area
+- ✅ Below the "Transparent AI Agent" title
+- ✅ Above the scrollable message area
+- ✅ Simple to implement - just add between existing elements
+- ✅ Clean separation: header → selector → messages → input
+
+**Implementation Location**: Add in `Home.razor` between line 22 (chat-header end) and line 24 (MessageList)
 
 **UI Service Flow** (`ConversationUIService.cs`):
 - Line 90-238: `SendMessageStreamingAsync()` - main message flow
@@ -478,7 +482,7 @@ With auto-save, the Modified state essentially triggers immediate transition bac
 | 2025-11-14 | Separate ConversationHistoryManager | Clean separation of concerns, ConversationManager stays focused |
 | 2025-11-14 | Store full config snapshot | Complete context restoration, essential for reproducibility |
 | 2025-11-14 | Terminology: "Conversation" over "Session" | More intuitive, better describes the feature |
-| 2025-11-14 | UI placement: Top of MessageList (above filters/messages) | Always visible, doesn't scroll away, follows MessageFilterControls pattern |
+| 2025-11-14 | UI placement: Between chat-header and MessageList | Always visible, below title, above scrollable messages, separate non-scrolling div |
 | 2025-11-14 | Auto-save hooks: After RefreshMessages() in ConversationUIService | Ensures UI and ConversationManager are synced before save |
 | 2025-11-14 | Security: Exclude API keys and TenantId from snapshots | Prevents credential leakage, users must have valid creds when loading |
 | 2025-11-14 | No new dependencies required | Can reuse MessageSerializer and existing infrastructure |
@@ -526,7 +530,7 @@ User provided answers to all key questions:
 - ✅ Updated conversation metadata structure to match actual config
 
 **Key Findings**:
-1. **UI Integration**: MessageList top is ideal location (always visible, follows MessageFilterControls pattern)
+1. **UI Integration**: Place as separate div between chat-header and MessageList (always visible, no scrolling)
 2. **Configuration Access**: IConfigurationService provides thread-safe access to AppConfiguration
 3. **Auto-Save Hooks**: Two primary hooks identified (streaming and non-streaming) at RefreshMessages()
 4. **Security**: API keys and TenantId must be excluded from conversation snapshots
@@ -540,27 +544,41 @@ User provided answers to all key questions:
 
 **Status**: Design is ~80% complete. Ready to move to detailed component design phase.
 
-### 2025-11-14 - UI Placement Revised
+### 2025-11-14 - UI Placement Corrected (Multiple Revisions)
 
-**Issue Raised**: User identified problem with header placement - it scrolls away when page scrolls.
+**Issue #1**: Original plan was chat header - scrolls away when page scrolls.
+
+**Attempted Fix**: Tried MessageList top (like MessageFilterControls).
+
+**Issue #2**: User clarified MessageFilterControls also scroll away (they're INSIDE the scrollable MessageList area).
 
 **Investigation**:
-- Confirmed: `.chat-header` scrolls with page (not fixed position)
-- Discovered: `MessageFilterControls` placed at TOP of `.message-list` scrollable area
-- Pattern: `.message-list` has internal scrolling (`overflow-y: auto`, `height: 60vh`)
-- Filter controls stay visible at top while messages scroll below
+- Confirmed: MessageList has internal scrolling (`overflow-y: auto`, `height: 60vh`)
+- MessageFilterControls are INSIDE the scrollable area - they scroll away with messages ❌
+- Chat header might scroll away with page scroll
+- Need a location that doesn't participate in any scrolling
 
-**Decision Revised**:
-- ❌ OLD: Place in chat header (scrolls away, poor UX)
-- ✅ NEW: Place at top of MessageList, above filters (always visible, follows existing pattern)
+**FINAL Decision**:
+- ❌ REJECTED: Inside chat header (scrolls with page)
+- ❌ REJECTED: Top of MessageList (scrolls with messages)
+- ✅ CORRECT: Separate div between chat-header and MessageList
+
+**Implementation**:
+```razor
+<div class="chat-header">Title + buttons</div>
+<ConversationSelector />  <!-- NEW: separate, non-scrolling -->
+<MessageList />           <!-- Scrollable messages -->
+<ChatInput />
+```
 
 **Benefits**:
-1. Always accessible when scrolling through long conversations
-2. Follows established UI pattern (MessageFilterControls)
-3. No changes needed to chat header
-4. Clean visual hierarchy: selector → filters → messages
+1. Always visible - not part of any scrolling behavior
+2. Below the "Transparent AI Agent" title (as user suggested)
+3. Above the message area
+4. Simple to implement - just insert between existing elements
+5. Clean visual hierarchy: header → selector → messages → input
 
-**Updated Section**: 5.1 now documents both approaches and rationale for revision
+**Updated Section**: 5.1 now shows correct placement with clear explanation
 
 ---
 
