@@ -146,7 +146,7 @@ Design a conversation history system that integrates cleanly with existing archi
 
 ## 4. Ideas & Design Notes
 
-### 4.1 Conversation Metadata Structure (UPDATED)
+### 4.1 Conversation Metadata Structure (FINALIZED)
 ```json
 {
   "conversationId": "guid",
@@ -154,19 +154,39 @@ Design a conversation history system that integrates cleanly with existing archi
   "createdAt": "2025-11-14T10:30:00Z",
   "lastModifiedAt": "2025-11-14T11:45:00Z",
   "configuration": {
-    "modelName": "claude-3-5-sonnet-20241022",
-    "endpoint": "https://api.anthropic.com/v1/messages",
+    // Agent Configuration
     "systemPrompt": "You are a helpful assistant...",
     "contextWindowSize": 50,
+    "enableTools": true,
+    "toolExecutionMode": "Sequential",
+
+    // LLM Configuration
+    "provider": "Anthropic",
     "temperature": 1.0,
-    "maxTokens": 4096
+    "topP": null,
+    "maxTokens": 4096,
+
+    // Provider-specific (Anthropic example)
+    "anthropic": {
+      "model": "claude-sonnet-4-5-20250929",
+      "extendedThinking": {
+        "enabled": false,
+        "budgetTokens": 5000
+      }
+    },
+
+    // Provider-specific (Azure OpenAI example - null if not using)
+    "azureOpenAI": null
+    // When used, would contain: endpoint, deploymentName, apiVersion, isReasoningModel, authenticationMode
   },
   "messages": [
-    { /* serialized IMessage */ },
-    { /* serialized IMessage */ }
+    { /* serialized IMessage using MessageSerializer */ },
+    { /* serialized IMessage using MessageSerializer */ }
   ]
 }
 ```
+
+**Security Note**: API keys and TenantId are deliberately excluded from snapshot. Users will need valid credentials in their current configuration when loading old conversations.
 
 ### 4.2 Potential Issues to Consider
 - **Concurrent Access**: What if multiple instances try to modify same conversation file?
@@ -209,20 +229,162 @@ With auto-save after every message:
 
 ---
 
-## 5. Technical Investigation Needed
+## 5. Technical Investigation Results ✅
 
-### 5.1 Existing Components to Review
-- ✅ ConversationManager - Reviewed: manages List<IMessage>, has context window logic
-- ✅ MessageSerializer - Reviewed: handles IMessage serialization/deserialization
-- ⬜ ISerializationService - Need to check if we should use this instead
-- ⬜ Current UI structure - Need to understand Blazor component hierarchy for chat header
-- ⬜ Configuration system - How to capture current LLM configuration snapshot
-- ⬜ Chat UI components - Where exactly in header should dropdown go
+### 5.1 UI Structure Investigation - COMPLETED
 
-### 5.2 Dependencies
+**Chat Header Location** (`Home.razor:14-22`):
+```razor
+<div class="chat-header">
+    <h1>Transparent AI Agent</h1>
+    @if (AppModeService.CurrentMode == AppMode.Teaching)
+    {
+        <ScenarioIndicator />
+    }
+    <button @onclick="HandleClearClick" class="clear-button">Clear Conversation</button>
+</div>
+```
+
+**Key Findings**:
+- ✅ Perfect location identified for conversation dropdown
+- ✅ Can add dropdown component between title and clear button
+- ✅ Already has conditional rendering pattern (ScenarioIndicator)
+- ✅ Clear button will become "New Conversation" button
+- Component hierarchy: `Home.razor` → `MessageList.razor` → `ChatInput.razor`
+
+**UI Service Flow** (`ConversationUIService.cs`):
+- Line 90-238: `SendMessageStreamingAsync()` - main message flow
+- Line 218: `RefreshMessages()` - syncs UI with ConversationManager after streaming
+- Line 240-252: `ClearConversationAsync()` - clears conversation
+- Events: `MessagesChanged`, `ProcessingStateChanged`, `StreamingMessageUpdated`
+
+### 5.2 Configuration System Investigation - COMPLETED
+
+**Configuration Hierarchy**:
+```
+AppConfiguration (root)
+├── AgentConfiguration
+│   ├── SystemPrompt: string
+│   ├── ContextWindowSize: int
+│   ├── EnableTools: bool
+│   └── ToolExecutionMode: enum (Sequential/Parallel)
+├── LLMConfiguration
+│   ├── Provider: string ("Anthropic" or "AzureOpenAI")
+│   ├── Temperature: double?
+│   ├── TopP: double?
+│   ├── MaxTokens: int
+│   ├── AnthropicConfiguration?
+│   │   ├── ApiKey: string (exclude from snapshot!)
+│   │   ├── Model: string
+│   │   └── ExtendedThinking?
+│   │       ├── Enabled: bool
+│   │       └── BudgetTokens: int
+│   └── AzureOpenAIConfiguration?
+│       ├── Endpoint: string
+│       ├── AuthenticationMode: enum
+│       ├── ApiKey: string? (exclude from snapshot!)
+│       ├── DeploymentName: string
+│       ├── ApiVersion: string
+│       ├── TenantId: string?
+│       └── IsReasoningModel: bool
+└── MCPConfiguration (not relevant for conversation snapshot)
+```
+
+**Access Pattern**:
+- Interface: `IConfigurationService.GetConfiguration()` returns `AppConfiguration`
+- Location: Injected as dependency, available throughout application
+- Thread-safe: Yes, service manages configuration state
+
+**Configuration Snapshot Strategy**:
+```csharp
+// Capture these fields for conversation snapshot:
+- Agent.SystemPrompt
+- Agent.ContextWindowSize
+- Agent.EnableTools
+- Agent.ToolExecutionMode
+- LLM.Provider
+- LLM.Temperature
+- LLM.TopP
+- LLM.MaxTokens
+- If Provider == "Anthropic":
+  - Anthropic.Model
+  - Anthropic.ExtendedThinking.Enabled
+  - Anthropic.ExtendedThinking.BudgetTokens
+- If Provider == "AzureOpenAI":
+  - AzureOpenAI.Endpoint
+  - AzureOpenAI.DeploymentName
+  - AzureOpenAI.ApiVersion
+  - AzureOpenAI.IsReasoningModel
+  - AzureOpenAI.AuthenticationMode (enum value only)
+
+// EXCLUDE from snapshot (security):
+- AnthropicConfiguration.ApiKey
+- AzureOpenAIConfiguration.ApiKey
+- AzureOpenAIConfiguration.TenantId (potentially sensitive)
+```
+
+### 5.3 Auto-Save Hook Points Investigation - COMPLETED
+
+**Identified Hook Points**:
+
+1. **Primary Hook**: `ConversationUIService.SendMessageStreamingAsync()`
+   - Line 218: After `RefreshMessages()` completes
+   - Ensures UI and ConversationManager are synced
+   - Perfect timing: after assistant response is complete
+
+2. **Secondary Hook**: `ConversationUIService.SendMessageAsync()` (non-streaming)
+   - Line 77: After `RefreshMessages()` completes
+   - Handles non-streaming message flow
+
+3. **Clear Hook**: `ConversationUIService.ClearConversationAsync()`
+   - Line 240-252: When user clears conversation
+   - Should trigger "New Conversation" creation
+
+**Recommended Auto-Save Strategy**:
+```csharp
+// Add to ConversationUIService after RefreshMessages():
+private async Task AutoSaveConversationAsync()
+{
+    try
+    {
+        var currentConfig = _configurationService.GetConfiguration();
+        var messages = _conversationManager.GetAllMessages();
+        var conversationId = _conversationManager.ConversationId;
+
+        await _conversationHistoryManager.SaveCurrentConversationAsync(
+            conversationId,
+            messages,
+            currentConfig
+        );
+    }
+    catch (Exception ex)
+    {
+        // Log error, notify user
+        _logger.LogError(ex, "Failed to auto-save conversation");
+        // Consider retry mechanism or user notification
+    }
+}
+```
+
+**Integration Points**:
+- Inject `IConversationHistoryManager` into `ConversationUIService`
+- Inject `IConfigurationService` into `ConversationUIService` (for config snapshot)
+- Call `AutoSaveConversationAsync()` after line 218 and line 77
+- Make it fire-and-forget (don't block UI), but log failures
+
+### 5.4 Existing Components Reviewed
+- ✅ ConversationManager - Manages List<IMessage>, has context window logic
+- ✅ MessageSerializer - Handles IMessage serialization/deserialization
+- ✅ ConversationUIService - Main UI service, perfect location for auto-save hook
+- ✅ IConfigurationService - Provides access to current AppConfiguration
+- ✅ Home.razor - Chat UI with header, perfect location for dropdown
+- ⬜ ISerializationService - May not need this, MessageSerializer is sufficient
+
+### 5.5 Dependencies
 - Existing: System.Text.Json (already used in MessageSerializer)
 - Existing: File I/O (standard .NET)
-- New: None identified yet
+- Existing: IConfigurationService (for config snapshot)
+- New: None identified
 
 ---
 
@@ -257,13 +419,14 @@ With auto-save, the Modified state essentially triggers immediate transition bac
 ## 7. Next Steps
 
 1. ✅ **Answer Questions #1-6** - COMPLETED
-2. ⬜ **Review existing UI structure** to determine exact placement in chat header
-3. ⬜ **Finalize conversation metadata structure** (draft above looks good, pending config details)
-4. ⬜ **Review ISerializationService** to see if we should leverage it
-5. ⬜ **Design configuration snapshot mechanism** - how to capture current LLM config
-6. ⬜ **Create detailed component design** - classes, interfaces, methods
-7. ⬜ **Design auto-save hook** - where in message pipeline to trigger save
-8. ⬜ **Move to implementation planning** (separate document/phase)
+2. ✅ **Review existing UI structure** - COMPLETED (see Section 5.1)
+3. ✅ **Finalize conversation metadata structure** - COMPLETED (see Section 4.1)
+4. ✅ **Design configuration snapshot mechanism** - COMPLETED (see Section 5.2)
+5. ✅ **Design auto-save hook** - COMPLETED (see Section 5.3)
+6. ⬜ **Create detailed component design** - classes, interfaces, methods with full signatures
+7. ⬜ **Design UI component** - ConversationSelector.razor with dropdown behavior
+8. ⬜ **Design file naming strategy** - how to name conversation files on disk
+9. ⬜ **Move to implementation planning** (separate document/phase)
 
 ---
 
@@ -280,6 +443,11 @@ With auto-save, the Modified state essentially triggers immediate transition bac
 | 2025-11-14 | Separate ConversationHistoryManager | Clean separation of concerns, ConversationManager stays focused |
 | 2025-11-14 | Store full config snapshot | Complete context restoration, essential for reproducibility |
 | 2025-11-14 | Terminology: "Conversation" over "Session" | More intuitive, better describes the feature |
+| 2025-11-14 | UI placement: Chat header between title and clear button | Natural location, follows existing pattern (ScenarioIndicator) |
+| 2025-11-14 | Auto-save hooks: After RefreshMessages() in ConversationUIService | Ensures UI and ConversationManager are synced before save |
+| 2025-11-14 | Security: Exclude API keys and TenantId from snapshots | Prevents credential leakage, users must have valid creds when loading |
+| 2025-11-14 | No new dependencies required | Can reuse MessageSerializer and existing infrastructure |
+| 2025-11-14 | File naming: {conversationId}_{sanitized_name}.json | Unique + human-readable, best of both worlds |
 
 ---
 
@@ -313,15 +481,53 @@ User provided answers to all key questions:
 - Design the auto-save hook integration point
 - Detail out the component interfaces and classes
 
+### 2025-11-14 - Technical Investigation Completed
+
+**Investigation Results**:
+- ✅ Identified exact UI placement: `Home.razor:14-22` chat header
+- ✅ Mapped complete configuration hierarchy from AppConfiguration
+- ✅ Identified auto-save hook points in ConversationUIService
+- ✅ Finalized configuration snapshot strategy (with security exclusions)
+- ✅ Updated conversation metadata structure to match actual config
+
+**Key Findings**:
+1. **UI Integration**: Chat header already exists with perfect structure for dropdown
+2. **Configuration Access**: IConfigurationService provides thread-safe access to AppConfiguration
+3. **Auto-Save Hooks**: Two primary hooks identified (streaming and non-streaming) at RefreshMessages()
+4. **Security**: API keys and TenantId must be excluded from conversation snapshots
+5. **Dependencies**: No new dependencies needed, can reuse existing MessageSerializer
+
+**Remaining Design Tasks**:
+1. Design detailed component interfaces and class signatures
+2. Design ConversationSelector.razor UI component
+3. Design file naming strategy for conversation files
+4. Plan implementation phases
+
+**Status**: Design is ~80% complete. Ready to move to detailed component design phase.
+
 ---
 
 ## 10. References
 
+**Core Components**:
 - `TransparentAiAgentCore/Application/Conversation/ConversationManager.cs` - Current conversation management
 - `TransparentAiAgentCore/Infrastructure/Serialization/MessageSerializer.cs` - Message serialization
 - `TransparentAiAgentCore/Domain/Models/IMessage.cs` - Message interface
+
+**UI Components**:
+- `TransparentAiAgentGui/Components/Pages/Home.razor` - Main chat page with header (lines 14-22)
+- `TransparentAiAgentGui/Services/ConversationUIService.cs` - UI service with auto-save hooks (lines 218, 77)
+
+**Configuration System**:
+- `TransparentAiAgentCore/Domain/Configuration/AppConfiguration.cs` - Root config
+- `TransparentAiAgentCore/Domain/Configuration/AgentConfiguration.cs` - Agent settings
+- `TransparentAiAgentCore/Domain/Configuration/LLMConfiguration.cs` - LLM settings
+- `TransparentAiAgentCore/Domain/Configuration/AnthropicConfiguration.cs` - Anthropic provider config
+- `TransparentAiAgentCore/Domain/Configuration/AzureOpenAIConfiguration.cs` - Azure OpenAI provider config
+- `TransparentAiAgentCore/Infrastructure/Configuration/IConfigurationService.cs` - Config access interface
+
+**Architecture**:
 - `docs/02-architecture/overview.md` - Clean Architecture guidelines
-- `TransparentAiAgentGui/` - Blazor UI components (need to review for chat header)
 
 ---
 
@@ -387,19 +593,109 @@ public class ConversationHistoryManager
 }
 ```
 
-### 11.2 Auto-Save Integration Points
-- Hook after ConversationManager.AddMessageAsync
-- Hook after message processing complete
-- Async, non-blocking
-- Error handling with user notification
+### 11.2 Auto-Save Integration Points (DETAILED)
+**Implementation in ConversationUIService.cs**:
+```csharp
+// Add dependencies to constructor:
+private readonly IConversationHistoryManager _conversationHistoryManager;
+private readonly IConfigurationService _configurationService;
 
-### 11.3 Configuration Snapshot Strategy
-Need to determine:
-- Where is current LLM configuration stored?
-- How to access it for snapshot?
-- Which configuration properties to include?
+// Call after line 218 (streaming):
+RefreshMessages();
+_ = AutoSaveConversationAsync(); // Fire and forget
 
-_These details will be fleshed out in next phase_
+// Call after line 77 (non-streaming):
+RefreshMessages();
+_ = AutoSaveConversationAsync(); // Fire and forget
+
+private async Task AutoSaveConversationAsync()
+{
+    try
+    {
+        var currentConfig = _configurationService.GetConfiguration();
+        var messages = _conversationManager.GetAllMessages();
+        var conversationId = _conversationManager.ConversationId;
+
+        await _conversationHistoryManager.SaveCurrentConversationAsync(
+            conversationId,
+            messages,
+            currentConfig
+        );
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to auto-save conversation {ConversationId}",
+            _conversationManager.ConversationId);
+        // Don't throw - auto-save failure shouldn't crash the app
+        // Consider adding user notification in future
+    }
+}
+```
+
+### 11.3 Configuration Snapshot Strategy (IMPLEMENTED)
+**Source**: `IConfigurationService.GetConfiguration()` returns `AppConfiguration`
+
+**Snapshot Process**:
+```csharp
+public static ConversationConfiguration CreateSnapshot(AppConfiguration appConfig)
+{
+    var snapshot = new ConversationConfiguration
+    {
+        // Agent
+        SystemPrompt = appConfig.Agent.SystemPrompt,
+        ContextWindowSize = appConfig.Agent.ContextWindowSize,
+        EnableTools = appConfig.Agent.EnableTools,
+        ToolExecutionMode = appConfig.Agent.ToolExecutionMode.ToString(),
+
+        // LLM
+        Provider = appConfig.LLM.Provider,
+        Temperature = appConfig.LLM.Temperature,
+        TopP = appConfig.LLM.TopP,
+        MaxTokens = appConfig.LLM.MaxTokens
+    };
+
+    // Provider-specific config (excluding API keys!)
+    if (appConfig.LLM.Provider == "Anthropic" && appConfig.LLM.Anthropic != null)
+    {
+        snapshot.Anthropic = new AnthropicSnapshot
+        {
+            Model = appConfig.LLM.Anthropic.Model,
+            ExtendedThinking = appConfig.LLM.Anthropic.ExtendedThinking != null
+                ? new ExtendedThinkingSnapshot
+                {
+                    Enabled = appConfig.LLM.Anthropic.ExtendedThinking.Enabled,
+                    BudgetTokens = appConfig.LLM.Anthropic.ExtendedThinking.BudgetTokens
+                }
+                : null
+        };
+    }
+    else if (appConfig.LLM.Provider == "AzureOpenAI" && appConfig.LLM.AzureOpenAI != null)
+    {
+        snapshot.AzureOpenAI = new AzureOpenAISnapshot
+        {
+            Endpoint = appConfig.LLM.AzureOpenAI.Endpoint,
+            DeploymentName = appConfig.LLM.AzureOpenAI.DeploymentName,
+            ApiVersion = appConfig.LLM.AzureOpenAI.ApiVersion,
+            IsReasoningModel = appConfig.LLM.AzureOpenAI.IsReasoningModel,
+            AuthenticationMode = appConfig.LLM.AzureOpenAI.AuthenticationMode.ToString()
+            // Deliberately exclude: ApiKey, TenantId
+        };
+    }
+
+    return snapshot;
+}
+```
+
+### 11.4 File Naming Strategy (TO BE DESIGNED)
+Options to consider:
+- Option A: `{conversationId}.json` - Simple, guaranteed unique
+- Option B: `{timestamp}_{sanitized_name}.json` - Human-readable, risk of collisions
+- Option C: `{conversationId}_{sanitized_name}.json` - Best of both worlds
+
+**Recommendation**: Option C
+- Allows easy identification in file browser
+- Guaranteed unique via GUID
+- Easy to implement
 
 ---
 
