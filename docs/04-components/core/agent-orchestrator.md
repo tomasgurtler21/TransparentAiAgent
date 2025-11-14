@@ -1,6 +1,6 @@
 # Agent Orchestrator
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-14
 **Status**: Active
 **Phase**: Phase 3
 **Layer**: Application
@@ -36,7 +36,9 @@ AgentOrchestrator is the main entry point for agent interactions. It coordinates
 
 ## Responsibilities
 
-- Process user input messages
+- Process user input messages (via ProcessUserInputAsync/ProcessUserInputStreamingAsync)
+- Process application-originated messages (via ProcessApplicationMessageAsync)
+- Process tool-originated messages (via ProcessToolMessageAsync)
 - Build LLM requests from conversation history
 - Handle LLM responses (content + tool calls)
 - Execute tool call loops with depth protection
@@ -79,13 +81,35 @@ public class AgentOrchestrator : IAgentOrchestrator
 
 ### User Input Processing
 
-**Method**: `ProcessUserInputAsync` - `AgentOrchestrator.cs:60`
+**Methods**:
+- `ProcessUserInputAsync(UserMessage)` - Non-streaming version
+- `ProcessUserInputStreamingAsync(UserMessage)` - Streaming version
 
 **Flow**:
-1. Validate user input
-2. Create UserMessage and add to conversation
+1. Validate user message
+2. Add UserMessage (typically DirectUserMessage) to conversation
 3. Enter tool call loop (depth 0)
-4. Return final assistant message
+4. Return final assistant message (LlmTextMessage)
+
+### Application Message Processing
+
+**Method**: `ProcessApplicationMessageAsync(ApplicationMessage)` - Streaming
+
+**Flow**:
+1. Add ApplicationMessage to conversation
+2. Route based on message subtype:
+   - **ScenarioUserMessage**: Trigger LLM processing (like user input)
+   - **ScenarioAssistantMessage**: Skip LLM, just yield completion chunk
+3. Return streaming response chunks
+
+### Tool Message Processing
+
+**Method**: `ProcessToolMessageAsync(ToolMessage)` - Streaming
+
+**Flow**:
+1. Add ToolMessage (ToolResultMessage or ToolErrorMessage) to conversation
+2. Trigger LLM processing to continue tool loop
+3. Return streaming response chunks
 
 ### Tool Call Loop
 
@@ -104,34 +128,77 @@ public class AgentOrchestrator : IAgentOrchestrator
 
 ### Tool Execution
 
-**Method**: `ExecuteToolCallsAsync` - `AgentOrchestrator.cs:~200`
+**Method**: `ExecuteToolCallsAsync`
 
 **Flow** (for each tool call):
 1. Log tool call to transparency
 2. Execute via ToolManager
-3. Create ToolResultMessage
+3. Create appropriate message:
+   - **Success**: ToolResultMessage with result
+   - **Error**: ToolErrorMessage with error details
 4. Add to conversation
 5. Log result
+
+## Message Architecture
+
+**Four-Tier Message Hierarchy** (as of Phase 6.2):
+
+The system uses a four-tier message hierarchy based on message **origin**:
+
+1. **UserMessage** (abstract) - Messages from human user input
+   - `DirectUserMessage` - Standard user-typed messages
+
+2. **LlmMessage** (abstract) - Messages from LLM responses
+   - `LlmTextMessage` - Text responses from LLM
+   - `LlmToolCallMessage` - Tool call requests from LLM
+
+3. **ApplicationMessage** (abstract) - Messages from application logic
+   - `ScenarioUserMessage` - Scenario-generated user messages
+   - `ScenarioAssistantMessage` - Scenario-generated assistant messages
+
+4. **ToolMessage** (abstract) - Messages from tool execution
+   - `ToolResultMessage` - Successful tool execution results
+   - `ToolErrorMessage` - Tool execution errors
+
+**Why This Matters**: The orchestrator has stable APIs (`ProcessUserInputAsync`, `ProcessApplicationMessageAsync`, `ProcessToolMessageAsync`) that accept abstract base types, allowing unlimited extensibility without API changes.
+
+**See**: MESSAGE_ARCHITECTURE_REDESIGN.md for full design rationale.
 
 ## Critical Logic: Tool Loop
 
 ```csharp
 // Recursive tool loop with depth protection
-private async Task<IMessage> ProcessWithToolLoopAsync(int depth, CancellationToken ct)
+private async IAsyncEnumerable<ProcessingChunk> ProcessStreamingToolLoopAsync(
+    int depth,
+    [EnumeratorCancellation] CancellationToken ct)
 {
     if (depth >= MaxToolCallDepth)
-        return ErrorMessage("Max depth reached");
+    {
+        var errorMsg = new LlmTextMessage("Maximum tool call depth reached");
+        _conversationManager.AddMessage(errorMsg);
+        yield return new CompletionChunk(errorMsg.Content);
+        yield break;
+    }
 
     var llmResponse = await _llmProvider.SendRequestAsync(BuildLLMRequest());
 
     if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0)
     {
-        await ExecuteToolCallsAsync(llmResponse.ToolCalls);
-        return await ProcessWithToolLoopAsync(depth + 1, ct); // Recurse
+        var toolCallMsg = new LlmToolCallMessage(llmResponse.Content ?? "", llmResponse.ToolCalls);
+        _conversationManager.AddMessage(toolCallMsg);
+
+        await ExecuteToolCallsAsync(llmResponse.ToolCalls); // Creates ToolResultMessage or ToolErrorMessage
+
+        await foreach (var chunk in ProcessStreamingToolLoopAsync(depth + 1, ct))
+        {
+            yield return chunk;
+        }
     }
     else
     {
-        return ParseAndAddAssistantMessage(llmResponse.Content);
+        var textMsg = new LlmTextMessage(llmResponse.Content ?? "");
+        _conversationManager.AddMessage(textMsg);
+        yield return new CompletionChunk(textMsg.Content);
     }
 }
 ```
@@ -184,8 +251,19 @@ private async Task<IMessage> ProcessWithToolLoopAsync(int depth, CancellationTok
 ### Integration Point (UI Service)
 
 ```csharp
-// UI service calls orchestrator
-var response = await _orchestrator.ProcessUserInputAsync(userInput);
+// Process user-typed message (streaming)
+var userMessage = new DirectUserMessage(userInput);
+await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(userMessage))
+{
+    // Handle streaming chunks
+}
+
+// Process scenario message (streaming)
+var scenarioMsg = new ScenarioUserMessage("Hello", "Teaching step 1");
+await foreach (var chunk in _orchestrator.ProcessApplicationMessageAsync(scenarioMsg))
+{
+    // Handle streaming chunks
+}
 
 // Get conversation history
 var messages = _orchestrator.ConversationManager.GetInContextMessages();
