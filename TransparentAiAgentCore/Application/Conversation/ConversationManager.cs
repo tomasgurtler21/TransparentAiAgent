@@ -16,7 +16,7 @@ public class ConversationManager : IConversationManager
     private readonly ITransparencyService _transparencyService;
     private readonly IConfigurationOverlay? _configurationOverlay;
 
-    public Guid ConversationId { get; }
+    public Guid ConversationId { get; private set; }
     public int ContextWindowSize { get; private set; }
     public int InContextMessageCount => GetInContextMessages().Count;
 
@@ -83,6 +83,27 @@ public class ConversationManager : IConversationManager
         {
             _messages.Clear();
             LogEvent("ConversationCleared", $"Conversation {ConversationId} cleared");
+        }
+    }
+
+    public void ResetConversation()
+    {
+        lock (_lock)
+        {
+            var oldId = ConversationId;
+            ConversationId = Guid.NewGuid();
+            _messages.Clear();
+            LogEvent("ConversationReset", $"Conversation reset from {oldId} to {ConversationId}");
+        }
+    }
+
+    public void SetConversationId(Guid conversationId)
+    {
+        lock (_lock)
+        {
+            var oldId = ConversationId;
+            ConversationId = conversationId;
+            LogEvent("ConversationIdChanged", $"Conversation ID changed from {oldId} to {conversationId}");
         }
     }
 

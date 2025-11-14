@@ -164,7 +164,7 @@ public class ConversationUIServiceTests
         // Assert
         Assert.AreEqual(0, service.Messages.Count);
         Assert.IsTrue(eventRaised);
-        _mockConversationManager.Verify(x => x.ClearConversation(), Times.Once);
+        _mockConversationManager.Verify(x => x.ResetConversation(), Times.Once);
     }
 
     [TestMethod]

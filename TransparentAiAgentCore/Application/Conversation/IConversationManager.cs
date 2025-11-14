@@ -43,6 +43,17 @@ public interface IConversationManager
     void ClearConversation();
 
     /// <summary>
+    /// Resets the conversation with a new ID and clears all messages.
+    /// Use this when starting a completely new conversation.
+    /// </summary>
+    void ResetConversation();
+
+    /// <summary>
+    /// Sets the conversation ID. Use this when loading an existing conversation.
+    /// </summary>
+    void SetConversationId(Guid conversationId);
+
+    /// <summary>
     /// Updates the system prompt by replacing the first SystemMessage.
     /// If no SystemMessage exists, creates a new one.
     /// </summary>

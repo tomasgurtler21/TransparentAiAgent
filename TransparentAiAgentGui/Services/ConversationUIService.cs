@@ -252,7 +252,7 @@ public class ConversationUIService : IConversationUIService
 
     public async Task ClearConversationAsync()
     {
-        _conversationManager.ClearConversation();
+        _conversationManager.ResetConversation();
         lock (_messagesLock)
         {
             _messages.Clear();
@@ -272,6 +272,9 @@ public class ConversationUIService : IConversationUIService
 
         // Clear current conversation
         _conversationManager.ClearConversation();
+
+        // Set the conversation ID to match the loaded conversation
+        _conversationManager.SetConversationId(conversation.ConversationId);
 
         // Load messages from the conversation
         foreach (var message in conversation.Messages)
