@@ -40,7 +40,7 @@ public class AppModeService : IAppModeService
         _logger.LogInformation("AppModeService created (Scoped)");
     }
 
-    public Task SwitchModeAsync(AppMode newMode, bool clearConversation = true)
+    public Task SwitchModeAsync(AppMode newMode, bool clearConversation = false)
     {
         lock (_modeLock)
         {

@@ -145,7 +145,7 @@
         try
         {
             var targetMode = _uiState.CurrentMode == AppMode.Normal ? AppMode.Teaching : AppMode.Normal;
-            await AppModeService.SwitchModeAsync(targetMode, clearConversation: true);
+            await AppModeService.SwitchModeAsync(targetMode);
         }
         catch (Exception ex)
         {
