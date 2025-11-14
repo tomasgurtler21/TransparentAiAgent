@@ -11,7 +11,8 @@
       "Bash(Select-String -Pattern \"(Failed|Passed:|Failed:)\" -Context 2,5)",
       "Bash($null)",
       "Bash(Select-String -Pattern \"(Passed|Failed):\" -Context 0,1)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(dir:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

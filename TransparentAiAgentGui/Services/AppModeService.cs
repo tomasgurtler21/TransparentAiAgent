@@ -2,6 +2,7 @@ using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Infrastructure.Configuration;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Application.Conversation;
+using TransparentAiAgentCore.Application.Teaching;
 using Microsoft.Extensions.Logging;
 
 namespace TransparentAiAgentGui.Services;
@@ -17,6 +18,7 @@ public class AppModeService : IAppModeService
     private readonly IConfigurationService _configService;
     private readonly IConversationManager _conversationManager;
     private readonly AppConfiguration _appConfiguration;
+    private readonly TeachingModePromptBuilder _promptBuilder;
     private readonly ILogger<AppModeService> _logger;
     private readonly object _modeLock = new object();
 
@@ -29,12 +31,14 @@ public class AppModeService : IAppModeService
         IConfigurationService configService,
         IConversationManager conversationManager,
         AppConfiguration appConfiguration,
+        TeachingModePromptBuilder promptBuilder,
         ILogger<AppModeService> logger)
     {
         _uiControlService = uiControlService ?? throw new ArgumentNullException(nameof(uiControlService));
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
+        _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _logger.LogInformation("AppModeService created (Scoped)");
@@ -115,6 +119,10 @@ public class AppModeService : IAppModeService
     private string GetTeachingModePrompt()
     {
         // Use hardcoded teaching mode prompt (not user-configurable for security)
-        return TeachingModeConstants.TEACHING_MODE_SYSTEM_PROMPT;
+        // Append knowledge library section dynamically
+        var basePrompt = TeachingModeConstants.TEACHING_MODE_SYSTEM_PROMPT;
+        var knowledgeSection = _promptBuilder.BuildKnowledgeLibrarySection();
+
+        return basePrompt + "\n\n---\n\n" + knowledgeSection;
     }
 }

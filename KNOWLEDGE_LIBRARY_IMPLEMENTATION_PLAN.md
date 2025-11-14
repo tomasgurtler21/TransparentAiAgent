@@ -1407,18 +1407,35 @@ services.AddSingleton<TeachingModePromptBuilder>();
 
 ### Session 5 Deliverable
 
-✅ **Completed**:
-- TeachingModePromptBuilder with comprehensive system prompt
-- Dependency injection configured
-- Knowledge library integrated into teaching mode
+✅ **COMPLETED - 2025-11-14**:
+- TeachingModePromptBuilder with comprehensive system prompt (7 tests passing)
+- Dependency injection configured (all services registered)
+- Knowledge library integrated into teaching mode (AppModeService updated)
 - System prompt dynamically includes all available topics
+- ToolRegistryComposite includes knowledge library tools
+- All 129 tests passing ✅
 
 ✅ **Files Created**:
 - `TransparentAiAgentCore/Application/Teaching/TeachingModePromptBuilder.cs`
-- Updated DI configuration
-- Test files
+- `TransparentAiAgentCore_Tests/Application/Teaching/TeachingModePromptBuilderTests.cs`
+- Updated `TransparentAiAgentGui/Program.cs` (DI configuration)
+- Updated `TransparentAiAgentGui/Services/AppModeService.cs` (teaching mode integration)
 
-**FINAL COMMIT**: "feat(session-5): complete system prompt integration and DI setup"
+✅ **Test Coverage**: 7 tests for TeachingModePromptBuilder, all passing (100% method coverage)
+  - Constructor validation ✅
+  - Empty library handling ✅
+  - Topic listing ✅
+  - Gap likelihood guidance ✅
+  - Usage instructions ✅
+  - Markdown formatting ✅
+
+✅ **DI Services Registered**:
+  - IKnowledgeLibrary → JsonKnowledgeLibrary (singleton)
+  - BuiltInKnowledgeToolRegistry (singleton)
+  - KnowledgeLibraryToolExecutor (scoped)
+  - TeachingModePromptBuilder (singleton)
+
+**FINAL COMMIT**: "feat(session-5): complete system prompt integration and DI setup" ✅ DONE
 
 ---
 
@@ -1748,11 +1765,12 @@ Create `docs/05-guides/development/knowledge-library-maintenance.md`:
   - ~45 minutes (actual)
   - **Status**: All 23 tests passing (3 + 11 + 9)
 
-- [ ] **Session 5**: System Prompt & DI
+- [x] **Session 5**: System Prompt & DI ✅ COMPLETED
   - Prompt builder
   - DI configuration
   - Teaching mode integration
-  - ~60 minutes
+  - ~45 minutes (actual)
+  - **Status**: All 7 tests passing, all 129 total tests passing
 
 - [ ] **Session 6**: Seed Content
   - File structure

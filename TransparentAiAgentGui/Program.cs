@@ -17,11 +17,15 @@ using TransparentAiAgentCore.Application.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools.MCP;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
+using TransparentAiAgentCore.Infrastructure.Tools.BuiltInKnowledge;
 using TransparentAiAgentCore.Infrastructure.Tools.Validation;
 using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Application.Scenarios;
 using TransparentAiAgentCore.Infrastructure.Scenarios;
+using TransparentAiAgentCore.Domain.Knowledge;
+using TransparentAiAgentCore.Infrastructure.Knowledge;
+using TransparentAiAgentCore.Application.Teaching;
 
 // Force InvariantCulture for the entire application to avoid locale-specific number parsing issues
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -102,6 +106,17 @@ builder.Services.AddScoped<IConversationManager>(sp =>
     return new ConversationManager(config.Agent.ContextWindowSize, transparencyService, configurationOverlay);
 });
 
+// Register Knowledge Library services (Phase 11 - Knowledge Library)
+builder.Services.AddSingleton<IKnowledgeLibrary>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<JsonKnowledgeLibrary>>();
+    var knowledgeBasePath = Path.Combine(builder.Environment.WebRootPath, "knowledge");
+    return new JsonKnowledgeLibrary(knowledgeBasePath, logger);
+});
+builder.Services.AddSingleton<BuiltInKnowledgeToolRegistry>();
+builder.Services.AddScoped<KnowledgeLibraryToolExecutor>();
+builder.Services.AddSingleton<TeachingModePromptBuilder>();
+
 // Register Tool services (if tools are enabled)
 if (appConfig.Agent.EnableTools)
 {
@@ -118,8 +133,11 @@ if (appConfig.Agent.EnableTools)
             // Create Built-in UI Control Tool Registry (Phase 9)
             var uiControlRegistry = sp.GetRequiredService<BuiltInUIControlToolRegistry>();
 
-            // Create Tool Registry Composite (MCP + UI Control)
-            var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { mcpRegistry, uiControlRegistry });
+            // Create Built-in Knowledge Tool Registry (Phase 11)
+            var knowledgeRegistry = sp.GetRequiredService<BuiltInKnowledgeToolRegistry>();
+
+            // Create Tool Registry Composite (MCP + UI Control + Knowledge)
+            var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { mcpRegistry, uiControlRegistry, knowledgeRegistry });
 
             // NOTE: Tool discovery will be triggered synchronously AFTER app.Build()
             // to ensure tools are available before accepting requests
@@ -144,14 +162,17 @@ if (appConfig.Agent.EnableTools)
             // Create UI Control Tool Executor (Phase 9) - always available
             var uiControlExecutor = sp.GetRequiredService<UIControlToolExecutor>();
 
+            // Create Knowledge Library Tool Executor (Phase 11) - always available
+            var knowledgeExecutor = sp.GetRequiredService<KnowledgeLibraryToolExecutor>();
+
             // Get tool usage statistics service
             var statistics = sp.GetRequiredService<IToolUsageStatistics>();
 
             // Get tool schema validator service (Phase 9b - Tool Execution Safety)
             var validator = sp.GetRequiredService<ToolSchemaValidator>();
 
-            // Build list of executors
-            var executors = new List<IToolExecutor> { uiControlExecutor };
+            // Build list of executors (UI Control + Knowledge always available)
+            var executors = new List<IToolExecutor> { uiControlExecutor, knowledgeExecutor };
 
             // Add MCP executor only if MCP servers are configured
             if (appConfig.MCP.Servers.Count > 0)
@@ -163,11 +184,11 @@ if (appConfig.Agent.EnableTools)
                 var mcpExecutor = new MCPToolExecutor(mcpDiscovery);
                 executors.Add(mcpExecutor);
 
-                Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s) + UI control tools");
+                Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s) + UI control tools + knowledge library tools");
             }
             else
             {
-                Console.WriteLine("✓ Tool system enabled with UI control tools only (no MCP servers configured)");
+                Console.WriteLine("✓ Tool system enabled with UI control tools + knowledge library tools only (no MCP servers configured)");
             }
 
             // Create Tool Manager with all available executors
