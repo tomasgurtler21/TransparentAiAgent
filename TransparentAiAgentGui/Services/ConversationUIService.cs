@@ -19,10 +19,7 @@ public class ConversationUIService : IConversationUIService
     private readonly HashSet<string> _pendingAutoMessages = new();
     private readonly object _autoMessageLock = new();
     private bool _isScenarioStreaming = false;
-    private string? _nextAutoMessageAnnotation = null;
-    private readonly object _annotationLock = new();
     private readonly object _messagesLock = new();
-    private readonly Dictionary<string, string> _contentToAnnotation = new(); // Maps message content to annotation
 
     // Return a snapshot copy to prevent collection modification exceptions during enumeration
     public IReadOnlyList<UIMessage> Messages
@@ -59,9 +56,6 @@ public class ConversationUIService : IConversationUIService
 
         // Subscribe to scenario streaming events for real-time UI updates
         _scenarioExecutor.StreamingUpdate += OnScenarioStreamingUpdate;
-
-        // Subscribe to scenario step events for tracking annotations
-        _scenarioExecutor.StepExecuted += OnScenarioStepExecuted;
 
         // Load existing messages if any
         RefreshMessages();
@@ -123,21 +117,6 @@ public class ConversationUIService : IConversationUIService
                 ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext,
                 IsAutoMessage = isAutoMessage
             };
-
-            // Attach annotation if this is an auto-message with pending annotation
-            if (isAutoMessage)
-            {
-                lock (_annotationLock)
-                {
-                    if (_nextAutoMessageAnnotation != null)
-                    {
-                        userMessage.Annotation = _nextAutoMessageAnnotation;
-                        // Store annotation by content for persistence across RefreshMessages
-                        _contentToAnnotation[content] = _nextAutoMessageAnnotation;
-                        _nextAutoMessageAnnotation = null;
-                    }
-                }
-            }
 
             lock (_messagesLock)
             {
@@ -265,10 +244,6 @@ public class ConversationUIService : IConversationUIService
         {
             _messages.Clear();
         }
-        lock (_annotationLock)
-        {
-            _contentToAnnotation.Clear();
-        }
         lock (_autoMessageLock)
         {
             _pendingAutoMessages.Clear();
@@ -295,15 +270,6 @@ public class ConversationUIService : IConversationUIService
                     {
                         uiMessage.IsAutoMessage = true;
                         _pendingAutoMessages.Remove(uiMessage.Content);
-                    }
-                }
-
-                // Restore annotation if one exists for this content
-                lock (_annotationLock)
-                {
-                    if (_contentToAnnotation.TryGetValue(uiMessage.Content, out var annotation))
-                    {
-                        uiMessage.Annotation = annotation;
                     }
                 }
             }
@@ -401,21 +367,6 @@ public class ConversationUIService : IConversationUIService
                 _currentStreamingMessage = null;
                 SetProcessing(false);
                 RefreshMessages();
-            }
-        }
-    }
-
-    private void OnScenarioStepExecuted(object? sender, ScenarioStepEventArgs e)
-    {
-        var step = e.Step;
-
-        // For scenario user messages with annotations, track the annotation for the next auto-message
-        if (step.Type == TransparentAiAgentCore.Domain.Scenarios.ScenarioStepType.ScenarioUserMessage &&
-            !string.IsNullOrWhiteSpace(step.Annotation))
-        {
-            lock (_annotationLock)
-            {
-                _nextAutoMessageAnnotation = step.Annotation;
             }
         }
     }
