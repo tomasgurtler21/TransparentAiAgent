@@ -177,11 +177,13 @@ public class AnthropicProvider : ILLMProvider
                     }
                     else
                     {
-                        // Try to detect thinking blocks using reflection
-                        // The SDK may have TryPickThinking or the block might have a Type property
+                        // Try to detect thinking or redacted thinking blocks using reflection
+                        // The SDK has TryPickThinking and TryPickRedactedThinking methods
                         var blockType = blockStart.ContentBlock.GetType();
-                        var tryPickThinkingMethod = blockType.GetMethod("TryPickThinking");
+                        bool isThinkingBlock = false;
 
+                        // Try TryPickThinking first
+                        var tryPickThinkingMethod = blockType.GetMethod("TryPickThinking");
                         if (tryPickThinkingMethod != null)
                         {
                             var parameters = new object?[] { null };
@@ -190,6 +192,23 @@ public class AnthropicProvider : ILLMProvider
                             {
                                 // This is a thinking block
                                 thinkingAccumulators[index] = new System.Text.StringBuilder();
+                                isThinkingBlock = true;
+                            }
+                        }
+
+                        // Try TryPickRedactedThinking if not already a thinking block
+                        if (!isThinkingBlock)
+                        {
+                            var tryPickRedactedMethod = blockType.GetMethod("TryPickRedactedThinking");
+                            if (tryPickRedactedMethod != null)
+                            {
+                                var parameters = new object?[] { null };
+                                var result = (bool?)tryPickRedactedMethod.Invoke(blockStart.ContentBlock, parameters);
+                                if (result == true)
+                                {
+                                    // This is a redacted thinking block
+                                    thinkingAccumulators[index] = new System.Text.StringBuilder();
+                                }
                             }
                         }
                     }
@@ -211,7 +230,7 @@ public class AnthropicProvider : ILLMProvider
                     {
                         var deltaType = deltaEvent.Delta.GetType();
 
-                        // Try to extract thinking delta
+                        // Try to extract thinking delta (SDK has TryPickThinking method)
                         var tryPickThinkingMethod = deltaType.GetMethod("TryPickThinking");
                         if (tryPickThinkingMethod != null)
                         {
@@ -222,11 +241,8 @@ public class AnthropicProvider : ILLMProvider
                                 var thinkingDelta = thinkingParams[0]!;
                                 var thinkingDeltaType = thinkingDelta.GetType();
 
-                                // Try common property names for thinking content
-                                var thinkingProp = thinkingDeltaType.GetProperty("Thinking")
-                                    ?? thinkingDeltaType.GetProperty("Text")
-                                    ?? thinkingDeltaType.GetProperty("Content");
-
+                                // SDK defines ThinkingDelta.Thinking property (confirmed from SDK source)
+                                var thinkingProp = thinkingDeltaType.GetProperty("Thinking");
                                 if (thinkingProp != null && thinkingAccumulators.ContainsKey(index))
                                 {
                                     var thinkingText = thinkingProp.GetValue(thinkingDelta) as string;
@@ -404,10 +420,13 @@ public class AnthropicProvider : ILLMProvider
             }
             else
             {
-                // Try to detect thinking blocks using reflection
+                // Try to detect thinking or redacted thinking blocks using reflection
+                // SDK has TryPickThinking and TryPickRedactedThinking methods
                 var blockType = contentBlock.GetType();
-                var tryPickThinkingMethod = blockType.GetMethod("TryPickThinking");
+                bool handledThinking = false;
 
+                // Try TryPickThinking first
+                var tryPickThinkingMethod = blockType.GetMethod("TryPickThinking");
                 if (tryPickThinkingMethod != null)
                 {
                     var parameters = new object?[] { null };
@@ -417,17 +436,42 @@ public class AnthropicProvider : ILLMProvider
                         var thinkingBlock = parameters[0]!;
                         var thinkingBlockType = thinkingBlock.GetType();
 
-                        // Try common property names for thinking content
-                        var thinkingProp = thinkingBlockType.GetProperty("Thinking")
-                            ?? thinkingBlockType.GetProperty("Text")
-                            ?? thinkingBlockType.GetProperty("Content");
-
+                        // SDK defines ThinkingBlock.Thinking property (confirmed from SDK source)
+                        var thinkingProp = thinkingBlockType.GetProperty("Thinking");
                         if (thinkingProp != null)
                         {
                             var thinkingText = thinkingProp.GetValue(thinkingBlock) as string;
                             if (thinkingText != null)
                             {
                                 thinkingContent += thinkingText;
+                                handledThinking = true;
+                            }
+                        }
+                    }
+                }
+
+                // Try TryPickRedactedThinking if not already handled
+                if (!handledThinking)
+                {
+                    var tryPickRedactedMethod = blockType.GetMethod("TryPickRedactedThinking");
+                    if (tryPickRedactedMethod != null)
+                    {
+                        var parameters = new object?[] { null };
+                        var result = (bool?)tryPickRedactedMethod.Invoke(contentBlock, parameters);
+                        if (result == true && parameters[0] != null)
+                        {
+                            var redactedBlock = parameters[0]!;
+                            var redactedBlockType = redactedBlock.GetType();
+
+                            // SDK defines RedactedThinkingBlock.Thinking property
+                            var thinkingProp = redactedBlockType.GetProperty("Thinking");
+                            if (thinkingProp != null)
+                            {
+                                var thinkingText = thinkingProp.GetValue(redactedBlock) as string;
+                                if (thinkingText != null)
+                                {
+                                    thinkingContent += thinkingText;
+                                }
                             }
                         }
                     }
@@ -476,7 +520,7 @@ public class AnthropicProvider : ILLMProvider
                 );
             }
 
-            // Try to extract thinking delta using reflection
+            // Try to extract thinking delta using reflection (SDK has TryPickThinking method)
             var deltaType = deltaEvent.Delta.GetType();
             var tryPickThinkingMethod = deltaType.GetMethod("TryPickThinking");
             if (tryPickThinkingMethod != null)
@@ -488,11 +532,8 @@ public class AnthropicProvider : ILLMProvider
                     var thinkingDelta = thinkingParams[0]!;
                     var thinkingDeltaType = thinkingDelta.GetType();
 
-                    // Try common property names for thinking content
-                    var thinkingProp = thinkingDeltaType.GetProperty("Thinking")
-                        ?? thinkingDeltaType.GetProperty("Text")
-                        ?? thinkingDeltaType.GetProperty("Content");
-
+                    // SDK defines ThinkingDelta.Thinking property (confirmed from SDK source)
+                    var thinkingProp = thinkingDeltaType.GetProperty("Thinking");
                     if (thinkingProp != null)
                     {
                         var thinkingText = thinkingProp.GetValue(thinkingDelta) as string;
