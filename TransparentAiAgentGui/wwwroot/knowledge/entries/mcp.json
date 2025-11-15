@@ -1,0 +1,65 @@
+{
+  "id": "mcp",
+  "topic": "Model Context Protocol (MCP)",
+  "category": "Application-Specific",
+  "keywords": ["mcp", "model-context-protocol", "anthropic", "tools", "integration", "standard"],
+  "summary": "Open standard protocol for connecting AI assistants to data sources and tools, created by Anthropic in 2024",
+  "knowledgeGapLikelihood": "high",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "The Model Context Protocol (MCP) is an open standard created by Anthropic (open-sourced November 2024) for building secure, two-way connections between AI assistants and external data sources, tools, and systems. MCP standardizes how LLMs access content repositories, business tools, and development environments, replacing proprietary integration approaches. It deliberately re-uses concepts from the Language Server Protocol (LSP) and uses JSON-RPC 2.0 over stdio or HTTP transports. Major adoption: OpenAI integrated MCP across ChatGPT, Agents SDK, and APIs in March 2025.",
+    "keyPoints": [
+      "MCP defines THREE primitives: (1) Resources (data/content), (2) Prompts (templated instructions), (3) Tools (executable functions)",
+      "Architecture: MCP Hosts (AI applications like Claude Desktop) connect to MCP Servers (integration providers) via standardized protocol",
+      "CRITICAL 2025 UPDATE (June 2025): Breaking changes introduced OAuth Resource Server pattern with Resource Indicators (RFC 8707) for authorization",
+      "Transport mechanisms: stdio (local processes) or HTTP with optional Server-Sent Events (SSE) for streaming",
+      "Specification versions: 2025-03-26 (stable), 2025-06-18 (OAuth security updates) - always check version compatibility",
+      "Industry adoption: Anthropic, OpenAI, Google DeepMind have adopted MCP as of 2025, making it a de facto standard",
+      "MCP servers are reusable across applications - write once, connect to any MCP-compatible host"
+    ],
+    "examples": [
+      {
+        "title": "MCP Server Structure",
+        "code": "// MCP Server exposes:\n{\n  \"resources\": [{\"uri\": \"file:///data/docs\", \"mimeType\": \"text/plain\"}],\n  \"tools\": [{\"name\": \"search_docs\", \"parameters\": {...}}],\n  \"prompts\": [{\"name\": \"analyze\", \"template\": \"Analyze: {input}\"}]\n}",
+        "explanation": "MCP servers expose capabilities through three primitives - resources, tools, and prompts"
+      },
+      {
+        "title": "Transport Options",
+        "code": "// Local server via stdio:\nmcp-server --stdio\n\n// Remote server via HTTP+SSE:\nhttps://api.example.com/mcp",
+        "explanation": "stdio for local integrations (file systems, databases), HTTP for remote services (APIs, cloud tools)"
+      }
+    ],
+    "warnings": [
+      "BREAKING CHANGES in 2025-06-18 spec - ensure client/server compatibility before upgrading",
+      "MCP does NOT handle authentication itself - June 2025 spec requires OAuth Resource Server pattern for authorization",
+      "stdio transport is LOCAL only - cannot cross network boundaries, use HTTP for remote servers",
+      "Server discovery is NOT standardized - applications implement their own server registry/configuration mechanisms",
+      "MCP is transport-agnostic but implementations may only support specific transports (check compatibility)",
+      "Specification is rapidly evolving (Nov 2024 → June 2025 breaking changes) - expect continued iteration"
+    ],
+    "bestPractices": [
+      "Pin to specific MCP specification version (2025-03-26 or 2025-06-18) and document in server/client config",
+      "Implement Resource Indicators (RFC 8707) for OAuth-based MCP servers per June 2025 spec",
+      "Use stdio for local integrations (file systems, local DBs), HTTP+SSE for cloud APIs and remote services",
+      "Design MCP servers to be application-agnostic - any MCP host should be able to use your server",
+      "Provide clear resource URIs following standard schemes (file://, https://, custom schemes with documentation)",
+      "Version your MCP server API and support graceful degradation for older MCP spec clients"
+    ],
+    "relatedTopics": ["tools", "ai-agents"],
+    "references": [
+      {
+        "title": "Introducing the Model Context Protocol (Anthropic)",
+        "url": "https://www.anthropic.com/news/model-context-protocol"
+      },
+      {
+        "title": "MCP Specification (2025-03-26)",
+        "url": "https://modelcontextprotocol.io/specification/2025-03-26"
+      },
+      {
+        "title": "Model Context Protocol GitHub",
+        "url": "https://github.com/modelcontextprotocol"
+      }
+    ]
+  }
+}

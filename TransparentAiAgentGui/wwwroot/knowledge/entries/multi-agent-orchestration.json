@@ -1,0 +1,65 @@
+{
+  "id": "multi-agent-orchestration",
+  "topic": "Multi-Agent Orchestration",
+  "category": "Advanced",
+  "keywords": ["multi-agent", "orchestration", "collaboration", "hierarchical", "coordination", "agents"],
+  "summary": "Patterns and architectures for coordinating multiple AI agents to solve complex tasks through collaboration",
+  "knowledgeGapLikelihood": "high",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "Multi-agent orchestration coordinates multiple specialized AI agents to solve complex tasks that exceed single-agent capabilities. Instead of one generalist agent, systems deploy multiple specialist agents (e.g., research agent, coding agent, QA agent) with a coordinator managing collaboration. The 2025 landscape has consolidated around five dominant patterns: centralized orchestration, decentralized coordination, hierarchical structures, event-driven systems, and hybrid human-AI orchestration. Critical tradeoff: Single agents are simpler and cheaper; multi-agent systems handle complexity better but increase cost and coordination overhead.",
+    "keyPoints": [
+      "Core orchestration patterns: (1) Centralized (orchestrator delegates), (2) Decentralized (agents coordinate peer-to-peer), (3) Hierarchical (manager-worker layers), (4) Event-driven (async messaging), (5) Hybrid human-AI",
+      "HIERARCHICAL pattern (most common): Orchestrator agent → Specialist agents (Agents as Tools pattern) - top agent acts as manager, delegates to expert sub-agents",
+      "CRITICAL: Multi-agent systems cost 2-5x more than single agents (more LLM calls, larger prompts) - only use when task complexity justifies",
+      "2025 innovation: 'Puppeteer' orchestrators trained via RL to dynamically sequence agents based on evolving task state (not static workflows)",
+      "Event-driven orchestration enables async, resilient systems - agents added/removed without disrupting siblings",
+      "Communication mechanisms: (1) Direct (agent-to-agent calls), (2) Shared state/blackboard (common knowledge base), (3) Message queues (async events)",
+      "Frameworks: LangGraph (skill/role-based teams), CrewAI (role-based Python teams), AutoGen (Microsoft, research-focused)"
+    ],
+    "examples": [
+      {
+        "title": "Hierarchical Agents as Tools Pattern",
+        "code": "// Orchestrator Agent:\n\"I need to research topic X\"\n  → calls ResearchAgent.search(topic)\n\n\"Now analyze the data\"\n  → calls AnalysisAgent.analyze(data)\n\n\"Write a report\"\n  → calls WriterAgent.generate_report(analysis)",
+        "explanation": "Top-level orchestrator delegates to specialist agents like a manager delegating to team members"
+      },
+      {
+        "title": "Decentralized Collaboration",
+        "code": "// Agents coordinate via shared blackboard:\nResearchAgent: Writes findings to shared_state['research']\nAnalysisAgent: Reads shared_state['research'], writes to shared_state['analysis']\nWriterAgent: Reads shared_state['analysis'], generates report",
+        "explanation": "Agents coordinate through shared knowledge base without central orchestrator - more autonomous but harder to control"
+      }
+    ],
+    "warnings": [
+      "COST EXPLOSION: Multi-agent systems can easily 3-5x your LLM costs - each agent call, coordination, and handoff consumes tokens",
+      "Coordination failures cascade - if agent A's output is wrong, agent B amplifies the error, agent C compounds it further",
+      "Debugging multi-agent systems is exponentially harder - trace through multiple agents' reasoning to find root cause",
+      "Over-specialization reduces flexibility - narrow agents can't adapt when task requirements shift slightly",
+      "Avoid multi-agent for simple tasks - single ReAct agent with tools is faster, cheaper, and simpler for 80% of use cases",
+      "Shared state (blackboard pattern) risks race conditions and inconsistency without careful state management"
+    ],
+    "bestPractices": [
+      "Start with single agent + tools - only move to multi-agent when single agent demonstrably fails on task complexity",
+      "Use hierarchical (orchestrator + specialists) for most enterprise use cases - clearer control flow than decentralized",
+      "Implement comprehensive logging across ALL agents - track task flow, decisions, handoffs for debugging and auditing",
+      "Define clear agent responsibilities with minimal overlap - ambiguity in roles causes coordination failures",
+      "Set orchestration timeouts and max handoffs - prevent infinite loops and runaway costs",
+      "Consider event-driven patterns for async, long-running workflows (hours/days) instead of synchronous orchestration"
+    ],
+    "relatedTopics": ["ai-agents", "agent-architecture", "tools"],
+    "references": [
+      {
+        "title": "Multi-Agent Collaboration Patterns (AWS)",
+        "url": "https://aws.amazon.com/blogs/machine-learning/multi-agent-collaboration-patterns-with-strands-agents-and-amazon-nova/"
+      },
+      {
+        "title": "AgentOrchestra: Hierarchical Multi-Agent Framework",
+        "url": "https://arxiv.org/html/2506.12508v1"
+      },
+      {
+        "title": "Multi-Agent Collaboration via Evolving Orchestration",
+        "url": "https://arxiv.org/abs/2505.19591"
+      }
+    ]
+  }
+}

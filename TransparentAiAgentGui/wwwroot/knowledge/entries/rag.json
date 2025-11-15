@@ -1,0 +1,59 @@
+{
+  "id": "rag",
+  "topic": "RAG (Retrieval-Augmented Generation)",
+  "category": "LLM Concepts",
+  "keywords": ["rag", "retrieval", "augmented", "generation", "knowledge", "embeddings", "vector", "search"],
+  "summary": "Architecture pattern combining LLM generation with external knowledge retrieval for accurate, grounded responses",
+  "knowledgeGapLikelihood": "medium",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "RAG (Retrieval-Augmented Generation) is an architectural pattern that enhances LLM responses by retrieving relevant information from external knowledge bases before generating answers. It addresses the fundamental limitation that LLMs can only use knowledge from their training data, which becomes outdated and cannot include private/proprietary information. RAG enables LLMs to access current, domain-specific, and private knowledge while reducing hallucinations.",
+    "keyPoints": [
+      "RAG has three core components: (1) Retrieval system (vector database/search), (2) Knowledge base (chunked documents/data), (3) Generation (LLM combining retrieved context with query)",
+      "CRITICAL: Chunk size directly impacts quality - too small loses context, too large reduces retrieval precision (typical range: 256-1024 tokens)",
+      "Hybrid search (combining semantic vector search + keyword search) significantly outperforms either method alone",
+      "NEVER assume retrieved context is accurate - implement reranking and relevance filtering to avoid injecting irrelevant information",
+      "Query expansion techniques (rephrasing user queries, generating multiple search variants) improve retrieval recall by 20-40%",
+      "Advanced patterns in 2025: SELF-RAG (self-reflective retrieval decisions), GraphRAG (structured knowledge graphs), Long RAG (full document retrieval)",
+      "Evaluation is critical - track both retrieval quality (precision/recall) and generation quality (accuracy/relevance) separately"
+    ],
+    "examples": [
+      {
+        "title": "Basic RAG Flow",
+        "code": "// 1. User query → embedding\n// 2. Vector search retrieves top-k relevant chunks\n// 3. Inject chunks into LLM prompt:\n//    \"Context: {retrieved_chunks}\\nQuestion: {user_query}\\nAnswer:\"\n// 4. LLM generates response grounded in context",
+        "explanation": "This basic pattern forms the foundation - retrieve first, then generate with context"
+      },
+      {
+        "title": "WRONG: Skipping Relevance Filtering",
+        "code": "// BAD: Blindly using all retrieved results\nvar context = string.Join(\"\\n\", searchResults.Select(r => r.Content));",
+        "explanation": "Always filter by relevance score threshold and rerank - irrelevant context degrades LLM output quality"
+      }
+    ],
+    "warnings": [
+      "RAG does NOT eliminate hallucinations - LLMs can still misinterpret or extrapolate beyond retrieved context",
+      "Vector embeddings alone miss exact keyword matches - always use hybrid search for production systems",
+      "Chunk overlap is critical for maintaining context across boundaries - use 10-20% overlap between chunks",
+      "Retrieved context consumes token budget - balance number of chunks vs. available context window",
+      "NEVER expose raw retrieval scores to users - they're not calibrated and can be misleading"
+    ],
+    "bestPractices": [
+      "Start with hybrid search (vector + keyword), add advanced techniques (GraphRAG, SELF-RAG) only when needed",
+      "Implement metadata filtering (date, author, category) to narrow search before semantic matching",
+      "Use reranking models (cross-encoders) after initial retrieval to improve top-k precision",
+      "Monitor and log retrieval quality separately from generation quality to identify failure points",
+      "Iterate on chunk size, overlap, and retrieval parameters using evaluation benchmarks"
+    ],
+    "relatedTopics": ["embeddings", "context-limit", "llm"],
+    "references": [
+      {
+        "title": "Enhancing RAG: A Study of Best Practices (2025)",
+        "url": "https://arxiv.org/abs/2501.07391"
+      },
+      {
+        "title": "Advanced RAG Techniques (GraphRAG, SELF-RAG)",
+        "url": "https://www.edenai.co/post/the-2025-guide-to-retrieval-augmented-generation-rag"
+      }
+    ]
+  }
+}

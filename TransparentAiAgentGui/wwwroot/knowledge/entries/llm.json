@@ -1,0 +1,53 @@
+{
+  "id": "llm",
+  "topic": "Large Language Models (LLMs)",
+  "category": "LLM Concepts",
+  "keywords": ["llm", "large-language-model", "transformer", "neural-network", "ai"],
+  "summary": "AI models using transformers to understand and generate human language, with critical limitations around hallucinations and biases",
+  "knowledgeGapLikelihood": "low",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "Large Language Models (LLMs) are AI systems using transformer architectures (introduced 2017) trained on massive text datasets to understand, generate, and manipulate human language. They excel at natural language processing, code generation, and information synthesis. However, LLMs have CRITICAL limitations: they hallucinate (generate plausible but false information), lack true understanding (pattern matching vs. reasoning), are frozen in time (training data cutoff), and amplify biases from training data. Understanding these limitations is essential for responsible deployment.",
+    "keyPoints": [
+      "LLMs are based on transformer architecture with billions of parameters (GPT-4: ~1.7T, Claude 3.5: undisclosed but similar scale)",
+      "CRITICAL LIMITATION: Hallucinations - LLMs confidently generate false information that sounds plausible, especially for obscure topics or when pushed beyond training data",
+      "CRITICAL LIMITATION: No true understanding - LLMs perform statistical pattern matching, not reasoning - they can mimic understanding without comprehending meaning",
+      "CRITICAL LIMITATION: Training data cutoff - LLMs are snapshots frozen at training time, cannot learn new information natively (require RAG or fine-tuning for updates)",
+      "CRITICAL LIMITATION: Biases - LLMs inherit and amplify societal biases, stereotypes, and harmful narratives from training data",
+      "LLMs are stateless - each request is isolated unless explicitly given conversation history (context management is application's responsibility)",
+      "Black box problem: Even researchers don't fully understand internal decision-making processes, making debugging and trust challenging"
+    ],
+    "warnings": [
+      "NEVER trust LLM outputs blindly for critical applications (medical, legal, financial) - always verify with authoritative sources",
+      "Hallucinations increase for: (1) Obscure topics with limited training data, (2) Recent events post-training cutoff, (3) Requests to cite specific sources",
+      "LLMs CANNOT browse the web or access real-time data natively - claims of current information are hallucinations unless using tools/RAG",
+      "Bias amplification is insidious - LLMs may generate discriminatory content without explicit prompts, through subtle pattern replication",
+      "Over-reliance on LLMs for reasoning tasks is dangerous - they excel at language, not logic or mathematical reasoning (unless specialized models)",
+      "Token limits create hard boundaries - exceeding context window causes failures or silent truncation, not graceful degradation"
+    ],
+    "bestPractices": [
+      "Implement verification workflows for critical outputs - human review, cross-referencing, fact-checking against authoritative sources",
+      "Use RAG or web search for current/factual information - don't rely on LLM's frozen training data for dynamic knowledge",
+      "Explicitly prompt for uncertainty - 'If you're not certain, say so' reduces confident hallucinations",
+      "Design bias mitigation strategies - diverse evaluation datasets, red-teaming, human-in-the-loop for sensitive content",
+      "Combine LLMs with specialized tools - calculators for math, databases for factual queries, reasoning models for logic",
+      "Monitor outputs in production - track hallucination rates, bias incidents, user corrections to identify failure patterns"
+    ],
+    "relatedTopics": ["transformer-architecture", "tokens", "context-limit", "reasoning-models"],
+    "references": [
+      {
+        "title": "Large Language Models: What You Need to Know in 2025 (HatchWorks)",
+        "url": "https://hatchworks.com/blog/gen-ai/large-language-models-guide/"
+      },
+      {
+        "title": "10 Biggest Limitations of Large Language Models (ProjectPro)",
+        "url": "https://www.projectpro.io/article/llm-limitations/1045"
+      },
+      {
+        "title": "What are Large Language Models? (Oracle)",
+        "url": "https://www.oracle.com/artificial-intelligence/large-language-model/"
+      }
+    ]
+  }
+}

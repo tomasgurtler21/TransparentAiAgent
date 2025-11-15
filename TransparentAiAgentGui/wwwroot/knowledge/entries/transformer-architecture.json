@@ -1,0 +1,45 @@
+{
+  "id": "transformer-architecture",
+  "topic": "Transformer Architecture",
+  "category": "LLM Concepts",
+  "keywords": ["transformer", "attention", "self-attention", "multi-head-attention", "neural-network"],
+  "summary": "Neural network architecture using self-attention mechanisms, foundational to modern LLMs since 2017",
+  "knowledgeGapLikelihood": "low",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "The Transformer is the foundational neural network architecture for modern LLMs, introduced in the 2017 paper 'Attention Is All You Need' (173,000+ citations, top 10 most-cited papers of 21st century). Unlike previous architectures using recurrence or convolution, Transformers rely entirely on self-attention mechanisms to process sequences. The CRITICAL limitation: Self-attention has quadratic computational complexity O(n²) with sequence length, making long contexts exponentially expensive. This quadratic cost is the root cause of context window limits and why 200K token requests cost ~4x more than 100K token requests.",
+    "keyPoints": [
+      "Self-attention mechanism: Each token attends to ALL other tokens in the sequence to compute its representation - this enables parallel processing (unlike RNNs)",
+      "CRITICAL LIMITATION: Attention complexity is O(n²) where n = sequence length - doubling context length quadruples computation cost",
+      "Multi-head attention: Run multiple attention 'heads' in parallel (e.g., 32 heads), each learning different patterns (syntax, semantics, long-range dependencies)",
+      "Query-Key-Value (QKV) paradigm: Each token generates Query (what I'm looking for), Key (what I offer), Value (what I contain) vectors; attention = softmax(Q·K)·V",
+      "Modern optimizations (2025): FlashAttention v2 improves throughput by ~32% (145k → 192k tokens/sec), attention approximation reduces quadratic cost",
+      "Transformers are STATELESS - no built-in memory across requests; context window is the only 'memory' available",
+      "Encoder-decoder vs. decoder-only: LLMs (GPT, Claude) use decoder-only; translation models (T5) use encoder-decoder"
+    ],
+    "warnings": [
+      "Quadratic cost makes extremely long contexts (1M+ tokens) prohibitively expensive and slow - even with optimizations",
+      "Attention does NOT guarantee understanding - models can attend to tokens without comprehending meaning (pattern matching vs. reasoning)",
+      "Position encodings are critical - without them, transformers can't distinguish token order ('cat ate fish' vs. 'fish ate cat')",
+      "Self-attention can create attention sinks - models over-attend to specific tokens (often first token) regardless of relevance",
+      "Training transformers requires massive compute - GPT-4 scale models need thousands of GPUs for months, inaccessible to most organizations",
+      "Transformers struggle with tasks requiring precise counting, arithmetic, or long-range exact recall - architecture limitations"
+    ],
+    "relatedTopics": ["llm", "context-limit", "tokens"],
+    "references": [
+      {
+        "title": "Attention Is All You Need (Original Paper)",
+        "url": "https://arxiv.org/abs/1706.03762"
+      },
+      {
+        "title": "The Illustrated Transformer",
+        "url": "https://jalammar.github.io/illustrated-transformer/"
+      },
+      {
+        "title": "Transformer Architecture: Attention Mechanism Explained",
+        "url": "https://skywork.ai/blog/llm/transformer-architecture-attention-mechanism-fully-explained/"
+      }
+    ]
+  }
+}

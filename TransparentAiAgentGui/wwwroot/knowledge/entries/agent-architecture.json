@@ -1,0 +1,64 @@
+{
+  "id": "agent-architecture",
+  "topic": "AI Agent Architecture Patterns",
+  "category": "Advanced",
+  "keywords": ["agent", "architecture", "react", "reflection", "planning", "tool-calling", "patterns"],
+  "summary": "Design patterns for building AI agents including ReAct, reflection, planning, and multi-step reasoning",
+  "knowledgeGapLikelihood": "medium",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "AI agent architectures define how agents reason, plan, and act to accomplish goals. The most influential patterns in 2025 are ReAct (Reasoning and Acting), Reflection (self-critique and improvement), and Planning (goal decomposition). These patterns can be combined, with the most effective solutions weaving together tool use, reflection, planning, and adaptive reasoning. Critical insight: Simple architectures (ReAct + Tools) often match complex architectures' accuracy at 50% lower cost.",
+    "keyPoints": [
+      "ReAct Pattern: Iterative loop of Thought (reasoning) → Action (tool call) → Observation (result) → repeat until goal achieved",
+      "CRITICAL: ReAct combines chain-of-thought reasoning WITH tool execution in a single loop - not separate phases",
+      "Reflection Pattern: Agent evaluates its own outputs, identifies mistakes, and iteratively improves (requires generator + critic components)",
+      "Planning Pattern: Decompose complex goals into sequential/parallel subtasks before execution (think first, act later)",
+      "Tool Calling Integration: Modern agents drive real outcomes by interacting with APIs, databases, and external systems - not just generating text",
+      "COST-ACCURACY TRADEOFF: Simple ReAct + Tools architectures often achieve 90%+ accuracy of complex multi-agent systems at 50% cost",
+      "Effective 2025 architectures combine patterns: Tool use + Reflection + Planning + Multi-agent collaboration as needed"
+    ],
+    "examples": [
+      {
+        "title": "ReAct Loop Structure",
+        "code": "// Iteration 1:\nThought: \"I need to find the current weather\"\nAction: CallTool(\"weather_api\", {location: \"NYC\"})\nObservation: \"72°F, sunny\"\n\n// Iteration 2:\nThought: \"I have the weather. Task complete.\"\nAction: Finish(\"The weather in NYC is 72°F and sunny\")",
+        "explanation": "ReAct interleaves reasoning and action - each thought informs the next action, each observation informs the next thought"
+      },
+      {
+        "title": "Reflection Pattern",
+        "code": "// Generator: Creates initial output\nOutput: \"The capital of France is Lyon\"\n\n// Critic: Evaluates and identifies error\nCritique: \"Incorrect - Lyon is a major city but Paris is the capital\"\n\n// Generator: Improves based on critique\nImproved: \"The capital of France is Paris\"",
+        "explanation": "Reflection uses self-critique to catch and correct errors through iterative refinement"
+      }
+    ],
+    "warnings": [
+      "Over-architecting agents adds cost and latency - start simple (ReAct) and add complexity only when needed",
+      "Reflection requires additional LLM calls (generator + critic) - often doubles cost, only use when quality justifies expense",
+      "Unbounded ReAct loops can exceed context limits or run indefinitely - ALWAYS implement max iteration limits and exit conditions",
+      "Planning without execution is useless; execution without planning is chaotic - balance based on task complexity",
+      "Tool calling failures cascade through agent workflows - implement robust error handling and fallback strategies"
+    ],
+    "bestPractices": [
+      "Start with ReAct + Tools for most use cases - 90%+ accuracy at lowest cost",
+      "Add Reflection ONLY for tasks requiring high accuracy where errors are costly (legal docs, medical info, financial analysis)",
+      "Implement Planning for complex multi-step tasks where upfront decomposition improves efficiency",
+      "Set max iterations (typically 5-10) to prevent runaway loops and control costs",
+      "Log all thoughts, actions, and observations for debugging and transparency",
+      "Design modular tool interfaces - agents should compose tools, not be tightly coupled to specific APIs"
+    ],
+    "relatedTopics": ["ai-agents", "tools", "multi-agent-orchestration"],
+    "references": [
+      {
+        "title": "Choose a Design Pattern for Your Agentic AI System (Google Cloud)",
+        "url": "https://cloud.google.com/architecture/choose-design-pattern-agentic-ai-system"
+      },
+      {
+        "title": "Agent Factory: Design Patterns for Agentic AI (Microsoft Azure)",
+        "url": "https://azure.microsoft.com/en-us/blog/agent-factory-the-new-era-of-agentic-ai-common-use-cases-and-design-patterns/"
+      },
+      {
+        "title": "Implementing ReAct Agentic Pattern From Scratch",
+        "url": "https://www.dailydoseofds.com/ai-agents-crash-course-part-10-with-implementation/"
+      }
+    ]
+  }
+}

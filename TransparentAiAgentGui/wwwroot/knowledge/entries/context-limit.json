@@ -1,0 +1,66 @@
+{
+  "id": "context-limit",
+  "topic": "Context Window Limits",
+  "category": "LLM Concepts",
+  "keywords": ["context", "window", "tokens", "limits", "memory", "conversation-length"],
+  "summary": "Maximum input+output tokens an LLM can process in a single request, with critical performance and cost implications",
+  "knowledgeGapLikelihood": "low",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "Context window (or context limit) is the maximum number of tokens (input + output combined) an LLM can process in a single request. As of 2025, leading models offer 128K-200K tokens (Claude 3.5 Sonnet: 200K, GPT-4: 128K) with some reaching 1M+ (Gemini 1.5 Pro). However, a large window doesn't mean usable capacity - performance degrades significantly as you approach limits due to 'lost-in-the-middle' effect and quadratic computational costs. Critical rule: Stay at 80-85% of max limit for reliable performance.",
+    "keyPoints": [
+      "Context window includes BOTH input (prompt, conversation history, tool results) AND output (generated response) - not separate budgets",
+      "CRITICAL: 'Lost-in-the-middle' effect - LLMs heavily weight beginning and end of context, undervalue middle content (primacy/recency bias)",
+      "Computational cost scales quadratically (O(n²)) with context length - 100K tokens costs ~4x more than 50K tokens to process",
+      "Practical usability: Aim for 80-85% of theoretical max - 200K window → use max 160-170K tokens for reliable quality",
+      "Token counting is model-specific - use provider's tokenization library (tiktoken for OpenAI, Anthropic tokenizer for Claude) for accuracy",
+      "2025 standards: 128K+ is common for frontier models, 1M+ windows exist but are expensive and slower",
+      "Context overflow causes: Long conversations, large tool outputs (RAG chunks, API responses), extensive system prompts/examples"
+    ],
+    "examples": [
+      {
+        "title": "Context Budget Breakdown",
+        "code": "// 200K token context window example:\nSystem prompt: 5K tokens\nConversation history: 80K tokens\nRAG retrieved chunks: 40K tokens\nCurrent user query: 1K tokens\nTOTAL INPUT: 126K tokens\n\nAvailable for output: 200K - 126K = 74K tokens\n// Well within 80% limit (160K), safe to proceed",
+        "explanation": "Always budget context across all inputs - system prompts, history, tool results, and reserve space for output"
+      },
+      {
+        "title": "Lost-in-the-Middle Problem",
+        "code": "// BAD: Important instruction buried in middle\n\"[100K tokens of context]...here's the critical instruction...[50K more tokens]\"\n\n// GOOD: Important content at beginning or end\n\"CRITICAL: {instruction}\\n\\n[context]...\\n\\nREMINDER: {instruction}\"",
+        "explanation": "Place critical instructions at start/end of prompt, not middle - LLMs attend more to boundaries"
+      }
+    ],
+    "warnings": [
+      "NEVER assume full context window is usable - quality degrades significantly above 80-85% capacity",
+      "Token estimation without proper tokenizer is unreliable - 'tokens ≈ chars/4' is rough approximation, can be off by 20-30%",
+      "Exceeding context limit causes request failures or silent truncation (depending on provider) - both are bad",
+      "Large contexts increase latency exponentially - 200K token request may take 10-30+ seconds vs. 2-3 seconds for 10K tokens",
+      "Conversation history accumulates quickly - 50 turn conversation with 1K tokens/turn = 50K tokens before you add anything else",
+      "Tool outputs can explode context - single RAG retrieval might return 20-50K tokens, multiple tools compound the issue"
+    ],
+    "bestPractices": [
+      "Implement context management strategies BEFORE hitting limits: (1) Summarization (compress history), (2) Truncation (drop old messages), (3) Sliding window (keep recent + summary)",
+      "Use structured formatting (Markdown headers, XML tags) to help LLMs parse long contexts efficiently",
+      "Be selective with context - don't paste entire files, extract only relevant functions/sections",
+      "Monitor token usage in production - track average/peak context usage, set alerts at 70% capacity",
+      "For RAG: Limit retrieved chunks (e.g., top 5-10), rerank for relevance, truncate low-quality results",
+      "Implement periodic summarization for long conversations - compress every N turns to maintain working context",
+      "Consider model selection based on context needs - don't pay for 200K window if you only use 20K"
+    ],
+    "relatedTopics": ["tokens", "context-management", "rag", "llm"],
+    "references": [
+      {
+        "title": "5 Approaches to Solve LLM Token Limits (Deepchecks)",
+        "url": "https://www.deepchecks.com/5-approaches-to-solve-llm-token-limits/"
+      },
+      {
+        "title": "Understanding LLM Context Windows (Medium)",
+        "url": "https://medium.com/@adityakamat007/understanding-llm-context-windows-why-400k-tokens-doesnt-mean-what-you-think-918704d04085"
+      },
+      {
+        "title": "Top Techniques to Manage Context Lengths in LLMs",
+        "url": "https://agenta.ai/blog/top-6-techniques-to-manage-context-length-in-llms"
+      }
+    ]
+  }
+}

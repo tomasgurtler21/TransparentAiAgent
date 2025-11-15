@@ -1,0 +1,71 @@
+{
+  "id": "context-management",
+  "topic": "Context Management Strategies",
+  "category": "LLM Concepts",
+  "keywords": ["context", "management", "memory", "summarization", "sliding-window", "conversation-history"],
+  "summary": "Techniques for managing conversation history and context to prevent exceeding token limits while maintaining coherence",
+  "knowledgeGapLikelihood": "medium",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "Context management addresses the challenge of maintaining long-running conversations within fixed context window limits (typically 128K-200K tokens). As conversations grow, the combined context (system prompt + history + current query + tool results) can exceed limits, causing failures or degraded performance. Core strategies: (1) Sliding window (keep recent N messages), (2) Summarization (compress old history), (3) Memory formation (extract key facts), (4) Prioritization (rank by relevance). Production systems increasingly use hybrid approaches. Critical metric: Smart memory systems like Mem0 cut token costs 80-90% while improving response quality 26% vs. basic history management.",
+    "keyPoints": [
+      "Sliding window: Maintain fixed-size context (e.g., last 10-15 messages verbatim), drop oldest messages as new ones arrive - simplest but loses historical context",
+      "Summarization: Periodically compress old messages (e.g., every 10 turns) into summaries, keep recent messages verbatim - balances history retention with context limits",
+      "Hierarchical summarization: Multi-level compression (messages → conversation segments → overall summary) preserves essential information at different granularities",
+      "Memory formation: Extract specific facts, preferences, decisions (not compress everything) for long-term storage - more intelligent than raw summarization",
+      "Context prioritization: Rank information by relevance, include only top-k most relevant items in context - recency + semantic similarity are common scoring factors",
+      "CRITICAL TRADEOFF: More context history improves coherence but increases cost/latency and risks exceeding limits - find optimal balance for use case",
+      "Production best practice: Keep last 10-15 exchanges verbatim + summarize older content + extract key facts to separate memory store"
+    ],
+    "examples": [
+      {
+        "title": "Sliding Window Strategy",
+        "code": "// Keep last 10 messages, drop oldest:\nmessages = conversation_history[-10:]  // Last 10 only\n// PRO: Simple, consistent token usage\n// CON: Loses older context completely",
+        "explanation": "Fixed window prevents unlimited growth but discards potentially relevant historical information"
+      },
+      {
+        "title": "Hybrid: Sliding Window + Summarization",
+        "code": "// Every 10 messages, summarize and compress:\nif len(messages) > 10:\n    summary = llm.summarize(messages[:-10])\n    messages = [summary_message] + messages[-10:]\n// PRO: Retains history via summaries, recent detail verbatim\n// CON: Summary quality varies, adds LLM calls",
+        "explanation": "Combines recent detail with compressed history - balances context retention and token budget"
+      },
+      {
+        "title": "Memory Formation Approach",
+        "code": "// Extract facts instead of summarizing:\nfacts = extract_facts(conversation)  // [\"User prefers Python\", \"Working on e-commerce app\"]\nmemory_store.save(facts)  // Separate from conversation history\ncontext = build_prompt(facts, recent_messages[-5:])\n// PRO: Selective, high-quality context; 80-90% token savings\n// CON: More complex extraction logic",
+        "explanation": "Extract key information for long-term memory while keeping recent exchanges - most efficient for production"
+      }
+    ],
+    "warnings": [
+      "Summarization adds cost and latency - each summarization is an additional LLM call, compounds quickly in long conversations",
+      "Summary quality varies - LLMs can drop important details, introduce errors, or generate vague summaries that lose critical context",
+      "Aggressive truncation breaks conversation coherence - user references 'the bug we discussed earlier' but that context was dropped",
+      "Memory extraction requires careful design - poor fact extraction logic misses critical information or pollutes memory with irrelevant details",
+      "Recency bias can be wrong - sometimes oldest context is most important (e.g., initial requirements), prioritize intelligently",
+      "Don't summarize recent messages - keep last 10-15 verbatim; summarizing recent exchanges degrades quality noticeably"
+    ],
+    "bestPractices": [
+      "Start simple (sliding window), add complexity only when needed (summarization, then memory formation)",
+      "For chat applications: Keep 10-15 recent messages verbatim, summarize older content every N turns (N=10-20 typical)",
+      "For agents: Extract key facts (decisions, constraints, goals) to separate memory, use recent actions + facts for context",
+      "Implement token counting BEFORE sending requests - proactively manage context, don't wait for failures",
+      "Test summarization quality - verify summaries retain critical information (user intent, decisions, constraints)",
+      "Consider use case: Customer support needs longer history; quick Q&A can use minimal context",
+      "Monitor metrics: Track average context size, summarization frequency, user corrections indicating lost context"
+    ],
+    "relatedTopics": ["context-limit", "llm", "tokens"],
+    "references": [
+      {
+        "title": "LLM Context Windows: Solutions for Context Limits (Kolena)",
+        "url": "https://www.kolena.com/guides/llm-context-windows-why-they-matter-and-5-solutions-for-context-limits/"
+      },
+      {
+        "title": "LLM Chat History Summarization Guide (Mem0)",
+        "url": "https://mem0.ai/blog/llm-chat-history-summarization-guide-2025"
+      },
+      {
+        "title": "Top Techniques to Manage Context Lengths in LLMs",
+        "url": "https://agenta.ai/blog/top-6-techniques-to-manage-context-length-in-llms"
+      }
+    ]
+  }
+}
