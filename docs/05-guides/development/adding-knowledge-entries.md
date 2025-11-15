@@ -30,9 +30,12 @@ The Knowledge Library is a curated collection of **guardrails** that guide the t
 - ✅ Critical principles and "must-knows"
 - ✅ Security red lines and "never-dos"
 - ✅ Application-specific context
+- ✅ General knowledge when critical guardrails are needed (security, best practices, etc.)
 - ❌ Comprehensive tutorials or documentation
 - ❌ Detailed step-by-step procedures
-- ❌ General knowledge the LLM already has
+- ❌ General knowledge the LLM already has and doesn't need correction on
+
+**Note**: While primarily used in Teaching Mode, the library contains both application-specific knowledge AND general knowledge with critical guardrails. Future expansion to Normal mode may broaden its usage.
 
 ---
 
@@ -97,11 +100,13 @@ Ask yourself these questions:
 
 This field tells the LLM how reliable its built-in knowledge is for this topic.
 
+**Important**: This assessment is relative to the model being used. Users may use the latest models (current training data) or older models (potentially deprecated, training data from years ago). When in doubt, assume a conservative gap likelihood.
+
 | Value | Criteria | LLM Behavior | Examples |
 |-------|----------|--------------|----------|
-| **low** | • LLM's training data is current<br>• Topic is stable, rarely changes<br>• Well-established best practices | • Rely on inner knowledge confidently<br>• Use library for critical guardrails only | `api-key-security`<br>`context-windows`<br>`basic-authentication` |
-| **medium** | • LLM's knowledge may be partially outdated<br>• Topic has evolved since training cutoff<br>• Conflicting information exists | • Cross-reference with knowledge library<br>• Consider web search for latest updates | `authentication-methods`<br>`prompt-engineering`<br>`conversation-management` |
-| **high** | • LLM's knowledge is very likely outdated<br>• Rapidly evolving topic<br>• Recent developments post-training<br>• App-specific features | • Strongly prefer web search if available<br>• If no web search: warn user about potential outdated info<br>• Rely heavily on knowledge library | `mcp-overview`<br>`multi-agent-orchestration`<br>`teaching-mode`<br>`transparency-logging` |
+| **low** | • LLM's training data likely includes this topic (for recent models)<br>• Topic is stable, rarely changes<br>• Well-established best practices | • Rely on inner knowledge confidently<br>• Use library for critical guardrails only | `api-key-security`<br>`context-windows`<br>`basic-authentication` |
+| **medium** | • LLM's knowledge may be partially outdated<br>• Topic has evolved since training cutoff<br>• Conflicting information exists<br>• Model-dependent reliability | • Cross-reference with knowledge library<br>• Consider web search for latest updates | `authentication-methods`<br>`prompt-engineering`<br>`conversation-management` |
+| **high** | • LLM's knowledge is very likely outdated (especially for older models)<br>• Rapidly evolving topic<br>• Recent developments post-training<br>• App-specific features | • Strongly prefer web search if available<br>• If no web search: warn user about potential outdated info<br>• Rely heavily on knowledge library | `mcp-overview`<br>`multi-agent-orchestration`<br>`teaching-mode`<br>`transparency-logging` |
 
 **Decision Framework**:
 
@@ -334,26 +339,43 @@ Target token counts based on topic complexity:
 **Format**: List of topic IDs (not full topic names)
 
 **Guidelines**:
-- Only include directly related topics
-- Limit to 3-5 topics
+- **Only include STRONGLY relevant topics** - topics that are directly and meaningfully connected
+- Avoid listing topics just because they're loosely related (e.g., in AI topics, everything connects to everything)
+- Ask: "Would understanding this related topic be essential for fully grasping the main topic?"
+- Limit to 2-4 most relevant topics
 - Ensure IDs actually exist
 
-**Example**:
+**Example** (AI Agent entry):
 ```json
-"relatedTopics": ["environment-variables", "authentication-methods", "secure-configuration"]
+// GOOD: Strongly relevant
+"relatedTopics": ["agent-architecture", "agentic-systems", "tool-calling"]
+
+// BAD: Too loosely connected (even though technically related)
+"relatedTopics": ["what-is-llm", "tokens", "llm-apis", "prompt-engineering", "rag", "embeddings"]
 ```
 
 #### References Guidelines
 
 **When to include**:
-- Official documentation
-- Authoritative sources
-- Detailed specifications
+- Official documentation (Microsoft, Anthropic, etc.)
+- Authoritative sources (W3C, IETF standards, OWASP, NIST)
+- Detailed specifications that are maintained long-term
+- **Prioritize sources likely to remain available for years** (official docs > third-party library docs)
 
 **When to omit**:
 - Blog posts or opinion pieces
 - Outdated resources
 - Paywalled content
+- Third-party library documentation that may disappear over time
+- Personal websites or unmaintained projects
+
+**Longevity Priority**:
+1. ✅ International standards (W3C, IETF, NIST)
+2. ✅ Major vendor official docs (Microsoft, Google, Anthropic, AWS)
+3. ✅ Long-established organizations (OWASP, Apache Foundation)
+4. ⚠️ Well-maintained open-source project docs (assess stability)
+5. ❌ Startup/small company docs (may disappear)
+6. ❌ Personal blogs or Medium articles
 
 **Example**:
 ```json
@@ -363,23 +385,15 @@ Target token counts based on topic complexity:
     "url": "https://owasp.org/www-project-api-security/"
   },
   {
-    "title": "NIST Digital Identity Guidelines",
-    "url": "https://pages.nist.gov/800-63-3/"
+    "title": "Microsoft .NET Security Best Practices",
+    "url": "https://learn.microsoft.com/en-us/dotnet/standard/security/"
   }
 ]
 ```
 
 ### Step 6: Validate Your Entry
 
-#### Automated Validation
-
-**JSON Schema Validation** (future enhancement):
-```bash
-# Validate against schema (when schema validator is implemented)
-# validate-knowledge-entry.sh entries/your-entry.json
-```
-
-**Manual Validation Checklist**:
+**Validation Checklist**:
 
 - [ ] File is valid JSON (use a JSON validator)
 - [ ] Filename matches `id` field
@@ -438,27 +452,9 @@ Target token counts based on topic complexity:
 
 4. **Test in teaching mode**:
    - Start a conversation in teaching mode
-   - Verify your topic appears in the system prompt
    - Ask the agent about your topic
-   - Verify the agent queries the knowledge library
-   - Verify the agent uses your content correctly
-
-**Integration Testing** (once implemented in Session 7):
-- Run end-to-end tests to verify tool execution
-- Verify formatted output matches expectations
-
-### Step 8: Commit Your Entry
-
-```bash
-git add TransparentAiAgentGui/wwwroot/knowledge/entries/{topic-id}.json
-git commit -m "content: add {topic-id} knowledge entry
-
-- Category: {category}
-- Gap likelihood: {low|medium|high}
-- Content: {brief description of what this entry covers}
-"
-git push
-```
+   - Verify the agent queries the knowledge library (check logs or tool calls)
+   - Verify the agent uses your content correctly in responses
 
 ---
 
@@ -542,204 +538,50 @@ This is a **good example** of a knowledge entry following the guardrails approac
 
 ## 🚫 Common Mistakes to Avoid
 
-### Mistake 1: Encyclopedia Creep
+Quick reference of anti-patterns. See detailed guidelines in sections above.
 
-**Bad** (~800 tokens):
+### Mistake 1: Encyclopedia Instead of Guardrails
+
 ```json
-{
-  "topic": "API Key Security",
-  "content": {
-    "overview": "API keys have a long history in software development dating back to... [5 paragraphs]",
-    "keyPoints": [
-      "Use API keys for authentication",
-      "There are many types of keys including symmetric and asymmetric...",
-      "OAuth 2.0 is an alternative that involves...",
-      "HMAC signatures can be used...",
-      "Rate limiting is important...",
-      "Encryption at rest...",
-      "Encryption in transit...",
-      "...10 more generic points..."
-    ],
-    "examples": [
-      "...3 examples in Java...",
-      "...3 examples in Python...",
-      "...3 examples in C#...",
-      "...detailed OAuth flow diagrams..."
-    ],
-    "bestPractices": [
-      "...15 best practices covering everything..."
-    ]
-  }
-}
-```
-
-**Good** (~200-300 tokens):
-```json
-{
-  "content": {
-    "overview": "API keys are sensitive credentials. Mishandling leads to security breaches and unauthorized access.",
-    "keyPoints": [
-      "NEVER commit API keys to version control",
-      "Store in environment variables or secure vaults only",
-      "Rotate immediately if exposed"
-    ],
-    "examples": [
-      {
-        "title": "Correct: Environment Variable",
-        "code": "var key = Environment.GetEnvironmentVariable(\"API_KEY\");",
-        "explanation": "Keeps key out of source code"
-      }
-    ],
-    "warnings": [
-      "Never log API keys (even masked)",
-      "Revoke immediately if accidentally committed"
-    ]
-  }
-}
-```
-
-**Why the second is better**:
-- Focuses on critical mistakes and corrections
-- LLM can provide multi-language examples
-- LLM can explain OAuth if user asks
-- Maintenance is much easier
-
-### Mistake 2: Vague Guidance
-
-**Bad**:
-```json
+// BAD: Too comprehensive
 "keyPoints": [
-  "Be careful with API keys",
-  "Follow security best practices",
-  "Use proper authentication methods"
+  "Use API keys for authentication",
+  "There are many types of keys...",
+  "OAuth 2.0 is an alternative...",
+  "...10 more generic points..."
+]
+
+// GOOD: Critical guardrails only
+"keyPoints": [
+  "NEVER commit API keys to version control",
+  "Store in environment variables or secure vaults only",
+  "Rotate immediately if exposed"
 ]
 ```
 
-**Good**:
+### Mistake 2: Vague Instead of Specific
+
 ```json
-"keyPoints": [
-  "NEVER commit API keys to version control - this is the #1 mistake",
-  "Store in environment variables or Azure Key Vault only",
-  "Rotate immediately if exposed (assume compromise)"
-]
+// BAD: Generic advice
+"Be careful with API keys"
+
+// GOOD: Specific guidance
+"NEVER commit API keys to version control - this is the #1 mistake"
 ```
 
-### Mistake 3: Outdated Information
+### Mistake 3: Duplicating General Knowledge
 
-**Bad** (knowledgeGapLikelihood: low, but content is from 2019):
 ```json
-{
-  "knowledgeGapLikelihood": "low",
-  "lastChecked": "2019-01-01",
-  "content": {
-    "overview": "Use .NET Framework 4.7 for best results..."
-  }
-}
-```
-
-**Good**:
-```json
-{
-  "knowledgeGapLikelihood": "low",
-  "lastChecked": "2025-11-15",
-  "content": {
-    "overview": "Use .NET 8.0 or later for modern development..."
-  }
-}
-```
-
-### Mistake 4: Wrong Gap Likelihood
-
-**Bad** (MCP is app-specific and rapidly evolving, should be "high"):
-```json
-{
-  "id": "mcp-overview",
-  "knowledgeGapLikelihood": "low"
-}
-```
-
-**Good**:
-```json
-{
-  "id": "mcp-overview",
-  "knowledgeGapLikelihood": "high",
-  "content": {
-    "overview": "MCP (Model Context Protocol) is a protocol for tool integration introduced in 2024..."
-  }
-}
-```
-
-### Mistake 5: Missing Critical Warnings
-
-**Bad**:
-```json
-{
-  "topic": "Database Connection Strings",
-  "content": {
-    "overview": "Connection strings specify how to connect to databases.",
-    "keyPoints": [
-      "Include server, database, and credentials"
-    ]
-  }
-}
-```
-
-**Good**:
-```json
-{
-  "topic": "Database Connection Strings",
-  "content": {
-    "overview": "Connection strings contain sensitive credentials and must be protected like API keys.",
-    "keyPoints": [
-      "NEVER commit connection strings to source control",
-      "Store in environment variables or Azure Key Vault",
-      "Use different connection strings per environment"
-    ],
-    "warnings": [
-      "Connection strings often contain passwords in plain text",
-      "Exposing connection strings can lead to complete database compromise"
-    ]
-  }
-}
-```
-
-### Mistake 6: Duplicating General Knowledge
-
-**Bad** (LLM already knows C# async/await):
-```json
+// BAD: LLM already knows this
 {
   "id": "async-await-basics",
-  "topic": "Async/Await in C#",
-  "knowledgeGapLikelihood": "low",
-  "content": {
-    "overview": "Async and await are keywords in C# for asynchronous programming...",
-    "keyPoints": [
-      "Use async for methods that perform I/O",
-      "Await pauses execution without blocking",
-      "Returns Task or Task<T>"
-    ]
-  }
+  "topic": "Async/Await in C#"
 }
-```
 
-**Better** (if you must have an entry, focus on app-specific patterns):
-```json
+// GOOD: App-specific patterns only
 {
   "id": "async-patterns-blazor-server",
-  "topic": "Async Patterns in Blazor Server",
-  "knowledgeGapLikelihood": "medium",
-  "content": {
-    "overview": "Blazor Server requires special async patterns due to SignalR connections and UI thread constraints.",
-    "keyPoints": [
-      "NEVER use async void in Blazor components - use async Task",
-      "Use InvokeAsync() when updating UI from background threads",
-      "Dispose async resources properly in IAsyncDisposable"
-    ],
-    "warnings": [
-      "async void swallows exceptions in Blazor components",
-      "Direct UI updates from background threads cause crashes"
-    ]
-  }
+  "topic": "Async Patterns in Blazor Server"
 }
 ```
 
@@ -747,21 +589,25 @@ This is a **good example** of a knowledge entry following the guardrails approac
 
 ## 🎯 Decision Matrix: Should I Add This Entry?
 
-| Topic | LLM Knows Well? | Critical If Wrong? | App-Specific? | **Decision** | **Gap Likelihood** |
-|-------|-----------------|-------------------|---------------|-------------|-------------------|
+| Topic | LLM Knows Well? | Critical If Wrong? | Has Critical Guardrails? | **Decision** | **Gap Likelihood** |
+|-------|-----------------|-------------------|-------------------------|-------------|-------------------|
 | C# Async/Await Basics | ✅ Yes | ❌ No | ❌ No | ❌ **Don't Add** | N/A |
-| API Key Security | ✅ Yes | ✅ Yes | ❌ No | ✅ **Add** | low |
-| Blazor Server Async Patterns | ⚠️ Partially | ✅ Yes | ⚠️ Framework | ✅ **Add** | medium |
-| MCP Protocol | ❌ No | ✅ Yes | ✅ Yes | ✅ **Add** | high |
-| Teaching Mode Features | ❌ No | ⚠️ Medium | ✅ Yes | ✅ **Add** | high |
+| API Key Security | ✅ Yes | ✅ Yes | ✅ Yes (security) | ✅ **Add** | low |
+| Blazor Server Async Patterns | ⚠️ Partially | ✅ Yes | ✅ Yes (app-specific) | ✅ **Add** | medium |
+| MCP Protocol | ❌ No | ✅ Yes | ✅ Yes (app-specific) | ✅ **Add** | high |
+| Teaching Mode Features | ❌ No | ⚠️ Medium | ✅ Yes (app-specific) | ✅ **Add** | high |
 | General SOLID Principles | ✅ Yes | ❌ No | ❌ No | ❌ **Don't Add** | N/A |
-| App-Specific Security Patterns | ⚠️ Partially | ✅ Yes | ✅ Yes | ✅ **Add** | medium |
+| AI Agent Best Practices | ✅ Yes | ⚠️ Medium | ✅ Yes (critical patterns) | ✅ **Add** | low-medium |
 | How to Use JSON in C# | ✅ Yes | ❌ No | ❌ No | ❌ **Don't Add** | N/A |
-| Context Window Management | ✅ Yes | ⚠️ Medium | ⚠️ App-variant | ✅ **Add** | low |
-| Multi-Agent Orchestration | ❌ No | ✅ Yes | ⚠️ Cutting-edge | ✅ **Add** | high |
+| Context Window Management | ✅ Yes | ⚠️ Medium | ✅ Yes (best practices) | ✅ **Add** | low |
+| Multi-Agent Orchestration | ❌ No | ✅ Yes | ✅ Yes (cutting-edge) | ✅ **Add** | high |
 
 **Legend**:
 - ✅ Yes / ❌ No / ⚠️ Partially or Medium
+
+**Key Decision Criteria**:
+- "Has Critical Guardrails?" includes both app-specific knowledge AND general knowledge with critical security/best practice guardrails
+- App-specific knowledge doesn't exclude general knowledge - the library contains both
 
 ---
 
@@ -786,22 +632,15 @@ This is a **good example** of a knowledge entry following the guardrails approac
 2. Update `lastUpdated` field to current date
 3. If content didn't change but you verified accuracy, update only `lastChecked`
 4. Test the changes
-5. Commit with descriptive message:
-   ```bash
-   git commit -m "content: update {topic-id} - {reason for update}"
-   ```
 
-### Deprecating an Entry
+### Removing an Entry
 
-If an entry becomes obsolete:
+If an entry becomes obsolete or is no longer needed:
 
-1. **Don't delete immediately** - dependent topics may reference it
-2. **Add deprecation notice** to overview:
-   ```json
-   "overview": "[DEPRECATED: This topic is no longer relevant as of {date}. See {replacement-topic-id} instead.] ..."
-   ```
-3. **Update related topics** to remove references
-4. **After verification period**, delete the file and commit
+1. **Search for references**: Use grep to find all references to the entry ID in `relatedTopics` fields
+2. **Remove references**: Update any entries that reference the obsolete entry
+3. **Delete the file**: Remove the JSON file from `entries/` directory
+4. **Test**: Restart the app and verify no errors in startup logs
 
 ---
 
