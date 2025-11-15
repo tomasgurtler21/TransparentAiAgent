@@ -52,20 +52,6 @@
       "Consider use case: Customer support needs longer history; quick Q&A can use minimal context",
       "Monitor metrics: Track average context size, summarization frequency, user corrections indicating lost context"
     ],
-    "relatedTopics": ["context-limit", "llm", "tokens"],
-    "references": [
-      {
-        "title": "LLM Context Windows: Solutions for Context Limits (Kolena)",
-        "url": "https://www.kolena.com/guides/llm-context-windows-why-they-matter-and-5-solutions-for-context-limits/"
-      },
-      {
-        "title": "LLM Chat History Summarization Guide (Mem0)",
-        "url": "https://mem0.ai/blog/llm-chat-history-summarization-guide-2025"
-      },
-      {
-        "title": "Top Techniques to Manage Context Lengths in LLMs",
-        "url": "https://agenta.ai/blog/top-6-techniques-to-manage-context-length-in-llms"
-      }
-    ]
+    "relatedTopics": ["context-limit", "llm", "tokens"]
   }
 }

@@ -46,7 +46,7 @@
       "Set orchestration timeouts and max handoffs - prevent infinite loops and runaway costs",
       "Consider event-driven patterns for async, long-running workflows (hours/days) instead of synchronous orchestration"
     ],
-    "relatedTopics": ["ai-agents", "agent-architecture", "tools"],
+    "relatedTopics": ["ai-agents", "agent-patterns", "tools"],
     "references": [
       {
         "title": "Multi-Agent Collaboration Patterns (AWS)",

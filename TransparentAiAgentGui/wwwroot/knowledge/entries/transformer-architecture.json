@@ -31,14 +31,6 @@
       {
         "title": "Attention Is All You Need (Original Paper)",
         "url": "https://arxiv.org/abs/1706.03762"
-      },
-      {
-        "title": "The Illustrated Transformer",
-        "url": "https://jalammar.github.io/illustrated-transformer/"
-      },
-      {
-        "title": "Transformer Architecture: Attention Mechanism Explained",
-        "url": "https://skywork.ai/blog/llm/transformer-architecture-attention-mechanism-fully-explained/"
       }
     ]
   }

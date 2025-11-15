@@ -50,16 +50,12 @@
     "relatedTopics": ["tokens", "context-management", "rag", "llm"],
     "references": [
       {
-        "title": "5 Approaches to Solve LLM Token Limits (Deepchecks)",
-        "url": "https://www.deepchecks.com/5-approaches-to-solve-llm-token-limits/"
+        "title": "Anthropic Claude Model Context Windows",
+        "url": "https://docs.anthropic.com/en/docs/resources/model-details"
       },
       {
-        "title": "Understanding LLM Context Windows (Medium)",
-        "url": "https://medium.com/@adityakamat007/understanding-llm-context-windows-why-400k-tokens-doesnt-mean-what-you-think-918704d04085"
-      },
-      {
-        "title": "Top Techniques to Manage Context Lengths in LLMs",
-        "url": "https://agenta.ai/blog/top-6-techniques-to-manage-context-length-in-llms"
+        "title": "OpenAI GPT-4 Model Overview",
+        "url": "https://platform.openai.com/docs/models/gpt-4-turbo-and-gpt-4"
       }
     ]
   }

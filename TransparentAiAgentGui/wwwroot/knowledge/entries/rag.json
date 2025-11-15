@@ -8,13 +8,15 @@
   "lastUpdated": "2025-11-15",
   "lastChecked": null,
   "content": {
-    "overview": "RAG (Retrieval-Augmented Generation) is an architectural pattern that enhances LLM responses by retrieving relevant information from external knowledge bases before generating answers. It addresses the fundamental limitation that LLMs can only use knowledge from their training data, which becomes outdated and cannot include private/proprietary information. RAG enables LLMs to access current, domain-specific, and private knowledge while reducing hallucinations.",
+    "overview": "RAG (Retrieval-Augmented Generation) is an architectural pattern that enhances LLM responses by retrieving relevant information from external knowledge bases before generating answers. It addresses the fundamental limitation that LLMs can only use knowledge from their training data, which becomes outdated and cannot include private/proprietary information. RAG enables LLMs to access current, domain-specific, and private knowledge while reducing hallucinations. CRITICAL: While early RAG was automatic (query → retrieve → generate), modern RAG is often a TOOL that agents/LLMs call when needed, giving agents control over when to retrieve knowledge.",
     "keyPoints": [
       "RAG has three core components: (1) Retrieval system (vector database/search), (2) Knowledge base (chunked documents/data), (3) Generation (LLM combining retrieved context with query)",
       "CRITICAL: Chunk size directly impacts quality - too small loses context, too large reduces retrieval precision (typical range: 256-1024 tokens)",
       "Hybrid search (combining semantic vector search + keyword search) significantly outperforms either method alone",
       "NEVER assume retrieved context is accurate - implement reranking and relevance filtering to avoid injecting irrelevant information",
       "Query expansion techniques (rephrasing user queries, generating multiple search variants) improve retrieval recall by 20-40%",
+      "Modern pattern: RAG as a TOOL - instead of automatic retrieval for every query, expose RAG as a tool that agents/LLMs call when they determine knowledge retrieval is needed",
+      "CRITICAL DISTINCTION: Automatic RAG (every query retrieves) vs. Tool-based RAG (agent decides when to retrieve) - tool-based reduces unnecessary retrievals and costs",
       "Advanced patterns in 2025: SELF-RAG (self-reflective retrieval decisions), GraphRAG (structured knowledge graphs), Long RAG (full document retrieval)",
       "Evaluation is critical - track both retrieval quality (precision/recall) and generation quality (accuracy/relevance) separately"
     ],
@@ -49,10 +51,6 @@
       {
         "title": "Enhancing RAG: A Study of Best Practices (2025)",
         "url": "https://arxiv.org/abs/2501.07391"
-      },
-      {
-        "title": "Advanced RAG Techniques (GraphRAG, SELF-RAG)",
-        "url": "https://www.edenai.co/post/the-2025-guide-to-retrieval-augmented-generation-rag"
       }
     ]
   }
