@@ -1,0 +1,58 @@
+{
+  "id": "ai-agents",
+  "topic": "AI Agents and Agency",
+  "category": "LLM Concepts",
+  "keywords": ["ai", "agents", "agency", "autonomous", "agentic", "goal-oriented", "autonomous-systems"],
+  "summary": "Autonomous AI systems that plan, reason, and act to complete tasks with minimal human oversight",
+  "knowledgeGapLikelihood": "medium",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "AI agents are autonomous software systems that go beyond reactive question-answering to proactively plan, reason, and execute multi-step tasks with minimal human intervention. The concept of 'agency' refers to the system's autonomous decision-making capability - it acts with agency to fulfill objectives rather than simply responding to commands. Unlike traditional AI assistants that execute single, well-defined requests, agents operate in a continuous perception-decision-action loop.",
+    "keyPoints": [
+      "CRITICAL distinction: Agents have AGENCY (autonomous decision-making) vs. assistants that reactively respond to requests",
+      "Core capabilities: (1) Planning (decomposing goals into steps), (2) Reasoning (evaluating options), (3) Tool use (executing actions), (4) Adapting (learning from outcomes)",
+      "Autonomy levels: Level 1-2 (basic, reactive), Level 3 (partially autonomous with minimal oversight), Level 4 (fully autonomous across domains) - most 2025 agents are Level 1-2",
+      "Agents operate in a continuous loop: Perceive environment → Plan actions → Execute with tools → Observe results → Adapt strategy",
+      "CRITICAL GUARDRAIL: Reliability threshold - enterprises require near-perfect accuracy; 'right most of the time' is insufficient for production deployment",
+      "Agents require tool access (APIs, databases, external systems) to be effective - they cannot operate in isolation",
+      "As of 2025, 25% of gen AI companies are piloting agentic AI, projected to 50% by 2027 (Deloitte)"
+    ],
+    "examples": [
+      {
+        "title": "Agent vs. Assistant Pattern",
+        "code": "// ASSISTANT (reactive):\nUser: \"Summarize this document\"\nAI: [Summarizes]\n\n// AGENT (autonomous):\nUser: \"Prepare a quarterly report\"\nAgent: [Plans: gather data, analyze trends, create visualizations, draft summary]\n       [Executes: queries database, generates charts, writes report]\n       [Adapts: if data missing, finds alternative sources]",
+        "explanation": "Agents decompose goals, make decisions, and adapt - assistants execute single requests"
+      }
+    ],
+    "warnings": [
+      "Reliability is the #1 barrier to enterprise adoption - agents must be deterministic and verifiable for critical workflows",
+      "Unbounded autonomy is dangerous - always define clear boundaries, approval workflows for high-stakes actions",
+      "Agents can compound errors across multi-step workflows - implement checkpoints and human-in-the-loop for critical decisions",
+      "Hallucinations in planning are MORE dangerous than in generation - bad plans lead to cascading failures",
+      "Over-reliance on agentic behavior for simple tasks adds unnecessary complexity and latency"
+    ],
+    "bestPractices": [
+      "Start with narrow, well-defined domains (Level 3) before attempting broad autonomy (Level 4)",
+      "Implement transparency and logging for all agent decisions and tool calls - 'black box' agents are unacceptable",
+      "Design 'human-in-the-loop' approval gates for high-stakes actions (financial transactions, data deletion, external communications)",
+      "Define clear success criteria and evaluation metrics before deployment - vague goals lead to unpredictable behavior",
+      "Build gradual autonomy: reactive assistant → task automation → multi-step planning → full agency"
+    ],
+    "relatedTopics": ["agent-architecture", "tools", "multi-agent-orchestration"],
+    "references": [
+      {
+        "title": "The Rise of Autonomous Agents (AWS)",
+        "url": "https://aws.amazon.com/blogs/aws-insights/the-rise-of-autonomous-agents-what-enterprise-leaders-need-to-know-about-the-next-wave-of-ai/"
+      },
+      {
+        "title": "AI Agents in 2025: Expectations vs. Reality (IBM)",
+        "url": "https://www.ibm.com/think/insights/ai-agents-2025-expectations-vs-reality"
+      },
+      {
+        "title": "Autonomous Generative AI Agents (Deloitte)",
+        "url": "https://www.deloitte.com/us/en/insights/industry/technology/technology-media-and-telecom-predictions/2025/autonomous-generative-ai-agents-still-under-development.html"
+      }
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "id": "reasoning-models",
+  "topic": "Reasoning Models (LRMs)",
+  "category": "LLM Concepts",
+  "keywords": ["reasoning", "o1", "o3", "chain-of-thought", "cot", "extended-thinking", "lrm"],
+  "summary": "LLMs trained to perform explicit multi-step reasoning before answering, using chain-of-thought to solve complex problems",
+  "knowledgeGapLikelihood": "high",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "Reasoning models (also called Large Reasoning Models or LRMs) are LLMs specifically trained to perform explicit step-by-step reasoning before generating answers. Unlike standard LLMs that immediately respond, reasoning models use 'chain-of-thought' (CoT) to break down problems, try different approaches, recognize mistakes, and self-correct. OpenAI's o1 (Sept 2024) and o3 (Dec 2024) pioneered this approach, trained via reinforcement learning to spend 'thinking time' solving problems. Critical insight: Performance scales with both train-time compute (RL training) and test-time compute (thinking duration).",
+    "keyPoints": [
+      "Chain-of-Thought (CoT): Models internally generate step-by-step reasoning (often hidden from user) before final answer - mimics human deliberation",
+      "CRITICAL DISTINCTION: Standard LLMs respond immediately; reasoning models 'think' (extend inference time) to explore solution paths before answering",
+      "Training via Reinforcement Learning (RL): Models learn to refine reasoning strategies, recognize errors, break complex steps into simpler ones, try alternative approaches",
+      "Test-time compute scaling: More thinking time → better accuracy (o3: 75.7% on ARC-AGI with low compute, 87.5% with high compute)",
+      "o3 benchmarks (2025): 87.5% ARC-AGI (3x improvement over o1), 25% Frontier Math (vs. 2% previous best), 96.7% AIME math competition",
+      "Cost-performance tradeoff: o3-mini is 15x cheaper and 5x faster than o1 with comparable performance for everyday tasks",
+      "Competition: DeepSeek R1 (open-source) rivals OpenAI o1/o3; Anthropic Claude 3.5+ integrates reasoning as built-in component"
+    ],
+    "examples": [
+      {
+        "title": "Reasoning Model Workflow",
+        "code": "// User: \"Solve this math problem: ...\"\n\n// Internal reasoning (hidden from user):\n// Step 1: Identify problem type - combinatorics\n// Step 2: Try approach A - doesn't work, dead end\n// Step 3: Recognize mistake, try approach B\n// Step 4: Break into sub-problems: P1, P2, P3\n// Step 5: Solve P1... solve P2... solve P3\n// Step 6: Combine results, verify answer\n\n// Final output: \"The answer is 42. [Reasoning summary if enabled]\"",
+        "explanation": "Reasoning models perform extensive internal deliberation before responding - latency increases but accuracy improves"
+      }
+    ],
+    "warnings": [
+      "COST: Reasoning models are significantly more expensive than standard LLMs due to extended inference time (10-100x token generation internally)",
+      "LATENCY: Responses take longer (seconds to minutes for complex problems) - unsuitable for real-time, low-latency applications",
+      "Reasoning is often HIDDEN - o1/o3 don't expose full chain-of-thought by default, making debugging and verification harder (o3-mini exposes more)",
+      "NOT a silver bullet - reasoning models excel at logic, math, coding but don't fundamentally solve hallucination or bias problems",
+      "Chain-of-thought can be hijacked - recent research (H-CoT attack, 2025) shows reasoning safety checks can be manipulated via jailbreaks",
+      "Over-application is wasteful - use reasoning models for complex problems requiring deliberation, not simple queries (use standard LLMs for those)"
+    ],
+    "bestPractices": [
+      "Use reasoning models for: Complex math, competitive programming, scientific reasoning, multi-step logic problems, debugging",
+      "Use standard LLMs for: Simple queries, content generation, summarization, chat, real-time responses",
+      "Choose compute level based on task: Low compute (o3-mini) for everyday tasks, high compute (o3) for hardest problems",
+      "When available, enable reasoning trace visibility (o3-mini feature) to verify logic and debug failures",
+      "Budget for increased cost and latency - reasoning models are 10-100x more expensive and slower than standard LLMs",
+      "Combine with tools - reasoning models plan and strategize, tools execute (database queries, calculations, API calls)"
+    ],
+    "relatedTopics": ["llm", "ai-agents", "agent-architecture"],
+    "references": [
+      {
+        "title": "Learning to Reason with LLMs (OpenAI)",
+        "url": "https://openai.com/index/learning-to-reason-with-llms/"
+      },
+      {
+        "title": "OpenAI o1 and o3 Explained (Le Wagon)",
+        "url": "https://blog.lewagon.com/skills/openai-o1-and-o3-explained-how-thinking-models-work/"
+      },
+      {
+        "title": "Large Reasoning Models: o1 Replications (Synthesis AI)",
+        "url": "https://synthesis.ai/2025/02/25/large-reasoning-models-how-o1-replications-turned-into-real-competition/"
+      }
+    ]
+  }
+}

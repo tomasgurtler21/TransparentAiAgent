@@ -1,0 +1,65 @@
+{
+  "id": "tools",
+  "topic": "Tools and Function Calling",
+  "category": "LLM Concepts",
+  "keywords": ["tools", "function-calling", "tool-use", "apis", "external-systems", "plugins"],
+  "summary": "Mechanisms enabling LLMs to interact with external systems through structured function calls",
+  "knowledgeGapLikelihood": "low",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "Function calling (also called tool use) enables LLMs to output structured requests to external systems rather than generating vague natural-language instructions. Instead of returning 'you should check the weather API', the LLM outputs a structured call like 'call get_weather(city=\"London\")'. This is the foundational mechanism that enables AI agents to interact with databases, APIs, file systems, and other external tools, transforming LLMs from text generators into systems that drive real-world actions.",
+    "keyPoints": [
+      "Function calling returns STRUCTURED data (JSON schema-based) rather than natural language - this enables reliable programmatic execution",
+      "Tool definitions include: (1) Name, (2) Description (critical for LLM selection), (3) Parameter schema (JSON Schema), (4) Return type",
+      "CRITICAL: Tool descriptions are prompt engineering - clear, specific descriptions dramatically improve tool selection accuracy",
+      "LLM decides WHICH tool to call and WITH WHAT PARAMETERS - you provide the tool catalog, LLM orchestrates usage",
+      "Tool execution happens OUTSIDE the LLM - model requests tool call, your code executes it, result feeds back to model",
+      "Context window limits apply to tool outputs - large API responses can overflow context, causing failures or hallucinations",
+      "Tool calling requires LLM support - most major providers (Anthropic, OpenAI, Google, Azure) support it natively as of 2025"
+    ],
+    "examples": [
+      {
+        "title": "Tool Definition Structure",
+        "code": "{\n  \"name\": \"get_weather\",\n  \"description\": \"Get current weather for a city. Use when user asks about weather conditions.\",\n  \"parameters\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"city\": {\"type\": \"string\", \"description\": \"City name\"}\n    },\n    \"required\": [\"city\"]\n  }\n}",
+        "explanation": "Clear descriptions and JSON Schema parameters enable LLM to understand when and how to call tools"
+      },
+      {
+        "title": "Tool Execution Flow",
+        "code": "// 1. LLM receives user query: \"What's the weather in Paris?\"\n// 2. LLM outputs: {\"tool\": \"get_weather\", \"args\": {\"city\": \"Paris\"}}\n// 3. Your code executes: weather_api.get(\"Paris\") → \"22°C, cloudy\"\n// 4. Feed result back to LLM: \"Tool result: 22°C, cloudy\"\n// 5. LLM generates response: \"The weather in Paris is 22°C and cloudy\"",
+        "explanation": "Tool calling is a loop: LLM requests → your code executes → result feeds back → LLM continues"
+      }
+    ],
+    "warnings": [
+      "SECURITY CRITICAL: Validate ALL tool parameters before execution - LLMs can be prompt-injected to call tools with malicious parameters",
+      "Never trust LLM-generated tool calls blindly - implement parameter validation, rate limiting, and authorization checks",
+      "Large tool outputs overflow context windows - implement truncation, summarization, or pagination strategies",
+      "Tool execution failures MUST be reported back to LLM - silent failures cause hallucinations and incorrect responses",
+      "Avoid giving tools overly broad permissions - principle of least privilege applies (e.g., read-only tools when possible)",
+      "Human-in-the-loop is critical for high-stakes actions - auto-executing financial transactions or data deletion is dangerous"
+    ],
+    "bestPractices": [
+      "Write tool descriptions from the LLM's perspective - 'Use this when user asks about X' is clearer than technical specs",
+      "Implement timeouts, retries, and circuit breakers for external API calls to prevent agent hangs",
+      "Return structured error messages to LLM when tools fail - enables agent to adapt or retry with different approaches",
+      "Group related tools into logical categories - helps LLM navigate large tool catalogs efficiently",
+      "Log all tool calls (including parameters) for debugging, auditing, and transparency",
+      "Start with minimal tool set - adding more tools increases cost (longer prompts) and reduces selection accuracy"
+    ],
+    "relatedTopics": ["ai-agents", "agent-architecture", "mcp"],
+    "references": [
+      {
+        "title": "Function Calling Best Practices (ScalifiAI)",
+        "url": "https://www.scalifiai.com/blog/function-calling-tool-call-best%20practices"
+      },
+      {
+        "title": "Introduction to Function Calling (Google Cloud)",
+        "url": "https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling"
+      },
+      {
+        "title": "Function Calling | Prompt Engineering Guide",
+        "url": "https://www.promptingguide.ai/applications/function_calling"
+      }
+    ]
+  }
+}
