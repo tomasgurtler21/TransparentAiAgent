@@ -8,6 +8,7 @@
 @using TransparentAiAgentCore.Domain.UIControl
 @inject IConversationUIService ConversationService
 @inject IAppModeService AppModeService
+@inject IServiceProvider ServiceProvider
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -27,9 +28,12 @@
         <div class="conversation-selector-container">
             <ConversationSelector />
         </div>
-        <div class="provider-selector-container">
-            <ProviderSelector />
-        </div>
+        @if (IsProviderSelectorAvailable)
+        {
+            <div class="provider-selector-container">
+                <ProviderSelector />
+            </div>
+        }
     </div>
 
     <MessageList Messages="ConversationService.Messages" IsProcessing="ConversationService.IsProcessing" />
@@ -46,6 +50,7 @@
 
 @code {
     private string? errorMessage;
+    private bool IsProviderSelectorAvailable => ServiceProvider.GetService<IProviderStateService>() != null;
 
     protected override void OnInitialized()
     {
