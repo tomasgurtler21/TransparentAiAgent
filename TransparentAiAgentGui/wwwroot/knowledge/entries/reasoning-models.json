@@ -16,7 +16,8 @@
       "Test-time compute scaling: More thinking time → better accuracy (o3: 75.7% on ARC-AGI with low compute, 87.5% with high compute)",
       "o3 benchmarks (2025): 87.5% ARC-AGI (3x improvement over o1), 25% Frontier Math (vs. 2% previous best), 96.7% AIME math competition",
       "Cost-performance tradeoff: o3-mini is 15x cheaper and 5x faster than o1 with comparable performance for everyday tasks",
-      "Competition: DeepSeek R1 (open-source) rivals OpenAI o1/o3; Anthropic Claude 3.5+ integrates reasoning as built-in component"
+      "Competition: DeepSeek R1 (open-source) rivals OpenAI o1/o3; Anthropic Claude 3.7+ offers 'extended thinking' (similar approach, token budget control)",
+      "CRITICAL: All reasoning approaches (o1/o3, Claude extended thinking, DeepSeek R1) use tokens for internal reasoning - charged as output tokens"
     ],
     "examples": [
       {
@@ -26,9 +27,11 @@
       }
     ],
     "warnings": [
-      "COST: Reasoning models are significantly more expensive than standard LLMs due to extended inference time (10-100x token generation internally)",
+      "COST: Reasoning models generate many internal reasoning tokens (charged as output tokens). OpenAI o1: $60/M output vs $15/M for GPT-4. You pay for hidden reasoning + final answer.",
+      "CRITICAL: Extended thinking (Anthropic) and reasoning (OpenAI) BOTH use tokens for internal thinking - you ARE charged for these tokens as output tokens",
       "LATENCY: Responses take longer (seconds to minutes for complex problems) - unsuitable for real-time, low-latency applications",
-      "Reasoning is often HIDDEN - o1/o3 don't expose full chain-of-thought by default, making debugging and verification harder (o3-mini exposes more)",
+      "Reasoning is often HIDDEN - o1/o3 don't expose full chain-of-thought by default, making debugging and verification harder (Claude and o3-mini expose more)",
+      "Budget control varies: Claude allows token budget limits for thinking (min 1,024 tokens), OpenAI o1/o3 have no user-controllable budget for reasoning",
       "NOT a silver bullet - reasoning models excel at logic, math, coding but don't fundamentally solve hallucination or bias problems",
       "Chain-of-thought can be hijacked - recent research (H-CoT attack, 2025) shows reasoning safety checks can be manipulated via jailbreaks",
       "Over-application is wasteful - use reasoning models for complex problems requiring deliberation, not simple queries (use standard LLMs for those)"
@@ -41,19 +44,11 @@
       "Budget for increased cost and latency - reasoning models are 10-100x more expensive and slower than standard LLMs",
       "Combine with tools - reasoning models plan and strategize, tools execute (database queries, calculations, API calls)"
     ],
-    "relatedTopics": ["llm", "ai-agents", "agent-architecture"],
+    "relatedTopics": ["llm", "ai-agents", "agent-patterns"],
     "references": [
       {
         "title": "Learning to Reason with LLMs (OpenAI)",
         "url": "https://openai.com/index/learning-to-reason-with-llms/"
-      },
-      {
-        "title": "OpenAI o1 and o3 Explained (Le Wagon)",
-        "url": "https://blog.lewagon.com/skills/openai-o1-and-o3-explained-how-thinking-models-work/"
-      },
-      {
-        "title": "Large Reasoning Models: o1 Replications (Synthesis AI)",
-        "url": "https://synthesis.ai/2025/02/25/large-reasoning-models-how-o1-replications-turned-into-real-competition/"
       }
     ]
   }

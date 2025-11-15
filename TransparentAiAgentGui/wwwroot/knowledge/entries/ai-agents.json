@@ -39,7 +39,7 @@
       "Define clear success criteria and evaluation metrics before deployment - vague goals lead to unpredictable behavior",
       "Build gradual autonomy: reactive assistant → task automation → multi-step planning → full agency"
     ],
-    "relatedTopics": ["agent-architecture", "tools", "multi-agent-orchestration"],
+    "relatedTopics": ["agent-patterns", "tools", "multi-agent-orchestration"],
     "references": [
       {
         "title": "The Rise of Autonomous Agents (AWS)",

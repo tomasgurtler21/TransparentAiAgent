@@ -37,14 +37,6 @@
     "relatedTopics": ["transformer-architecture", "tokens", "context-limit", "reasoning-models"],
     "references": [
       {
-        "title": "Large Language Models: What You Need to Know in 2025 (HatchWorks)",
-        "url": "https://hatchworks.com/blog/gen-ai/large-language-models-guide/"
-      },
-      {
-        "title": "10 Biggest Limitations of Large Language Models (ProjectPro)",
-        "url": "https://www.projectpro.io/article/llm-limitations/1045"
-      },
-      {
         "title": "What are Large Language Models? (Oracle)",
         "url": "https://www.oracle.com/artificial-intelligence/large-language-model/"
       }

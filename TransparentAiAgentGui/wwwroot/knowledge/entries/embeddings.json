@@ -50,16 +50,8 @@
     "relatedTopics": ["rag", "context-limit"],
     "references": [
       {
-        "title": "What Are Vector Embeddings? A Complete Guide (2025)",
-        "url": "https://www.meilisearch.com/blog/what-are-vector-embeddings"
-      },
-      {
-        "title": "Best Embedding Models for Semantic Search Comparison",
-        "url": "https://www.myscale.com/blog/best-embedding-models-semantic-search-comparison/"
-      },
-      {
-        "title": "Embedding Models for Semantic Search: A Guide (TechTarget)",
-        "url": "https://www.techtarget.com/searchenterpriseai/tip/Embedding-models-for-semantic-search-A-guide"
+        "title": "OpenAI Embeddings Guide",
+        "url": "https://platform.openai.com/docs/guides/embeddings"
       }
     ]
   }

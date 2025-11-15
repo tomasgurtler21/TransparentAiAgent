@@ -46,19 +46,15 @@
       "Log all tool calls (including parameters) for debugging, auditing, and transparency",
       "Start with minimal tool set - adding more tools increases cost (longer prompts) and reduces selection accuracy"
     ],
-    "relatedTopics": ["ai-agents", "agent-architecture", "mcp"],
+    "relatedTopics": ["ai-agents", "agent-patterns", "mcp"],
     "references": [
-      {
-        "title": "Function Calling Best Practices (ScalifiAI)",
-        "url": "https://www.scalifiai.com/blog/function-calling-tool-call-best%20practices"
-      },
       {
         "title": "Introduction to Function Calling (Google Cloud)",
         "url": "https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/function-calling"
       },
       {
-        "title": "Function Calling | Prompt Engineering Guide",
-        "url": "https://www.promptingguide.ai/applications/function_calling"
+        "title": "Anthropic Tool Use Documentation",
+        "url": "https://docs.anthropic.com/en/docs/build-with-claude/tool-use"
       }
     ]
   }

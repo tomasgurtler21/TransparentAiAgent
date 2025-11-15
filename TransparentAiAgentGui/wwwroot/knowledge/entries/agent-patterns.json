@@ -1,6 +1,6 @@
 {
-  "id": "agent-architecture",
-  "topic": "AI Agent Architecture Patterns",
+  "id": "agent-patterns",
+  "topic": "AI Agent Design Patterns",
   "category": "Advanced",
   "keywords": ["agent", "architecture", "react", "reflection", "planning", "tool-calling", "patterns"],
   "summary": "Design patterns for building AI agents including ReAct, reflection, planning, and multi-step reasoning",
@@ -54,10 +54,6 @@
       {
         "title": "Agent Factory: Design Patterns for Agentic AI (Microsoft Azure)",
         "url": "https://azure.microsoft.com/en-us/blog/agent-factory-the-new-era-of-agentic-ai-common-use-cases-and-design-patterns/"
-      },
-      {
-        "title": "Implementing ReAct Agentic Pattern From Scratch",
-        "url": "https://www.dailydoseofds.com/ai-agents-crash-course-part-10-with-implementation/"
       }
     ]
   }

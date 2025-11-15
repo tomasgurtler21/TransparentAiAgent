@@ -1,0 +1,62 @@
+{
+  "id": "agent-software-architecture",
+  "topic": "AI Agent Software Architecture",
+  "category": "Development",
+  "keywords": ["agent", "software", "architecture", "components", "llm", "ui", "tools", "orchestrator"],
+  "summary": "Core software components needed to build AI agents: LLM provider, UI/interface, tool system, and orchestrator",
+  "knowledgeGapLikelihood": "medium",
+  "lastUpdated": "2025-11-15",
+  "lastChecked": null,
+  "content": {
+    "overview": "Building an AI agent requires four fundamental software components: (1) LLM Provider (the reasoning engine), (2) UI/Interface (user interaction layer), (3) Tool System (external capabilities), and (4) Orchestrator (coordinates components and manages conversation flow). Unlike design patterns (ReAct, Reflection), this is the concrete SOFTWARE architecture - the components you must implement or integrate to build a functioning agent.",
+    "keyPoints": [
+      "LLM Provider: Core reasoning engine - handles prompt processing, response generation, streaming. Must support: API integration, token management, model selection, error handling",
+      "UI/Interface Layer: User interaction - can be CLI, web UI (Blazor, React), API endpoints, or chat interface. Handles: user input, response display, conversation history, real-time streaming",
+      "Tool System: External capabilities - enables agent to act beyond text generation. Includes: tool registration, parameter validation, execution, result handling. Common tools: file access, web search, API calls, database queries",
+      "Orchestrator: Coordinates all components - manages conversation flow, routes requests to LLM, executes tool calls, maintains state, handles errors. The 'brain' that connects UI → LLM → Tools",
+      "CRITICAL: Orchestrator is the glue - it implements the agent loop: receive user input → send to LLM → parse tool calls → execute tools → send results to LLM → return to user",
+      "State Management: Conversation history, tool call logs, user preferences - must persist across sessions and handle concurrent conversations",
+      "Configuration: API keys, model selection, tool permissions, UI settings - externalize via environment variables or config files (NEVER hardcode)",
+      "Error Handling: LLM failures, tool errors, network issues - implement retry logic, graceful degradation, user-friendly error messages"
+    ],
+    "examples": [
+      {
+        "title": "Basic Agent Architecture Stack",
+        "code": "// Component layers:\n\n[UI Layer] → Blazor/React/CLI\n     ↓\n[Orchestrator] → AgentOrchestrator\n     ↓ (prompts)        ↓ (tool calls)\n[LLM Provider]    [Tool System]\n     ↓ (responses)      ↓ (results)\n[Orchestrator] ← combines results\n     ↓\n[UI Layer] ← displays to user",
+        "explanation": "The orchestrator sits between UI and execution layers, routing requests and coordinating responses"
+      },
+      {
+        "title": "Orchestrator Core Loop",
+        "code": "// Simplified orchestrator logic:\nwhile (!conversationComplete) {\n  var userInput = await UI.GetInput();\n  var llmResponse = await LLM.SendPrompt(userInput, history);\n  \n  if (llmResponse.HasToolCalls) {\n    var toolResults = await ToolSystem.Execute(llmResponse.ToolCalls);\n    llmResponse = await LLM.SendToolResults(toolResults);\n  }\n  \n  await UI.DisplayResponse(llmResponse);\n  history.Add(userInput, llmResponse);\n}",
+        "explanation": "Orchestrator manages the conversation loop, delegating to LLM and tools as needed"
+      }
+    ],
+    "warnings": [
+      "NEVER tightly couple components - use abstraction layers (interfaces) so you can swap LLM providers, UIs, or tools without rewriting the orchestrator",
+      "State management is critical - losing conversation history mid-session breaks agent continuity and user experience",
+      "Tool execution can be dangerous - ALWAYS validate inputs, implement permissions, sandbox execution for untrusted tools",
+      "Streaming responses improve UX but complicate error handling - tools can't be executed until LLM finishes streaming, requires careful buffering",
+      "Configuration sprawl - as agents grow, config becomes complex. Use structured config (JSON/YAML) with validation, not scattered env vars",
+      "Cost tracking - LLM API calls accumulate fast. Log token usage, implement budgets, cache repeated queries where safe"
+    ],
+    "bestPractices": [
+      "Design for modularity: Define clear interfaces (ILLMProvider, IToolSystem, IOrchestrator) to enable component swapping",
+      "Implement transparency: Log all LLM prompts, responses, tool calls, and results - critical for debugging and user trust",
+      "Handle failures gracefully: LLM timeouts, tool errors, network issues - implement retry logic, fallbacks, user-friendly error messages",
+      "Persist conversation state: Store history in database or session storage - enables conversation resumption, audit trails, analytics",
+      "Configuration hierarchy: Environment variables (secrets) → config files (settings) → defaults (fallbacks) - NEVER commit secrets",
+      "Start simple, add complexity incrementally: Basic orchestrator → add streaming → add multi-agent → add reflection patterns"
+    ],
+    "relatedTopics": ["agent-patterns", "tools", "mcp"],
+    "references": [
+      {
+        "title": "Building AI Agents with LangChain (architecture guide)",
+        "url": "https://python.langchain.com/docs/tutorials/agents/"
+      },
+      {
+        "title": "Microsoft Semantic Kernel - Agent Architecture",
+        "url": "https://learn.microsoft.com/en-us/semantic-kernel/overview/"
+      }
+    ]
+  }
+}
