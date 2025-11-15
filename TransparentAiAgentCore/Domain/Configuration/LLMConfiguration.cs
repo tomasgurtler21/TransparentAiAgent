@@ -10,6 +10,7 @@ public class LLMConfiguration
     public int MaxTokens { get; set; } = 4096;
 
     public AzureOpenAIConfiguration? AzureOpenAI { get; set; }
+    public OpenAIConfiguration? OpenAI { get; set; }
     public AnthropicConfiguration? Anthropic { get; set; }
 
     public void Validate()
@@ -32,6 +33,12 @@ public class LLMConfiguration
             if (AzureOpenAI == null)
                 throw new ConfigurationException("AzureOpenAI configuration is required when Provider is AzureOpenAI");
             AzureOpenAI.Validate();
+        }
+        else if (Provider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
+        {
+            if (OpenAI == null)
+                throw new ConfigurationException("OpenAI configuration is required when Provider is OpenAI");
+            OpenAI.Validate();
         }
         else if (Provider.Equals("Anthropic", StringComparison.OrdinalIgnoreCase))
         {
