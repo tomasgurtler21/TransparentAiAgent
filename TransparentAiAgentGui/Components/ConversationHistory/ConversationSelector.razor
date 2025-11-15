@@ -69,11 +69,17 @@
         await LoadConversationListAsync();
 
         // Initialize current conversation ID and name
-        CurrentConversationId = ConversationService.CurrentConversationId;
         var messages = ConversationManager.GetAllMessages();
         if (messages != null && messages.Any())
         {
+            CurrentConversationId = ConversationService.CurrentConversationId;
             CurrentConversationName = Conversation.GenerateName(messages);
+        }
+        else
+        {
+            // If no messages, treat as a new conversation
+            CurrentConversationId = null;
+            CurrentConversationName = null;
         }
 
         // Subscribe to conversation changes
@@ -160,15 +166,16 @@
     private void OnMessagesChanged(object? sender, EventArgs e)
     {
         // Update current conversation ID and name when messages change
-        CurrentConversationId = ConversationService.CurrentConversationId;
-
         var messages = ConversationManager.GetAllMessages();
         if (messages != null && messages.Any())
         {
+            CurrentConversationId = ConversationService.CurrentConversationId;
             CurrentConversationName = Conversation.GenerateName(messages);
         }
         else
         {
+            // If no messages, treat as a new conversation
+            CurrentConversationId = null;
             CurrentConversationName = null;
         }
 
