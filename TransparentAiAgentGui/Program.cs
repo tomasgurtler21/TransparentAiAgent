@@ -260,6 +260,9 @@ if (isLLMConfigured)
         builder.Services.AddSingleton<TransparentAiAgentCore.Domain.LLM.ILLMProviderManager, TransparentAiAgentCore.Infrastructure.LLM.LLMProviderManager>();
         Console.WriteLine($"✓ Multi-provider system enabled with {llmConfig.Providers.Count} provider(s)");
 
+        // Register ProviderStateService (depends on ILLMProviderManager)
+        builder.Services.AddScoped<IProviderStateService, ProviderStateService>();
+
         // Also register ILLMProvider for backward compatibility (delegates to active provider)
         builder.Services.AddSingleton<ILLMProvider>(sp =>
         {
@@ -315,7 +318,7 @@ else
 
 // Register UI services
 builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
-builder.Services.AddScoped<IProviderStateService, ProviderStateService>();
+// Note: IProviderStateService is registered conditionally with ILLMProviderManager (see line ~264)
 
 // Register UI Control services (Phase 9 - Teaching Mode)
 builder.Services.AddSingleton<IUIControlService, UIControlService>();  // Singleton to share across all render contexts
