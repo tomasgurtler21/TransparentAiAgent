@@ -26,6 +26,8 @@ public class ConfigurationAuthenticationProvider : IAuthenticationProvider
         {
             "azureopenai" => _configuration.LLM.AzureOpenAI?.ApiKey
                 ?? throw new ConfigurationException("Azure OpenAI API key not configured"),
+            "openai" => _configuration.LLM.OpenAI?.ApiKey
+                ?? throw new ConfigurationException("OpenAI API key not configured"),
             "anthropic" => _configuration.LLM.Anthropic?.ApiKey
                 ?? throw new ConfigurationException("Anthropic API key not configured"),
             _ => throw new ArgumentException($"Unknown service: {serviceName}", nameof(serviceName))
@@ -41,6 +43,8 @@ public class ConfigurationAuthenticationProvider : IAuthenticationProvider
         {
             "azureopenai" => _configuration.LLM.AzureOpenAI?.Endpoint
                 ?? throw new ConfigurationException("Azure OpenAI endpoint not configured"),
+            "openai" => _configuration.LLM.OpenAI?.Endpoint
+                ?? "https://api.openai.com", // OpenAI has default endpoint
             "anthropic" => "https://api.anthropic.com", // Anthropic has fixed endpoint
             _ => throw new ArgumentException($"Unknown service: {serviceName}", nameof(serviceName))
         };

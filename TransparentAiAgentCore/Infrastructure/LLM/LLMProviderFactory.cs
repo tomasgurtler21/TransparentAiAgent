@@ -39,6 +39,7 @@ public class LLMProviderFactory
         return providerName.ToLowerInvariant() switch
         {
             "azureopenai" => CreateAzureOpenAIProvider(),
+            "openai" => CreateOpenAIProvider(),
             "anthropic" => CreateAnthropicProvider(),
             _ => throw new ConfigurationException($"Unknown LLM provider: {providerName}")
         };
@@ -52,6 +53,18 @@ public class LLMProviderFactory
         return new AzureOpenAIProvider(
             _authProvider,
             _configuration.LLM.AzureOpenAI.DeploymentName,
+            _transparencyService,
+            _configuration);
+    }
+
+    private ILLMProvider CreateOpenAIProvider()
+    {
+        if (_configuration.LLM.OpenAI == null)
+            throw new ConfigurationException("OpenAI configuration is missing");
+
+        return new OpenAIProvider(
+            _authProvider,
+            _configuration.LLM.OpenAI.Model,
             _transparencyService,
             _configuration);
     }
