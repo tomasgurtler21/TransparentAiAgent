@@ -37,6 +37,7 @@ System design and structure
 ### 3. [Concepts](03-concepts/) 💡
 Cross-cutting features and ideas
 - **[Message Hierarchy](03-concepts/message-hierarchy.md)** - Four-tier message architecture (✅ Implemented Phase 6.2)
+- **[Knowledge Library](03-concepts/knowledge-library.md)** - Guardrails for teaching critical concepts (✅ Implemented Phase 9)
 - **[Teaching Mode](03-concepts/teaching-mode/)** - Interactive UI control and teaching
   - [Vision](03-concepts/teaching-mode/vision.md)
   - [Architecture](03-concepts/teaching-mode/architecture.md)
@@ -54,7 +55,7 @@ Detailed component documentation (**✅ Complete - 30 docs**)
 
 ### 5. [Guides](05-guides/) 📖
 Step-by-step how-to documentation
-- [Development](05-guides/development/) - Adding components, providers, testing
+- [Development](05-guides/development/) - Adding components, providers, testing, [knowledge entries](05-guides/development/adding-knowledge-entries.md)
 - [Deployment](05-guides/deployment/) - [Configuration](05-guides/deployment/configuration-guide.md), [Troubleshooting](05-guides/deployment/troubleshooting.md)
 - [Integration](05-guides/integration/) - MCP servers, custom tools, OAuth
 
@@ -98,6 +99,9 @@ Historical and session-specific docs
 
 **Learn about Teaching Mode**
 → [Teaching Mode Vision](03-concepts/teaching-mode/vision.md)
+
+**Learn about Knowledge Library**
+→ [Knowledge Library Concept](03-concepts/knowledge-library.md) and [Adding Knowledge Entries](05-guides/development/adding-knowledge-entries.md)
 
 **Configure the application**
 → [Configuration Guide](05-guides/deployment/configuration-guide.md)
