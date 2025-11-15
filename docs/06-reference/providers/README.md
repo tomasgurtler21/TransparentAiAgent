@@ -39,12 +39,20 @@ Azure OpenAI provider documentation:
 - Authentication guide
 - API reference
 
+### [openai/](openai/)
+OpenAI provider research and documentation:
+- Library analysis and compatibility research
+- Code reusability assessment
+- Implementation recommendations
+- Status: Research complete, implementation pending
+
 ---
 
 ## Quick Links
 
 - [Anthropic API Reference](anthropic/01-api-reference.md)
 - [Azure OpenAI Authentication](azure-openai/authentication.md)
+- [OpenAI Library Analysis](openai/01-LIBRARY-ANALYSIS.md)
 - [LLM Components](../../04-components/llm/README.md)
 
 ---
