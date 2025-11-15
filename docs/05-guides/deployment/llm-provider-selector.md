@@ -183,6 +183,166 @@ Override defaults for specific providers using `Parameters`:
 
 ---
 
+## Reasoning Models (o1, o3, GPT-5)
+
+### What Are Reasoning Models?
+
+Reasoning models are a class of LLMs that use extended internal reasoning processes:
+- **OpenAI**: o1, o1-mini, o3, o3-mini, o3-pro, o4-mini
+- **Azure OpenAI**: GPT-5 series (gpt-5, gpt-5-mini, gpt-5-pro), o1, o3 models
+- **Anthropic**: Extended Thinking mode (different implementation, no restrictions)
+
+### API Restrictions
+
+Reasoning models have **special requirements**:
+- ✅ **MUST set** `IsReasoningModel: true` in provider Parameters
+- ❌ **DO NOT set** `Temperature` in DefaultParameters or ParameterOverrides
+- ❌ **DO NOT set** `TopP` in DefaultParameters or ParameterOverrides
+- ✅ Use `MaxTokens` normally (converted to `max_completion_tokens` internally)
+- ⚠️ Streaming may be limited or unavailable
+
+**Why?** OpenAI's API will reject requests with 400 Bad Request if temperature/top_p are included for reasoning models.
+
+### Configuring Reasoning Models
+
+#### Azure OpenAI o3-mini
+
+```json
+{
+  "azure-o3-mini": {
+    "Type": "AzureOpenAI",
+    "DisplayName": "Azure o3-mini (Reasoning)",
+    "Parameters": {
+      "Endpoint": "https://YOUR-RESOURCE.openai.azure.com/",
+      "DeploymentName": "o3-mini",
+      "ApiKey": "YOUR_API_KEY",
+      "ApiVersion": "2024-02-15-preview",
+      "AuthenticationMode": "ApiKey",
+      "IsReasoningModel": true  // ✅ Required!
+    },
+    "ParameterOverrides": {
+      "Temperature": null,  // ✅ Override default to null
+      "TopP": null          // ✅ Override default to null
+    }
+  }
+}
+```
+
+#### OpenAI o1-preview
+
+```json
+{
+  "openai-o1": {
+    "Type": "OpenAI",
+    "DisplayName": "OpenAI o1-preview (Reasoning)",
+    "Parameters": {
+      "Model": "o1-preview",
+      "ApiKey": "YOUR_API_KEY",
+      "IsReasoningModel": true  // ✅ Required!
+    },
+    "ParameterOverrides": {
+      "Temperature": null,
+      "TopP": null
+    }
+  }
+}
+```
+
+#### Azure OpenAI GPT-5
+
+```json
+{
+  "azure-gpt5": {
+    "Type": "AzureOpenAI",
+    "DisplayName": "Azure GPT-5 (Reasoning)",
+    "Parameters": {
+      "Endpoint": "https://YOUR-RESOURCE.openai.azure.com/",
+      "DeploymentName": "gpt-5",
+      "ApiKey": "YOUR_API_KEY",
+      "ApiVersion": "2024-02-15-preview",
+      "AuthenticationMode": "ApiKey",
+      "IsReasoningModel": true
+    },
+    "ParameterOverrides": {
+      "Temperature": null,
+      "TopP": null
+    }
+  }
+}
+```
+
+### Anthropic Extended Thinking
+
+**Note**: Anthropic's Extended Thinking mode does **NOT** have the same restrictions as OpenAI reasoning models. You **CAN** use Temperature and TopP with Extended Thinking.
+
+```json
+{
+  "claude-thinking": {
+    "Type": "Anthropic",
+    "DisplayName": "Claude with Extended Thinking",
+    "Parameters": {
+      "Model": "claude-sonnet-4-5-20251001",
+      "ApiKey": "YOUR_API_KEY",
+      "ExtendedThinking": {
+        "Enabled": true,
+        "BudgetTokens": 10000
+      }
+    }
+    // ℹ️ No IsReasoningModel needed for Anthropic
+    // ℹ️ Temperature/TopP work normally with Extended Thinking
+  }
+}
+```
+
+### Troubleshooting Reasoning Models
+
+**Error: "400 Bad Request" when using o1/o3 models**
+
+**Cause**: Temperature or TopP sent to reasoning model API
+
+**Solution**:
+1. Add `"IsReasoningModel": true` to provider Parameters
+2. Override Temperature/TopP to `null` in ParameterOverrides
+3. Remove Temperature/TopP from DefaultParameters (if you only use reasoning models)
+
+**Example Configuration with Both Model Types**:
+
+```json
+{
+  "DefaultParameters": {
+    "Temperature": 0.7,  // Used by non-reasoning models
+    "TopP": 1.0,
+    "MaxTokens": 4096
+  },
+  "Providers": {
+    "gpt-4o": {
+      "Type": "OpenAI",
+      "DisplayName": "GPT-4o (Standard)",
+      "Parameters": {
+        "Model": "gpt-4o",
+        "ApiKey": "YOUR_KEY"
+      }
+      // Uses Temperature/TopP from defaults
+    },
+    "o1-preview": {
+      "Type": "OpenAI",
+      "DisplayName": "o1-preview (Reasoning)",
+      "Parameters": {
+        "Model": "o1-preview",
+        "ApiKey": "YOUR_KEY",
+        "IsReasoningModel": true
+      },
+      "ParameterOverrides": {
+        "Temperature": null,  // Override default
+        "TopP": null          // Override default
+      }
+    }
+  }
+}
+```
+
+---
+
 ## Configuration Examples
 
 ### Example 1: Multiple Claude Models

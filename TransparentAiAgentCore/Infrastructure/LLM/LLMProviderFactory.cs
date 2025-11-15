@@ -124,6 +124,15 @@ public class LLMProviderFactory : ILLMProviderFactory
             _ => AuthenticationMode.ApiKey
         };
 
+        // Extract IsReasoningModel parameter (critical for o1/o3/GPT-5 models)
+        var isReasoningModel = false;
+        if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
+        {
+            // Support both boolean and string representations (from JSON deserialization)
+            isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+                              bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+        }
+
         // Create a temporary AppConfiguration with AzureOpenAI config
         var tempConfig = new AppConfiguration
         {
@@ -136,7 +145,8 @@ public class LLMProviderFactory : ILLMProviderFactory
                     DeploymentName = deploymentName,
                     ApiKey = apiKey,
                     ApiVersion = apiVersion,
-                    AuthenticationMode = authenticationMode
+                    AuthenticationMode = authenticationMode,
+                    IsReasoningModel = isReasoningModel  // ✅ Set from config
                 }
             }
         };
@@ -155,6 +165,15 @@ public class LLMProviderFactory : ILLMProviderFactory
         var model = GetRequiredStringParameter(config, "Model", "OpenAI");
         var apiKey = GetRequiredStringParameter(config, "ApiKey", "OpenAI");
 
+        // Extract IsReasoningModel parameter (critical for o1/o3/o4-mini models)
+        var isReasoningModel = false;
+        if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
+        {
+            // Support both boolean and string representations (from JSON deserialization)
+            isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+                              bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+        }
+
         // Create a temporary AppConfiguration with OpenAI config
         var tempConfig = new AppConfiguration
         {
@@ -164,7 +183,8 @@ public class LLMProviderFactory : ILLMProviderFactory
                 OpenAI = new OpenAIConfiguration
                 {
                     ApiKey = apiKey,
-                    Model = model
+                    Model = model,
+                    IsReasoningModel = isReasoningModel  // ✅ Set from config
                 }
             }
         };

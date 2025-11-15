@@ -22,6 +22,15 @@ public class OpenAIConfiguration
     /// </summary>
     public string? Endpoint { get; set; } = null;
 
+    /// <summary>
+    /// Indicates whether the model is a reasoning model (o1, o3, o4-mini, etc.).
+    /// Reasoning models require max_completion_tokens instead of max_tokens
+    /// and do not support temperature/top_p parameters.
+    /// Set to true for: o1, o1-mini, o3, o3-mini, o3-pro, o4-mini.
+    /// Default is false (traditional models like GPT-4, GPT-4o).
+    /// </summary>
+    public bool IsReasoningModel { get; set; } = false;
+
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(ApiKey))
