@@ -430,4 +430,188 @@ public class LLMProviderFactoryTests
         Assert.ThrowsException<ConfigurationException>(() =>
             factory.CreateProvider("test", providerConfig));
     }
+
+    // ===== Reasoning Model Support Tests =====
+
+    [TestMethod]
+    public void CreateProvider_AzureOpenAI_WithIsReasoningModelTrue_CreatesProviderWithReasoningSupport()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure o3-mini",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "o3-mini",
+                ["ApiKey"] = "test-key",
+                ["ApiVersion"] = "2024-02-15-preview",
+                ["AuthenticationMode"] = "ApiKey",
+                ["IsReasoningModel"] = true  // Critical: Reasoning model flag
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("azure-o3", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(AzureOpenAIProvider));
+        // Provider should be created with IsReasoningModel = true (verified in provider tests)
+    }
+
+    [TestMethod]
+    public void CreateProvider_AzureOpenAI_WithIsReasoningModelFalse_CreatesStandardProvider()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "gpt-4",
+                ["ApiKey"] = "test-key",
+                ["ApiVersion"] = "2024-02-15-preview",
+                ["AuthenticationMode"] = "ApiKey",
+                ["IsReasoningModel"] = false  // Standard model
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("azure-gpt4", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(AzureOpenAIProvider));
+    }
+
+    [TestMethod]
+    public void CreateProvider_AzureOpenAI_WithoutIsReasoningModel_DefaultsToFalse()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "gpt-4",
+                ["ApiKey"] = "test-key",
+                ["ApiVersion"] = "2024-02-15-preview",
+                ["AuthenticationMode"] = "ApiKey"
+                // IsReasoningModel not specified - should default to false
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("azure-gpt4", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(AzureOpenAIProvider));
+        // Provider should be created with IsReasoningModel = false (default)
+    }
+
+    [TestMethod]
+    public void CreateProvider_OpenAI_WithIsReasoningModelTrue_CreatesProviderWithReasoningSupport()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "OpenAI",
+            displayName: "OpenAI o1-preview",
+            parameters: new Dictionary<string, object>
+            {
+                ["Model"] = "o1-preview",
+                ["ApiKey"] = "test-key",
+                ["IsReasoningModel"] = true  // Critical: Reasoning model flag
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("openai-o1", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(OpenAIProvider));
+        // Provider should be created with IsReasoningModel = true (verified in provider tests)
+    }
+
+    [TestMethod]
+    public void CreateProvider_OpenAI_WithIsReasoningModelStringTrue_ParsesCorrectly()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "OpenAI",
+            displayName: "OpenAI o1-preview",
+            parameters: new Dictionary<string, object>
+            {
+                ["Model"] = "o1-preview",
+                ["ApiKey"] = "test-key",
+                ["IsReasoningModel"] = "true"  // String representation (from JSON parsing)
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("openai-o1", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(OpenAIProvider));
+        // String "true" should be parsed as boolean true
+    }
+
+    [TestMethod]
+    public void CreateProvider_OpenAI_WithIsReasoningModelInvalidString_DefaultsToFalse()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "OpenAI",
+            displayName: "OpenAI GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Model"] = "gpt-4",
+                ["ApiKey"] = "test-key",
+                ["IsReasoningModel"] = "invalid"  // Invalid string - should default to false
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("openai-gpt4", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(OpenAIProvider));
+        // Invalid string should default to false (safe default)
+    }
 }

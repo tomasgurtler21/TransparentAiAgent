@@ -457,15 +457,19 @@ public class AzureOpenAIProvider : ILLMProvider
     {
         var options = new ChatCompletionOptions();
 
-        // Only set Temperature and TopP if they have values
-        if (request.Temperature.HasValue)
+        // ✅ Only set Temperature and TopP for non-reasoning models
+        // Reasoning models (o1, o3, GPT-5 series) do not support these parameters
+        if (!_isReasoningModel)
         {
-            options.Temperature = (float)request.Temperature.Value;
-        }
+            if (request.Temperature.HasValue)
+            {
+                options.Temperature = (float)request.Temperature.Value;
+            }
 
-        if (request.TopP.HasValue)
-        {
-            options.TopP = (float)request.TopP.Value;
+            if (request.TopP.HasValue)
+            {
+                options.TopP = (float)request.TopP.Value;
+            }
         }
 
         // For reasoning models, we'll use protocol method with BinaryContent to avoid SDK bug
@@ -545,9 +549,9 @@ public class AzureOpenAIProvider : ILLMProvider
         }
         requestJson["messages"] = messagesArray;
 
-        // Add parameters
-        requestJson["temperature"] = options.Temperature;
-        requestJson["top_p"] = options.TopP;
+        // ✅ FIX: Do NOT send temperature and top_p for reasoning models
+        // Reasoning models (o1, o3, GPT-5 series) do not support these parameters
+        // API will reject request with 400 Bad Request if these are included
 
         // CRITICAL: Use max_completion_tokens for reasoning models
         requestJson["max_completion_tokens"] = maxTokens;

@@ -24,6 +24,7 @@ public class OpenAIProvider : ILLMProvider
 {
     private readonly ChatClient _chatClient;
     private readonly ITransparencyService _transparencyService;
+    private readonly bool _isReasoningModel;
 
     public string ProviderName => "OpenAI";
 
@@ -41,6 +42,7 @@ public class OpenAIProvider : ILLMProvider
             throw new ArgumentNullException(nameof(appConfig));
 
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
+        _isReasoningModel = appConfig.LLM.OpenAI?.IsReasoningModel ?? false;
 
         var apiKey = authProvider.GetApiKey("OpenAI");
         var openAIConfig = appConfig.LLM.OpenAI;
@@ -71,10 +73,12 @@ public class OpenAIProvider : ILLMProvider
     // Constructor for testing with injected client
     internal OpenAIProvider(
         ChatClient chatClient,
-        ITransparencyService transparencyService)
+        ITransparencyService transparencyService,
+        bool isReasoningModel = false)
     {
         _chatClient = chatClient ?? throw new ArgumentNullException(nameof(chatClient));
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
+        _isReasoningModel = isReasoningModel;
     }
 
     public async Task<LLMResponse> SendRequestAsync(
@@ -290,15 +294,19 @@ public class OpenAIProvider : ILLMProvider
     {
         var options = new ChatCompletionOptions();
 
-        // Only set Temperature and TopP if they have values
-        if (request.Temperature.HasValue)
+        // ✅ Only set Temperature and TopP for non-reasoning models
+        // Reasoning models (o1, o3, o4-mini) do not support these parameters
+        if (!_isReasoningModel)
         {
-            options.Temperature = (float)request.Temperature.Value;
-        }
+            if (request.Temperature.HasValue)
+            {
+                options.Temperature = (float)request.Temperature.Value;
+            }
 
-        if (request.TopP.HasValue)
-        {
-            options.TopP = (float)request.TopP.Value;
+            if (request.TopP.HasValue)
+            {
+                options.TopP = (float)request.TopP.Value;
+            }
         }
 
         options.MaxOutputTokenCount = request.MaxTokens;
