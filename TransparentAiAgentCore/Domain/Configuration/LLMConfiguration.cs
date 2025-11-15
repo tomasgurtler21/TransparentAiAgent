@@ -4,6 +4,12 @@ namespace TransparentAiAgentCore.Domain.Configuration;
 
 public class LLMConfiguration
 {
+    // New multi-provider properties
+    public string? ActiveProvider { get; set; }
+    public ProviderParameters? DefaultParameters { get; set; }
+    public Dictionary<string, ProviderConfig>? Providers { get; set; }
+
+    // Existing properties (kept for backward compatibility during transition)
     public string Provider { get; set; } = "AzureOpenAI";
     public double? Temperature { get; set; }
     public double? TopP { get; set; }
@@ -15,6 +21,34 @@ public class LLMConfiguration
 
     public void Validate()
     {
+        // Check if using new multi-provider structure
+        if (Providers != null && Providers.Count > 0)
+        {
+            // Validate new structure
+            if (string.IsNullOrWhiteSpace(ActiveProvider))
+                throw new ConfigurationException("ActiveProvider cannot be null or whitespace when using multi-provider configuration");
+
+            if (!Providers.ContainsKey(ActiveProvider))
+                throw new ConfigurationException($"ActiveProvider '{ActiveProvider}' not found in Providers dictionary");
+
+            // Validate default parameters if present
+            if (DefaultParameters != null)
+            {
+                if (DefaultParameters.Temperature.HasValue && (DefaultParameters.Temperature.Value < 0 || DefaultParameters.Temperature.Value > 2))
+                    throw new ConfigurationException("DefaultParameters Temperature must be between 0 and 2");
+
+                if (DefaultParameters.TopP.HasValue && (DefaultParameters.TopP.Value < 0 || DefaultParameters.TopP.Value > 1))
+                    throw new ConfigurationException("DefaultParameters TopP must be between 0 and 1");
+
+                if (DefaultParameters.MaxTokens.HasValue && DefaultParameters.MaxTokens.Value <= 0)
+                    throw new ConfigurationException("DefaultParameters MaxTokens must be greater than 0");
+            }
+
+            // Note: ProviderConfig validation is done by ProviderConfigValidator
+            return;
+        }
+
+        // Validate old structure (backward compatibility)
         if (string.IsNullOrWhiteSpace(Provider))
             throw new ConfigurationException("Provider cannot be null or whitespace");
 

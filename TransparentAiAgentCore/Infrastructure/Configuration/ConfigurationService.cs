@@ -189,4 +189,36 @@ public class ConfigurationService : IConfigurationService
 
         return _currentConfiguration;
     }
+
+    /// <summary>
+    /// Updates the active LLM provider.
+    /// </summary>
+    /// <param name="providerName">The name of the provider to activate.</param>
+    /// <param name="filePath">Optional file path to save the configuration. If not specified, uses default path.</param>
+    /// <returns>The updated configuration.</returns>
+    public async Task<AppConfiguration> UpdateActiveProviderAsync(string providerName, string? filePath = null)
+    {
+        // Validate parameter
+        if (string.IsNullOrWhiteSpace(providerName))
+            throw new ArgumentException("Provider name cannot be null or whitespace", nameof(providerName));
+
+        // Verify provider exists in configuration
+        if (_currentConfiguration.LLM.Providers == null || _currentConfiguration.LLM.Providers.Count == 0)
+            throw new ConfigurationException("No providers configured in LLM configuration");
+
+        if (!_currentConfiguration.LLM.Providers.ContainsKey(providerName))
+            throw new ConfigurationException($"Provider '{providerName}' not found in configured providers");
+
+        // Update in-memory configuration
+        _currentConfiguration.LLM.ActiveProvider = providerName;
+
+        // Validate the updated configuration
+        _currentConfiguration.Validate();
+
+        // Save to file
+        var targetPath = filePath ?? _defaultConfigPath;
+        await Task.Run(() => SaveConfiguration(_currentConfiguration, targetPath));
+
+        return _currentConfiguration;
+    }
 }

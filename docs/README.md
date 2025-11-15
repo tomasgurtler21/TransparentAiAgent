@@ -106,6 +106,9 @@ Historical and session-specific docs
 **Configure the application**
 → [Configuration Guide](05-guides/deployment/configuration-guide.md)
 
+**Configure multiple LLM providers**
+→ [LLM Provider Selector Guide](05-guides/deployment/llm-provider-selector.md)
+
 **Understand a component**
 → [Components](04-components/)
 

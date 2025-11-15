@@ -247,4 +247,127 @@ public class ConfigurationServiceTests
         await Assert.ThrowsExceptionAsync<ArgumentOutOfRangeException>(
             () => _service.UpdateLLMParametersAsync(0.7, 1000, 1.5));
     }
+
+    // ===== Step 6: Configuration Persistence Tests =====
+
+    [TestMethod]
+    public async Task UpdateActiveProviderAsync_ValidProvider_UpdatesConfiguration()
+    {
+        // Arrange
+        var testFilePath = Path.GetTempFileName();
+
+        // Set up configuration with multiple providers
+        var config = CreateMultiProviderConfiguration();
+        _service.UpdateConfiguration(config);
+
+        try
+        {
+            // Act
+            var updatedConfig = await _service.UpdateActiveProviderAsync("azure-gpt4", testFilePath);
+
+            // Assert
+            Assert.IsNotNull(updatedConfig);
+            Assert.AreEqual("azure-gpt4", updatedConfig.LLM.ActiveProvider);
+            Assert.AreEqual("azure-gpt4", _service.GetConfiguration().LLM.ActiveProvider);
+
+            // Verify it was saved to file
+            Assert.IsTrue(File.Exists(testFilePath));
+        }
+        finally
+        {
+            // Cleanup
+            if (File.Exists(testFilePath))
+                File.Delete(testFilePath);
+        }
+    }
+
+    [TestMethod]
+    public async Task UpdateActiveProviderAsync_NullProviderName_ThrowsArgumentException()
+    {
+        await Assert.ThrowsExceptionAsync<ArgumentException>(
+            () => _service.UpdateActiveProviderAsync(null!));
+    }
+
+    [TestMethod]
+    public async Task UpdateActiveProviderAsync_EmptyProviderName_ThrowsArgumentException()
+    {
+        await Assert.ThrowsExceptionAsync<ArgumentException>(
+            () => _service.UpdateActiveProviderAsync(string.Empty));
+    }
+
+    [TestMethod]
+    public async Task UpdateActiveProviderAsync_WhitespaceProviderName_ThrowsArgumentException()
+    {
+        await Assert.ThrowsExceptionAsync<ArgumentException>(
+            () => _service.UpdateActiveProviderAsync("   "));
+    }
+
+    [TestMethod]
+    public async Task UpdateActiveProviderAsync_NonexistentProvider_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = CreateMultiProviderConfiguration();
+        _service.UpdateConfiguration(config);
+
+        // Act & Assert
+        await Assert.ThrowsExceptionAsync<ConfigurationException>(
+            () => _service.UpdateActiveProviderAsync("nonexistent-provider"));
+    }
+
+    [TestMethod]
+    public async Task UpdateActiveProviderAsync_NoProvidersConfigured_ThrowsConfigurationException()
+    {
+        // Arrange - configuration with empty Providers dictionary should fail validation
+        var config = CreateMultiProviderConfiguration();
+        config.LLM.Providers = new Dictionary<string, ProviderConfig>(); // Empty providers dictionary
+
+        // Act & Assert - should throw during UpdateConfiguration (validation failure)
+        Assert.ThrowsException<ConfigurationException>(() =>
+            _service.UpdateConfiguration(config));
+    }
+
+    private AppConfiguration CreateMultiProviderConfiguration()
+    {
+        return new AppConfiguration
+        {
+            Agent = new AgentConfiguration
+            {
+                SystemPrompt = "Test system prompt",
+                ContextWindowSize = 20
+            },
+            LLM = new LLMConfiguration
+            {
+                ActiveProvider = "claude-fast",
+                DefaultParameters = new ProviderParameters(0.7, 1.0, 4096),
+                Providers = new Dictionary<string, ProviderConfig>
+                {
+                    ["claude-fast"] = new ProviderConfig(
+                        type: "Anthropic",
+                        displayName: "Claude Fast",
+                        parameters: new Dictionary<string, object>
+                        {
+                            ["Model"] = "claude-haiku-4-5-20251001",
+                            ["ApiKey"] = "sk-ant-test-key"
+                        }
+                    ),
+                    ["azure-gpt4"] = new ProviderConfig(
+                        type: "AzureOpenAI",
+                        displayName: "Azure GPT-4",
+                        parameters: new Dictionary<string, object>
+                        {
+                            ["Endpoint"] = "https://test.openai.azure.com/",
+                            ["DeploymentName"] = "gpt-4",
+                            ["ApiKey"] = "test-key",
+                            ["ApiVersion"] = "2024-02-15-preview",
+                            ["AuthenticationMode"] = "ApiKey"
+                        }
+                    )
+                }
+            },
+            MCP = new MCPConfiguration
+            {
+                AutoDiscoverTools = true
+            }
+        };
+    }
 }

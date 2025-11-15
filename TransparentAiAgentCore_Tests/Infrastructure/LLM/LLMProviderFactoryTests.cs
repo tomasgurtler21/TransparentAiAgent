@@ -275,4 +275,159 @@ public class LLMProviderFactoryTests
             }
         };
     }
+
+    // ===== Step 5: Factory Refactoring Tests =====
+
+    [TestMethod]
+    public void CreateProvider_WithProviderConfig_Anthropic_ReturnsAnthropicProvider()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "Anthropic",
+            displayName: "Claude Fast",
+            parameters: new Dictionary<string, object>
+            {
+                ["Model"] = "claude-haiku-4-5-20251001",
+                ["ApiKey"] = "sk-ant-test-key"
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("claude-fast", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(AnthropicProvider));
+        Assert.AreEqual("Anthropic", provider.ProviderName);
+    }
+
+    [TestMethod]
+    public void CreateProvider_WithProviderConfig_AzureOpenAI_ReturnsAzureOpenAIProvider()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "gpt-4",
+                ["ApiKey"] = "test-azure-key",
+                ["ApiVersion"] = "2024-02-15-preview",
+                ["AuthenticationMode"] = "ApiKey"
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("azure-gpt4", providerConfig);
+
+        // Assert
+        Assert.IsNotNull(provider);
+        Assert.IsInstanceOfType(provider, typeof(AzureOpenAIProvider));
+        Assert.AreEqual("AzureOpenAI", provider.ProviderName);
+    }
+
+    [TestMethod]
+    public void CreateProvider_WithProviderConfig_CaseInsensitive_ReturnsCorrectProvider()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "anthropic", // lowercase
+            displayName: "Claude",
+            parameters: new Dictionary<string, object>
+            {
+                ["Model"] = "claude-haiku-4-5-20251001",
+                ["ApiKey"] = "sk-ant-test-key"
+            }
+        );
+
+        // Act
+        var provider = factory.CreateProvider("test-config", providerConfig);
+
+        // Assert
+        Assert.IsInstanceOfType(provider, typeof(AnthropicProvider));
+    }
+
+    [TestMethod]
+    public void CreateProvider_WithProviderConfig_UnknownType_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "UnknownProvider",
+            displayName: "Unknown",
+            parameters: new Dictionary<string, object>()
+        );
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() =>
+            factory.CreateProvider("unknown", providerConfig));
+    }
+
+    [TestMethod]
+    public void CreateProvider_WithProviderConfig_MissingApiKey_ThrowsException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "Anthropic",
+            displayName: "Claude",
+            parameters: new Dictionary<string, object>
+            {
+                ["Model"] = "claude-haiku-4-5-20251001"
+                // ApiKey missing
+            }
+        );
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() =>
+            factory.CreateProvider("test", providerConfig));
+    }
+
+    [TestMethod]
+    public void CreateProvider_WithProviderConfig_MissingModel_ThrowsException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var authProvider = new ConfigurationAuthenticationProvider(config);
+        var transparencyService = new TransparencyService();
+        var factory = new LLMProviderFactory(authProvider, transparencyService, config);
+
+        var providerConfig = new ProviderConfig(
+            type: "Anthropic",
+            displayName: "Claude",
+            parameters: new Dictionary<string, object>
+            {
+                ["ApiKey"] = "sk-ant-test-key"
+                // Model missing
+            }
+        );
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() =>
+            factory.CreateProvider("test", providerConfig));
+    }
 }

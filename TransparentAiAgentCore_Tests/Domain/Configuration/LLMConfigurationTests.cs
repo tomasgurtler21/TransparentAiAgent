@@ -190,4 +190,77 @@ public class LLMConfigurationTests
         // Act & Assert - Should not throw
         config.Validate();
     }
+
+    // New tests for multi-provider configuration
+
+    [TestMethod]
+    public void LLMConfiguration_MultipleProviders_LoadsSuccessfully()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "claude-fast",
+            DefaultParameters = new ProviderParameters(0.7, 1.0, 4096),
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["claude-fast"] = new ProviderConfig("Anthropic", "Claude Fast", new Dictionary<string, object>()),
+                ["azure-gpt4"] = new ProviderConfig("AzureOpenAI", "GPT-4 Azure", new Dictionary<string, object>())
+            }
+        };
+
+        // Assert
+        Assert.AreEqual("claude-fast", config.ActiveProvider);
+        Assert.AreEqual(2, config.Providers.Count);
+        Assert.IsTrue(config.Providers.ContainsKey("claude-fast"));
+        Assert.IsTrue(config.Providers.ContainsKey("azure-gpt4"));
+    }
+
+    [TestMethod]
+    public void LLMConfiguration_DefaultParameters_SetsCorrectly()
+    {
+        // Arrange
+        var defaultParams = new ProviderParameters(0.7, 1.0, 4096);
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            DefaultParameters = defaultParams,
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            }
+        };
+
+        // Assert
+        Assert.IsNotNull(config.DefaultParameters);
+        Assert.AreEqual(0.7, config.DefaultParameters.Temperature);
+        Assert.AreEqual(1.0, config.DefaultParameters.TopP);
+        Assert.AreEqual(4096, config.DefaultParameters.MaxTokens);
+    }
+
+    [TestMethod]
+    public void LLMConfiguration_NullProviders_AllowsNullForBackwardCompatibility()
+    {
+        // Arrange & Act
+        var config = new LLMConfiguration
+        {
+            Providers = null
+        };
+
+        // Assert - Should not throw, allows null for backward compatibility
+        Assert.IsNull(config.Providers);
+    }
+
+    [TestMethod]
+    public void LLMConfiguration_EmptyProviders_AllowsEmptyDictionary()
+    {
+        // Arrange & Act
+        var config = new LLMConfiguration
+        {
+            Providers = new Dictionary<string, ProviderConfig>()
+        };
+
+        // Assert
+        Assert.IsNotNull(config.Providers);
+        Assert.AreEqual(0, config.Providers.Count);
+    }
 }

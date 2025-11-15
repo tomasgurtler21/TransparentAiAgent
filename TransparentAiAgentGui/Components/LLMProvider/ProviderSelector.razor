@@ -1,0 +1,117 @@
+@using TransparentAiAgentCore.Domain.Configuration
+@using TransparentAiAgentGui.Services
+@inject IProviderStateService ProviderState
+@implements IDisposable
+
+<div class="provider-selector">
+    <div class="selector-controls">
+        <label for="provider-dropdown" class="provider-label">LLM Provider:</label>
+        <select id="provider-dropdown"
+                class="provider-dropdown"
+                @bind="SelectedProvider"
+                @bind:after="OnProviderChangedAsync"
+                disabled="@IsChanging">
+            @if (AvailableProviders != null)
+            {
+                @foreach (var provider in AvailableProviders)
+                {
+                    <option value="@provider.ConfigName" selected="@provider.IsActive">
+                        @provider.DisplayName (@provider.ProviderType - @provider.ModelName)
+                    </option>
+                }
+            }
+            else
+            {
+                <option value="">Loading...</option>
+            }
+        </select>
+
+        @if (IsChanging)
+        {
+            <span class="loading-indicator">Switching...</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="error-message">
+            <strong>Error:</strong> @ErrorMessage
+            <button class="error-dismiss" @onclick="ClearError">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ProviderInfo>? AvailableProviders;
+    private string? SelectedProvider;
+    private bool IsChanging;
+    private string? ErrorMessage;
+
+    protected override void OnInitialized()
+    {
+        LoadProviders();
+        ProviderState.ProviderChanged += OnProviderStateChanged;
+    }
+
+    private void LoadProviders()
+    {
+        try
+        {
+            AvailableProviders = ProviderState.GetAvailableProviders().ToList();
+            var currentProvider = ProviderState.GetCurrentProvider();
+            SelectedProvider = currentProvider.ConfigName;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load providers: {ex.Message}";
+        }
+    }
+
+    private async Task OnProviderChangedAsync()
+    {
+        if (string.IsNullOrEmpty(SelectedProvider))
+            return;
+
+        // If same as current, do nothing
+        var currentProvider = ProviderState.GetCurrentProvider();
+        if (SelectedProvider == currentProvider.ConfigName)
+            return;
+
+        try
+        {
+            IsChanging = true;
+            ErrorMessage = null;
+            StateHasChanged();
+
+            await ProviderState.ChangeProviderAsync(SelectedProvider);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to switch provider: {ex.Message}";
+
+            // Revert selection to current provider
+            LoadProviders();
+        }
+        finally
+        {
+            IsChanging = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnProviderStateChanged(object? sender, EventArgs e)
+    {
+        LoadProviders();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ClearError()
+    {
+        ErrorMessage = null;
+    }
+
+    public void Dispose()
+    {
+        ProviderState.ProviderChanged -= OnProviderStateChanged;
+    }
+}

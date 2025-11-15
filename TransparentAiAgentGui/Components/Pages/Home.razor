@@ -3,6 +3,7 @@
 @using TransparentAiAgentGui.Models
 @using TransparentAiAgentGui.Components.Chat
 @using TransparentAiAgentGui.Components.ConversationHistory
+@using TransparentAiAgentGui.Components.LLMProvider
 @using TransparentAiAgentGui.Components.Scenarios
 @using TransparentAiAgentCore.Domain.UIControl
 @inject IConversationUIService ConversationService
@@ -22,7 +23,14 @@
         <button @onclick="HandleClearClick" class="clear-button">Clear Conversation</button>
     </div>
 
-    <ConversationSelector />
+    <div class="selectors-row">
+        <div class="conversation-selector-container">
+            <ConversationSelector />
+        </div>
+        <div class="provider-selector-container">
+            <ProviderSelector />
+        </div>
+    </div>
 
     <MessageList Messages="ConversationService.Messages" IsProcessing="ConversationService.IsProcessing" />
 

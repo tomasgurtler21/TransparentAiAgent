@@ -38,3 +38,31 @@
     border-left: 4px solid #f44336;
     border-radius: 4px;
 }
+
+/* Selectors row - Contains ConversationSelector and ProviderSelector side by side */
+.selectors-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0;
+    margin-bottom: 20px;
+}
+
+.conversation-selector-container {
+    min-width: 0; /* Allow flex item to shrink */
+}
+
+.provider-selector-container {
+    min-width: 350px;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 968px) {
+    .selectors-row {
+        grid-template-columns: 1fr;
+    }
+
+    .provider-selector-container,
+    .conversation-selector-container {
+        min-width: 100%;
+    }
+}

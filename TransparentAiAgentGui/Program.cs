@@ -226,13 +226,57 @@ if (appConfig.Agent.EnableTools)
 // Conditionally register LLM services based on configuration validity
 if (isLLMConfigured)
 {
-    // Full LLM stack with real implementation
-    builder.Services.AddSingleton<LLMProviderFactory>();
-    builder.Services.AddSingleton<ILLMProvider>(sp =>
+    // Register new multi-provider system
+    var llmConfig = appConfig.LLM;
+
+    // Validate all provider configurations
+    var validator = new TransparentAiAgentCore.Infrastructure.Configuration.ProviderConfigValidator();
+    if (llmConfig.Providers != null)
     {
-        var factory = sp.GetRequiredService<LLMProviderFactory>();
-        return factory.CreateProvider();
-    });
+        foreach (var (name, providerConfig) in llmConfig.Providers)
+        {
+            var validationResult = validator.Validate(providerConfig);
+            if (!validationResult.IsValid)
+            {
+                throw new InvalidOperationException(
+                    $"Invalid configuration for provider '{name}': " +
+                    string.Join(", ", validationResult.Errors));
+            }
+        }
+
+        Console.WriteLine($"✓ Validated {llmConfig.Providers.Count} provider configuration(s)");
+    }
+
+    // Register LLM services
+    builder.Services.AddSingleton(llmConfig);
+    builder.Services.AddSingleton<TransparentAiAgentCore.Domain.LLM.ILLMProviderFactory, LLMProviderFactory>();
+    builder.Services.AddSingleton<LLMProviderFactory>(sp =>
+        sp.GetRequiredService<TransparentAiAgentCore.Domain.LLM.ILLMProviderFactory>() as LLMProviderFactory
+        ?? throw new InvalidOperationException("LLMProviderFactory not registered"));
+
+    // Register Provider Manager (new multi-provider system)
+    if (llmConfig.Providers != null && llmConfig.Providers.Count > 0)
+    {
+        builder.Services.AddSingleton<TransparentAiAgentCore.Domain.LLM.ILLMProviderManager, TransparentAiAgentCore.Infrastructure.LLM.LLMProviderManager>();
+        Console.WriteLine($"✓ Multi-provider system enabled with {llmConfig.Providers.Count} provider(s)");
+
+        // Also register ILLMProvider for backward compatibility (delegates to active provider)
+        builder.Services.AddSingleton<ILLMProvider>(sp =>
+        {
+            var manager = sp.GetRequiredService<TransparentAiAgentCore.Domain.LLM.ILLMProviderManager>();
+            return manager.GetActiveProvider();
+        });
+    }
+    else
+    {
+        // Fallback to old single-provider system
+        builder.Services.AddSingleton<ILLMProvider>(sp =>
+        {
+            var factory = sp.GetRequiredService<LLMProviderFactory>();
+            return factory.CreateProvider();
+        });
+    }
+
     // Scoped to support scoped IToolManager and IConversationManager
     builder.Services.AddScoped<IAgentOrchestrator>(sp =>
     {
@@ -252,7 +296,8 @@ if (isLLMConfigured)
             toolMgr);
     });
 
-    Console.WriteLine($"✓ LLM Provider configured: {appConfig.LLM.Provider}");
+    var activeProvider = llmConfig.ActiveProvider ?? llmConfig.Provider ?? "Unknown";
+    Console.WriteLine($"✓ Active LLM Provider: {activeProvider}");
 }
 else
 {
@@ -270,6 +315,7 @@ else
 
 // Register UI services
 builder.Services.AddScoped<IConversationUIService, ConversationUIService>();
+builder.Services.AddScoped<IProviderStateService, ProviderStateService>();
 
 // Register UI Control services (Phase 9 - Teaching Mode)
 builder.Services.AddSingleton<IUIControlService, UIControlService>();  // Singleton to share across all render contexts
