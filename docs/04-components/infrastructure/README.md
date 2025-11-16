@@ -52,6 +52,18 @@ Standardized JSON serialization using System.Text.Json.
 
 ---
 
+### [Long-Term Memory Service](long-term-memory-service.md)
+Manages persistent agent memory across conversation sessions.
+
+**Key Features**:
+- Mode-aware file-based storage
+- Read/update/check memory operations
+- Size limit validation (10,000 chars)
+- UTF-8 encoding support
+- Security (directory traversal protection)
+
+---
+
 ## Related Documentation
 
 - [LLM Providers](../llm/README.md) - LLM integration infrastructure

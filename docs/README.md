@@ -38,6 +38,7 @@ System design and structure
 Cross-cutting features and ideas
 - **[Message Hierarchy](03-concepts/message-hierarchy.md)** - Four-tier message architecture (✅ Implemented Phase 6.2)
 - **[Knowledge Library](03-concepts/knowledge-library.md)** - Guardrails for teaching critical concepts (✅ Implemented Phase 9)
+- **[Long-Term Memory](03-concepts/long-term-memory.md)** - Persistent agent memory across sessions (✅ Implemented Phase 10)
 - **[Teaching Mode](03-concepts/teaching-mode/)** - Interactive UI control and teaching
   - [Vision](03-concepts/teaching-mode/vision.md)
   - [Architecture](03-concepts/teaching-mode/architecture.md)
@@ -57,6 +58,7 @@ Detailed component documentation (**✅ Complete - 30 docs**)
 Step-by-step how-to documentation
 - [Development](05-guides/development/) - Adding components, providers, testing, [knowledge entries](05-guides/development/adding-knowledge-entries.md)
 - [Deployment](05-guides/deployment/) - [Configuration](05-guides/deployment/configuration-guide.md), [Troubleshooting](05-guides/deployment/troubleshooting.md)
+- [Features](05-guides/features/) - [Using Long-Term Memory](05-guides/features/using-long-term-memory.md)
 - [Integration](05-guides/integration/) - MCP servers, custom tools, OAuth
 
 **Note**: TDD workflow covered by `.claude/skills/tdd/` skill
@@ -102,6 +104,9 @@ Historical and session-specific docs
 
 **Learn about Knowledge Library**
 → [Knowledge Library Concept](03-concepts/knowledge-library.md) and [Adding Knowledge Entries](05-guides/development/adding-knowledge-entries.md)
+
+**Learn about Long-Term Memory**
+→ [Long-Term Memory Concept](03-concepts/long-term-memory.md) and [Using Long-Term Memory](05-guides/features/using-long-term-memory.md)
 
 **Configure the application**
 → [Configuration Guide](05-guides/deployment/configuration-guide.md)
