@@ -28,5 +28,11 @@ public enum ToolSourceType
     /// </summary>
     BuiltInKnowledge,
 
+    /// <summary>
+    /// Built-in long-term memory tool
+    /// Used by agents to read and update persistent user memory
+    /// </summary>
+    BuiltInLongTermMemory,
+
     // Future: ExternalAPI, CustomProtocol, etc.
 }

@@ -7,7 +7,7 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 ---
 
 ## LLM response streaming
-- Streaming text is not rendered correctly in UI, it seems like start of each chunk is displayed, maybe triggered by their arrivals?
+- Streaming text is not rendered correctly in UI, it seems like start of each chunk is displayed, maybe triggered by their arrivals? Affects tools as well, whole accumulator and its flush must be reviewed.
 
 ## Built-in tool available in Normal mode
 -- Tools to control UI are meant for Teaching mode only, should not spam Normal mode context

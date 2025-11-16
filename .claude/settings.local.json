@@ -13,7 +13,9 @@
       "Bash(Select-String -Pattern \"(Passed|Failed):\" -Context 0,1)",
       "Bash(findstr:*)",
       "Bash(dir:*)",
-      "Bash(Select-String -Pattern \"ConversationSelector|conversation selector\" -Path CONVERSATION_HISTORY_DESIGN.md -Context 5)"
+      "Bash(Select-String -Pattern \"ConversationSelector|conversation selector\" -Path CONVERSATION_HISTORY_DESIGN.md -Context 5)",
+      "Bash(dotnet list:*)",
+      "Bash(Select-String -Pattern \"(error|Failed|passed)\" -Context 2)"
     ]
   },
   "enableAllProjectMcpServers": true,
