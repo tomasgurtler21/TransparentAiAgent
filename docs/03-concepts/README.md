@@ -60,6 +60,32 @@ MCP-based tool integration and abstraction.
 
 ---
 
+### [Knowledge Library](knowledge-library.md) 📚
+Curated guardrails that guide the teaching agent when explaining critical concepts.
+
+**Key Topics**:
+- Guardrails vs. encyclopedias approach
+- When to use the knowledge library
+- Knowledge gap likelihood
+- Integration with Teaching Mode
+
+**Status**: ✅ Implemented (Phase 9)
+
+---
+
+### [Long-Term Memory](long-term-memory.md) 🧠
+Persistent agent memory that remembers user context, preferences, and background across conversation sessions.
+
+**Key Topics**:
+- Mode-aware memory storage
+- Memory lifecycle and management
+- Privacy considerations and guardrails
+- Use cases and best practices
+
+**Status**: ✅ Implemented (Phase 10)
+
+---
+
 ### Other Concepts (To be created)
 
 The following concept documents will be created as the documentation reorganization continues:
