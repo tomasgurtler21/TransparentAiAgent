@@ -882,35 +882,72 @@ The feature is successful if:
 
 ---
 
-## Questions for User
+## Design Decisions (Resolved)
 
-I've designed a simple, privacy-conscious long-term memory system following the proven architecture patterns. Here are my questions:
+### 1. UI Placement
+**Decision**: Checkbox goes below the conversation selector
+- Consistent location with related conversation controls
+- Always visible and accessible
+- Grouped with conversation management UI
 
-1. **UI Placement**: Where should the "Use long-term memory" checkbox go?
-   - Option A: Above the message input box (always visible)
-   - Option B: In the top navigation bar (less prominent)
-   - Option C: In settings page (more hidden)
+### 2. Conversation End Trigger
+**Decision**: Trigger memory update prompt on:
+- ✅ User clicks "End Conversation" button (renamed from "Clear Conversation")
+- ✅ User switches modes
+- ❌ NOT on browser close (treat as hard termination)
 
-2. **Conversation End Trigger**: What should trigger the "update memory" prompt?
-   - User clicks "New Conversation" / "Clear Chat"?
-   - User switches modes?
-   - User closes browser?
-   - All of the above?
+**Rationale**:
+- Rename "Clear Conversation" to "End Conversation" for clearer UX
+- Browser close would require blocking tab close (poor UX)
+- User closing browser = hard termination, no memory update needed
 
-3. **Initial Memory Template**: Should we create an empty template file with sections when user first enables memory? Or completely empty until first update?
+### 3. View Memory UI
+**Decision**: Create new overlay/modal for memory viewer
+- Markdown rendered display
+- Editable (allow manual editing)
+- Separate from config overlay (config is already crowded)
 
-4. **View Memory Modal**: Should the memory viewer be:
-   - Read-only markdown renderer?
-   - Editable textarea (let user manually edit)?
-   - Raw text display?
+**Note**: User can always edit markdown files directly in `./data/memory/` folder
 
-5. **Integration Scope**: For first release, should we:
-   - Just implement the core tools + service (manual testing)?
-   - Also add the UI checkbox + auto-load/save?
-   - Go all the way with view/clear features?
+### 4. Integration Scope
+**Decision**: Full implementation for v1.0
+- Core tools + service ✅
+- UI checkbox + auto-load/save ✅
+- View/edit/clear features ✅
+- Everything in design except "Future Enhancements" section
 
-6. **Privacy Validation**: Should we implement content scanning for sensitive data (emails, phone numbers) or rely purely on LLM guardrails?
+### 5. Privacy Validation
+**Decision**: Rely on LLM guardrails for v1.0
+- No automatic content scanning initially
+- Tool description provides clear guardrails
+- Size limit enforcement (10K chars)
+- Can add validation in future if needed
 
-7. **Any other concerns or requirements I missed?**
+### 6. Memory Read Tool - Design Discussion
 
-All questions documented here for file-based discussion. Let me know your preferences and I'll create the implementation plan!
+**Question Raised**: Do we need `long_term_memory_read` if memory is auto-injected as system message?
+
+**Analysis**:
+- Memory is injected at conversation start (in system message)
+- When LLM updates memory, it gets the new content back in tool result
+- For Anthropic: system messages re-sent each turn, so updated memory available
+- For OpenAI: we can append updated memory as system message after tool result
+- **Conclusion**: LLM already has memory in context, read tool might be redundant
+
+**Proposed Decision**: Keep the read tool for v1.0, but mark as optional/edge-case
+- **Use cases**:
+  - Very long conversations where system message is far back in context window
+  - Explicit "refresh" if LLM wants to double-check stored memory
+  - Debugging/transparency (visible when LLM checks memory)
+- **Benefits**:
+  - Explicit control for LLM
+  - Doesn't hurt to have it
+  - Can remove in future if proves unnecessary
+- **Alternative**: Could remove entirely and rely only on system message injection
+
+**Status**: Awaiting final decision from user
+
+### 7. Initial Memory Template
+**Decision**: TBD in implementation plan
+- Defer to implementation phase
+- Likely: empty file until first update (simpler)
