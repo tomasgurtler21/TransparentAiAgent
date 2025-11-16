@@ -66,3 +66,73 @@
         min-width: 100%;
     }
 }
+
+/* Memory Control Styles */
+.memory-control {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.memory-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.memory-checkbox input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.memory-checkbox input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.memory-checkbox span {
+    font-weight: 500;
+    color: #333;
+}
+
+.info-icon {
+    cursor: help;
+    opacity: 0.7;
+    font-size: 0.9em;
+    transition: opacity 0.2s;
+}
+
+.info-icon:hover {
+    opacity: 1;
+}
+
+.memory-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    margin-left: 1.5rem;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: #1976d2;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+}
+
+.btn-link:hover {
+    color: #1565c0;
+}
+
+.btn-sm {
+    font-size: 0.875rem;
+}

@@ -29,6 +29,9 @@ using TransparentAiAgentCore.Application.Teaching;
 using TransparentAiAgentCore.Domain.ConversationHistory;
 using TransparentAiAgentCore.Application.ConversationHistory;
 using TransparentAiAgentCore.Infrastructure.ConversationHistory;
+using TransparentAiAgentCore.Domain.Memory;
+using TransparentAiAgentCore.Infrastructure.Memory;
+using TransparentAiAgentCore.Infrastructure.Tools.BuiltInLongTermMemory;
 
 // Force InvariantCulture for the entire application to avoid locale-specific number parsing issues
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
@@ -150,8 +153,11 @@ if (appConfig.Agent.EnableTools)
             // Create Built-in Knowledge Tool Registry (Phase 11)
             var knowledgeRegistry = sp.GetRequiredService<BuiltInKnowledgeToolRegistry>();
 
-            // Create Tool Registry Composite (MCP + UI Control + Knowledge)
-            var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { mcpRegistry, uiControlRegistry, knowledgeRegistry });
+            // Create Built-in Long-Term Memory Tool Registry (Phase 4)
+            var memoryRegistry = sp.GetRequiredService<BuiltInLongTermMemoryToolRegistry>();
+
+            // Create Tool Registry Composite (MCP + UI Control + Knowledge + Memory)
+            var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { mcpRegistry, uiControlRegistry, knowledgeRegistry, memoryRegistry });
 
             // NOTE: Tool discovery will be triggered synchronously AFTER app.Build()
             // to ensure tools are available before accepting requests
@@ -179,14 +185,17 @@ if (appConfig.Agent.EnableTools)
             // Create Knowledge Library Tool Executor (Phase 11) - always available
             var knowledgeExecutor = sp.GetRequiredService<KnowledgeLibraryToolExecutor>();
 
+            // Create Long-Term Memory Tool Executor (Phase 4) - always available
+            var memoryExecutor = sp.GetRequiredService<LongTermMemoryToolExecutor>();
+
             // Get tool usage statistics service
             var statistics = sp.GetRequiredService<IToolUsageStatistics>();
 
             // Get tool schema validator service (Phase 9b - Tool Execution Safety)
             var validator = sp.GetRequiredService<ToolSchemaValidator>();
 
-            // Build list of executors (UI Control + Knowledge always available)
-            var executors = new List<IToolExecutor> { uiControlExecutor, knowledgeExecutor };
+            // Build list of executors (UI Control + Knowledge + Memory always available)
+            var executors = new List<IToolExecutor> { uiControlExecutor, knowledgeExecutor, memoryExecutor };
 
             // Add MCP executor only if MCP servers are configured
             if (appConfig.MCP.Servers.Count > 0)
@@ -198,11 +207,11 @@ if (appConfig.Agent.EnableTools)
                 var mcpExecutor = new MCPToolExecutor(mcpDiscovery);
                 executors.Add(mcpExecutor);
 
-                Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s) + UI control tools + knowledge library tools");
+                Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s) + UI control tools + knowledge library tools + long-term memory tools");
             }
             else
             {
-                Console.WriteLine("✓ Tool system enabled with UI control tools + knowledge library tools only (no MCP servers configured)");
+                Console.WriteLine("✓ Tool system enabled with UI control tools + knowledge library tools + long-term memory tools (no MCP servers configured)");
             }
 
             // Create Tool Manager with all available executors
@@ -328,6 +337,24 @@ builder.Services.AddScoped<UIControlToolExecutor>();  // Scoped to work with sco
 
 // Register App Mode service (Phase 9d - Teaching Mode System)
 builder.Services.AddScoped<IAppModeService, AppModeService>();  // Scoped to match ConversationManager lifetime
+
+// Register Long-Term Memory services (Phase 4 - Long-Term Memory)
+// Load memory configuration from appsettings
+var memoryConfig = new LongTermMemoryConfiguration();
+builder.Configuration.GetSection("TransparentAiAgent:LongTermMemory").Bind(memoryConfig);
+builder.Services.AddSingleton(memoryConfig);
+
+// Register memory service
+builder.Services.AddScoped<ILongTermMemoryService>(sp =>
+{
+    var config = sp.GetRequiredService<LongTermMemoryConfiguration>();
+    var logger = sp.GetRequiredService<ILogger<LongTermMemoryService>>();
+    return new LongTermMemoryService(config, logger);
+});
+
+// Register memory tools
+builder.Services.AddSingleton<BuiltInLongTermMemoryToolRegistry>();
+builder.Services.AddScoped<LongTermMemoryToolExecutor>();
 
 // Register Scenario services (Phase 10a/10b - Teaching Mode Scenarios)
 builder.Services.AddSingleton<IScenarioRegistry, ScenarioRegistry>();

@@ -4,8 +4,11 @@ using TransparentAiAgentCore.Application.ConversationHistory;
 using TransparentAiAgentCore.Application.Scenarios;
 using TransparentAiAgentCore.Domain.ConversationHistory;
 using TransparentAiAgentCore.Domain.Models;
+using TransparentAiAgentCore.Domain.Memory;
+using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Infrastructure.Streaming;
 using TransparentAiAgentGui.Models;
+using Microsoft.Extensions.Logging;
 
 namespace TransparentAiAgentGui.Services;
 
@@ -15,6 +18,10 @@ public class ConversationUIService : IConversationUIService
     private readonly IConversationManager _conversationManager;
     private readonly IScenarioExecutor _scenarioExecutor;
     private readonly IConversationHistoryManager _historyManager;
+    private readonly ILongTermMemoryService? _memoryService;
+    private readonly IAppModeService? _appModeService;
+    private readonly LongTermMemoryConfiguration? _memoryConfig;
+    private readonly ILogger<ConversationUIService>? _logger;
     private readonly List<UIMessage> _messages = new();
     private bool _isProcessing;
     private UIMessage? _currentStreamingMessage;
@@ -23,6 +30,7 @@ public class ConversationUIService : IConversationUIService
     private readonly object _autoMessageLock = new();
     private bool _isScenarioStreaming = false;
     private readonly object _messagesLock = new();
+    private string? _baseSystemPrompt; // Original system prompt without memory
 
     // Return a snapshot copy to prevent collection modification exceptions during enumeration
     public IReadOnlyList<UIMessage> Messages
@@ -40,20 +48,31 @@ public class ConversationUIService : IConversationUIService
 
     public Guid CurrentConversationId => _conversationManager.ConversationId;
 
+    public bool IsMemoryEnabled { get; private set; }
+
     public event EventHandler? MessagesChanged;
     public event EventHandler<bool>? ProcessingStateChanged;
     public event EventHandler<StreamingMessageUpdate>? StreamingMessageUpdated;
+    public event EventHandler? MemoryStateChanged;
 
     public ConversationUIService(
         IAgentOrchestrator orchestrator,
         IConversationManager conversationManager,
         IScenarioExecutor scenarioExecutor,
-        IConversationHistoryManager historyManager)
+        IConversationHistoryManager historyManager,
+        ILongTermMemoryService? memoryService = null,
+        IAppModeService? appModeService = null,
+        LongTermMemoryConfiguration? memoryConfig = null,
+        ILogger<ConversationUIService>? logger = null)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _scenarioExecutor = scenarioExecutor ?? throw new ArgumentNullException(nameof(scenarioExecutor));
         _historyManager = historyManager ?? throw new ArgumentNullException(nameof(historyManager));
+        _memoryService = memoryService;
+        _appModeService = appModeService;
+        _memoryConfig = memoryConfig;
+        _logger = logger;
 
         // Subscribe to context status changes
         _conversationManager.ContextStatusChanged += OnContextStatusChanged;
@@ -63,6 +82,12 @@ public class ConversationUIService : IConversationUIService
 
         // Subscribe to scenario streaming events for real-time UI updates
         _scenarioExecutor.StreamingUpdate += OnScenarioStreamingUpdate;
+
+        // Subscribe to mode changes for memory loading
+        if (_appModeService != null)
+        {
+            _appModeService.ModeChanged += OnModeChanged;
+        }
 
         // Load existing messages if any
         RefreshMessages();
@@ -77,11 +102,17 @@ public class ConversationUIService : IConversationUIService
 
         try
         {
+            // Ensure memory is loaded before processing (in case conversation was just initialized)
+            await RefreshMemoryStateAsync();
+
             // Process user input through orchestrator
             await _orchestrator.ProcessUserInputAsync(new DirectUserMessage(content));
 
             // Refresh UI messages from conversation manager
             RefreshMessages();
+
+            // Refresh memory state (in case LLM updated memory via tool)
+            await RefreshMemoryStateAsync();
 
             // Auto-save conversation after message processing
             _ = Task.Run(async () => await AutoSaveConversationAsync());
@@ -106,6 +137,9 @@ public class ConversationUIService : IConversationUIService
 
         try
         {
+            // Ensure memory is loaded before processing (in case conversation was just initialized)
+            await RefreshMemoryStateAsync();
+
             // Check if this is an auto-message
             bool isAutoMessage = false;
             lock (_autoMessageLock)
@@ -227,6 +261,9 @@ public class ConversationUIService : IConversationUIService
 
             // Refresh messages from conversation manager to sync state
             RefreshMessages();
+
+            // Refresh memory state (in case LLM updated memory via tool)
+            await RefreshMemoryStateAsync();
 
             // Auto-save conversation after message processing
             _ = Task.Run(async () => await AutoSaveConversationAsync());
@@ -433,5 +470,136 @@ public class ConversationUIService : IConversationUIService
             // Log error but don't throw - auto-save failures shouldn't crash the app
             // In production, this would log to ILogger
         }
+    }
+
+    public async Task SetMemoryEnabledAsync(bool enabled)
+    {
+        if (_memoryService == null || _appModeService == null || _memoryConfig == null)
+        {
+            IsMemoryEnabled = false;
+            return;
+        }
+
+        if (enabled && !IsMemoryEnabled)
+        {
+            // Enabling memory - store base prompt and load memory
+            _baseSystemPrompt = GetCurrentSystemPrompt();
+            IsMemoryEnabled = true;
+
+            if (_memoryConfig.AutoLoadOnStart)
+            {
+                await LoadMemoryIntoConversationAsync();
+            }
+        }
+        else if (!enabled && IsMemoryEnabled)
+        {
+            // Disabling memory - restore original prompt
+            IsMemoryEnabled = false;
+            if (_baseSystemPrompt != null)
+            {
+                _conversationManager.UpdateSystemPrompt(_baseSystemPrompt);
+            }
+        }
+    }
+
+    public async Task EndConversationAsync()
+    {
+        if (!IsMemoryEnabled || _memoryConfig == null || !_memoryConfig.PromptUpdateOnEnd)
+        {
+            return;
+        }
+
+        var prompt =
+            "CONVERSATION ENDING: Please review our conversation. " +
+            "If you learned anything important about the user (preferences, background, context), " +
+            "update long-term memory using the long_term_memory_update tool. " +
+            "If nothing significant changed, no action needed.";
+
+        var message = new ScenarioUserMessage(prompt);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(_memoryConfig.UpdatePromptTimeoutSeconds));
+
+        try
+        {
+            // Consume the streaming response to completion
+            await foreach (var _ in _orchestrator.ProcessApplicationMessageAsync(message, cts.Token))
+            {
+                // We don't need to process the chunks, just consume them
+            }
+
+            _logger?.LogInformation("Memory update prompt completed");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogWarning("Memory update prompt timed out after {Timeout}s",
+                _memoryConfig.UpdatePromptTimeoutSeconds);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error during memory update prompt");
+        }
+    }
+
+    private async void OnModeChanged(object? sender, AppMode newMode)
+    {
+        if (IsMemoryEnabled)
+        {
+            await LoadMemoryIntoConversationAsync();
+        }
+    }
+
+    private async Task LoadMemoryIntoConversationAsync()
+    {
+        if (_memoryService == null || _appModeService == null)
+        {
+            return;
+        }
+
+        var memoryContent = await _memoryService.ReadMemoryAsync(_appModeService.CurrentMode);
+
+        if (string.IsNullOrWhiteSpace(memoryContent))
+        {
+            _logger?.LogDebug("Memory is empty, skipping injection");
+            return;
+        }
+
+        // Get base prompt if not already stored
+        if (_baseSystemPrompt == null)
+        {
+            _baseSystemPrompt = GetCurrentSystemPrompt();
+        }
+
+        // Combine base prompt with memory
+        var combinedPrompt = $"{_baseSystemPrompt}\n\n# Long-Term Memory\n{memoryContent}";
+        _conversationManager.UpdateSystemPrompt(combinedPrompt);
+
+        _logger?.LogInformation("Loaded {CharCount} chars of memory into conversation",
+            memoryContent.Length);
+    }
+
+    private string GetCurrentSystemPrompt()
+    {
+        var messages = _conversationManager.GetInContextMessages();
+        var systemMessage = messages.FirstOrDefault(m => m.Role == TransparentAiAgentCore.Domain.Enums.MessageRole.System);
+        return systemMessage?.Content ?? "You are a helpful assistant.";
+    }
+
+    /// <summary>
+    /// Refreshes memory state by reloading memory into system prompt if enabled.
+    /// Should be called after LLM responses that may have updated memory.
+    /// </summary>
+    private async Task RefreshMemoryStateAsync()
+    {
+        if (!IsMemoryEnabled || _memoryService == null || _appModeService == null)
+        {
+            return;
+        }
+
+        // Reload memory into system prompt
+        await LoadMemoryIntoConversationAsync();
+
+        // Notify UI that memory state may have changed
+        MemoryStateChanged?.Invoke(this, EventArgs.Empty);
     }
 }

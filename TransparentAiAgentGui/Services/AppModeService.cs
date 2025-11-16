@@ -12,7 +12,7 @@ namespace TransparentAiAgentGui.Services;
 /// Registered as Scoped service (per-user isolation, matches ConversationManager lifetime).
 /// Thread-safe: Uses lock for mode switching operation.
 /// </summary>
-public class AppModeService : IAppModeService
+public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IAppModeService
 {
     private readonly IUIControlService _uiControlService;
     private readonly IConfigurationService _configService;

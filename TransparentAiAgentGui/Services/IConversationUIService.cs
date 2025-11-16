@@ -54,4 +54,24 @@ public interface IConversationUIService
     /// Raised when a streaming message is updated
     /// </summary>
     event EventHandler<StreamingMessageUpdate>? StreamingMessageUpdated;
+
+    /// <summary>
+    /// Raised when memory state changes (e.g., memory created/updated via tool)
+    /// </summary>
+    event EventHandler? MemoryStateChanged;
+
+    /// <summary>
+    /// Gets whether long-term memory is currently enabled
+    /// </summary>
+    bool IsMemoryEnabled { get; }
+
+    /// <summary>
+    /// Enable or disable long-term memory for the current conversation
+    /// </summary>
+    Task SetMemoryEnabledAsync(bool enabled);
+
+    /// <summary>
+    /// End the conversation and optionally trigger memory update prompt
+    /// </summary>
+    Task EndConversationAsync();
 }

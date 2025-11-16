@@ -5,10 +5,16 @@
 @using TransparentAiAgentGui.Components.ConversationHistory
 @using TransparentAiAgentGui.Components.LLMProvider
 @using TransparentAiAgentGui.Components.Scenarios
+@using TransparentAiAgentGui.Components.Shared
 @using TransparentAiAgentCore.Domain.UIControl
+@using TransparentAiAgentCore.Domain.Memory
+@using Microsoft.JSInterop
 @inject IConversationUIService ConversationService
-@inject IAppModeService AppModeService
+@inject global::TransparentAiAgentCore.Domain.UIControl.IAppModeService AppModeService
 @inject IServiceProvider ServiceProvider
+@inject ILongTermMemoryService MemoryService
+@inject LongTermMemoryConfiguration MemoryConfig
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -21,7 +27,7 @@
         {
             <ScenarioIndicator />
         }
-        <button @onclick="HandleClearClick" class="clear-button">Clear Conversation</button>
+        <button @onclick="HandleEndConversationClick" class="clear-button">End Conversation</button>
     </div>
 
     <div class="selectors-row">
@@ -32,6 +38,32 @@
         {
             <div class="provider-selector-container">
                 <ProviderSelector />
+            </div>
+        }
+    </div>
+
+    @* Long-term memory control *@
+    <div class="memory-control">
+        <label class="memory-checkbox">
+            <input type="checkbox"
+                   @bind="isMemoryEnabled"
+                   @bind:after="OnMemoryToggled"
+                   disabled="@(!isMemoryFeatureEnabled)" />
+            <span>Use long-term memory</span>
+            @if (isMemoryFeatureEnabled)
+            {
+                <span class="info-icon"
+                      title="Allow agent to remember your preferences and context across conversations">
+                    ℹ️
+                </span>
+            }
+        </label>
+
+        @if (isMemoryEnabled && hasMemory)
+        {
+            <div class="memory-actions">
+                <button class="btn-link btn-sm" @onclick="ViewMemory">View</button>
+                <button class="btn-link btn-sm" @onclick="ClearMemory">Clear</button>
             </div>
         }
     </div>
@@ -48,16 +80,55 @@
     }
 </div>
 
+<MemoryViewerOverlay @ref="memoryViewer" />
+
 @code {
     private string? errorMessage;
     private bool IsProviderSelectorAvailable => ServiceProvider.GetService<IProviderStateService>() != null;
 
-    protected override void OnInitialized()
+    // Memory-related fields
+    private bool isMemoryFeatureEnabled = false;
+    private bool isMemoryEnabled = false;
+    private bool hasMemory = false;
+    private bool hasLoadedFromStorage = false;
+    private MemoryViewerOverlay memoryViewer = default!;
+
+    protected override async Task OnInitializedAsync()
     {
         // Subscribe to UI service events
         ConversationService.MessagesChanged += OnMessagesChanged;
         ConversationService.ProcessingStateChanged += OnProcessingStateChanged;
         ConversationService.StreamingMessageUpdated += OnStreamingMessageUpdated;
+        ConversationService.MemoryStateChanged += OnMemoryStateChanged;
+
+        // Initialize memory feature state
+        isMemoryFeatureEnabled = MemoryConfig.Enabled;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && isMemoryFeatureEnabled && !hasLoadedFromStorage)
+        {
+            hasLoadedFromStorage = true;
+
+            // Restore checkbox state from localStorage (only works on client-side)
+            var stored = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "memory_enabled");
+            if (bool.TryParse(stored, out var enabled))
+            {
+                isMemoryEnabled = enabled;
+                if (enabled)
+                {
+                    await OnMemoryToggled(); // Apply saved state
+                }
+            }
+
+            // Check if memory exists for current mode
+            hasMemory = await MemoryService.HasMemoryAsync(AppModeService.CurrentMode);
+
+            StateHasChanged(); // Trigger re-render with updated state
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
     }
 
     private async Task HandleSendMessage(string message)
@@ -81,10 +152,57 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private async Task HandleClearClick()
+    private async Task HandleEndConversationClick()
     {
+        // Trigger memory update prompt if enabled
+        await ConversationService.EndConversationAsync();
+
+        // Then clear conversation
         await ConversationService.ClearConversationAsync();
         errorMessage = null;
+    }
+
+    private async Task OnMemoryToggled()
+    {
+        // Persist to localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem",
+            "memory_enabled", isMemoryEnabled.ToString());
+
+        await ConversationService.SetMemoryEnabledAsync(isMemoryEnabled);
+
+        if (isMemoryEnabled)
+        {
+            hasMemory = await MemoryService.HasMemoryAsync(AppModeService.CurrentMode);
+        }
+    }
+
+    private async Task ViewMemory()
+    {
+        await memoryViewer.ShowAsync();
+    }
+
+    private async Task ClearMemory()
+    {
+        // Simple confirmation using browser confirm dialog
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+            "Are you sure you want to clear all long-term memory for this mode? This action cannot be undone.");
+
+        if (confirmed)
+        {
+            var result = await MemoryService.UpdateMemoryAsync(
+                AppModeService.CurrentMode,
+                string.Empty);
+
+            if (result.Success)
+            {
+                hasMemory = false;
+                StateHasChanged();
+            }
+            else
+            {
+                errorMessage = $"Failed to clear memory: {result.Error}";
+            }
+        }
     }
 
     private void OnMessagesChanged(object? sender, EventArgs e)
@@ -97,10 +215,21 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void OnMemoryStateChanged(object? sender, EventArgs e)
+    {
+        // Refresh hasMemory flag when memory state changes (e.g., LLM created/updated memory)
+        InvokeAsync(async () =>
+        {
+            hasMemory = await MemoryService.HasMemoryAsync(AppModeService.CurrentMode);
+            StateHasChanged();
+        });
+    }
+
     public void Dispose()
     {
         ConversationService.MessagesChanged -= OnMessagesChanged;
         ConversationService.ProcessingStateChanged -= OnProcessingStateChanged;
         ConversationService.StreamingMessageUpdated -= OnStreamingMessageUpdated;
+        ConversationService.MemoryStateChanged -= OnMemoryStateChanged;
     }
 }
