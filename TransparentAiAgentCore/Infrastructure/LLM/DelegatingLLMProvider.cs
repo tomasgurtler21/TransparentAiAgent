@@ -37,9 +37,14 @@ public class DelegatingLLMProvider : ILLMProvider
     /// <summary>
     /// Streams a request to the currently active LLM provider.
     /// </summary>
-    public IAsyncEnumerable<StreamingChunk> StreamRequestAsync(LLMRequest request, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<StreamingLLMChunk> StreamRequestAsync(LLMRequest request, CancellationToken cancellationToken = default)
     {
         var activeProvider = _manager.GetActiveProvider();
         return activeProvider.StreamRequestAsync(request, cancellationToken);
     }
+
+    /// <summary>
+    /// Gets the name of the currently active LLM provider.
+    /// </summary>
+    public string ProviderName => _manager.GetActiveProvider().ProviderName;
 }
