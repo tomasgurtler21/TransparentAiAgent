@@ -1,7 +1,8 @@
 # Long-Term Memory Feature - Design Document
 
 **Created**: 2025-11-16
-**Status**: Design Phase
+**Status**: ✅ Design Finalized - Ready for Implementation
+**Resolution Date**: 2025-11-16
 **Target Release**: First Release (v1.0)
 
 ---
@@ -923,55 +924,49 @@ The feature is successful if:
 - Size limit enforcement (10K chars)
 - Can add validation in future if needed
 
-### 6. Memory Read Tool - Design Discussion
+### 6. Memory Read Tool - Design Decision ✅
 
-**Question Raised**: Do we need `long_term_memory_read` if memory is auto-injected as system message?
+**Decision**: Keep `long_term_memory_read` tool for v1.0
 
-**Analysis**:
-- Memory is injected at conversation start (in system message)
-- When LLM updates memory, it gets the new content back in tool result
-- For Anthropic: system messages re-sent each turn, so updated memory available
-- For OpenAI: we can append updated memory as system message after tool result
-- **Conclusion**: LLM already has memory in context, read tool might be redundant
+**Rationale**:
+- Memory is auto-injected at conversation start via system message
+- LLM receives updated memory in tool result after calling `long_term_memory_update`
+- Read tool provides explicit refresh capability for edge cases
 
-**Proposed Decision**: Keep the read tool for v1.0, but mark as optional/edge-case
-- **Use cases**:
-  - Very long conversations where system message is far back in context window
-  - Explicit "refresh" if LLM wants to double-check stored memory
-  - Debugging/transparency (visible when LLM checks memory)
-- **Benefits**:
-  - Explicit control for LLM
-  - Doesn't hurt to have it
-  - Can remove in future if proves unnecessary
-- **Alternative**: Could remove entirely and rely only on system message injection
+**Use Cases**:
+- Very long conversations where system message is far back in context window
+- Explicit "refresh" if LLM wants to double-check stored memory
+- Debugging/transparency (visible when LLM checks memory)
 
-**Status**: Awaiting final decision from user
+**Benefits**:
+- Explicit control for LLM
+- Low cost (doesn't hurt to have it)
+- Can remove in future if proves unnecessary
 
-### 7. Initial Memory Template
-**Decision**: TBD in implementation plan
-- Defer to implementation phase
-- Likely: empty file until first update (simpler)
+### 7. Initial Memory Template ✅
+**Decision**: No template - empty until first update
+- Files created on-demand when first update occurs
+- Service creates directory structure as needed
+- Simpler than pre-populating templates
 
 ---
 
-## Critical Design Review
+## Critical Design Review - RESOLVED ✅
 
-**⚠️ IMPORTANT**: A comprehensive critical review has identified several issues that must be resolved before implementation.
+**Status**: All critical issues have been reviewed and resolved.
 
-**See**: [LONG_TERM_MEMORY_DESIGN_REVIEW.md](./LONG_TERM_MEMORY_DESIGN_REVIEW.md)
+**See**: [LONG_TERM_MEMORY_DESIGN_REVIEW.md](./LONG_TERM_MEMORY_DESIGN_REVIEW.md) for complete review and resolutions.
 
-### Critical Issues Summary
+### Resolved Design Decisions (2025-11-16)
 
-1. **🚨 CRITICAL**: AppModeService layering violation - interface must move to Domain layer
-2. **🚨 CRITICAL**: System message injection point unclear - need explicit specification
-3. **🚨 CRITICAL**: Mode switch event handling not specified
+1. **✅ AppModeService Layering**: Move `IAppModeService` to Domain layer (Option A)
+2. **✅ System Message Injection**: ConversationManager will handle via `UpdateSystemPrompt()` / `RestoreSystemPrompt()` methods
+3. **✅ Mode Switch Events**: Use existing `ModeChanged` event (sufficient for our needs)
+4. **✅ Checkbox State Persistence**: Add localStorage persistence in Phase 5
+5. **✅ Error Feedback**: Console logging + transparency events (no special UI for v1.0)
+6. **✅ Memory Update Prompt**: Return error on failures, user decides retry
+7. **✅ Markdown Rendering**: Use existing markdown library already in app
 
-### High Priority Issues
+### Design Ready for Implementation
 
-4. Checkbox state persistence missing (localStorage)
-5. Error feedback UX not specified
-6. Memory update prompt behavior underspecified
-
-### Action Required
-
-Review the detailed analysis in `LONG_TERM_MEMORY_DESIGN_REVIEW.md` and make decisions on critical issues before proceeding with implementation.
+All blocking issues resolved. Implementation can proceed following the updated implementation plan.

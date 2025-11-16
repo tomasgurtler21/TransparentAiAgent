@@ -2,7 +2,53 @@
 
 **Review Date**: 2025-11-16
 **Reviewer**: Design Phase Analysis
-**Status**: Issues Identified - Requires Resolution Before Implementation
+**Status**: ✅ RESOLVED - Ready for Implementation
+**Resolution Date**: 2025-11-16
+
+---
+
+## 🎯 USER RESPONSES & RESOLUTIONS
+
+**Response Date**: 2025-11-16
+
+### Critical Issues - User Decisions
+
+1. **AppModeService Layering** → ✅ **RESOLVED: Option A**
+   - **User Response**: "Ok, I do not fully understand this, but your reasoning seems sound, go with recommended"
+   - **Decision**: Move `IAppModeService` to Domain layer (Option A)
+   - **Action**: Add Phase 0 to implementation plan
+
+2. **System Message Injection** → ✅ **RESOLVED: Not Critical**
+   - **User Response**: "Why is this critical... ConversationManager can take care of anything when called at correct time, we can add any new methods there if needed, e.g. RestoreSystemPrompt()."
+   - **Decision**: ConversationManager will handle system prompt management. Add `UpdateSystemPrompt()` and `RestoreSystemPrompt()` methods as needed.
+   - **Action**: Update implementation plan to use ConversationManager methods
+
+3. **Mode Switch Event Handling** → ✅ **RESOLVED: ModeChanged Sufficient**
+   - **User Response**: "ModeChanged is sufficient, why wouldn't be? System message is sent anyway only after switch is completed - with first user message"
+   - **Decision**: Use existing `ModeChanged` event. No need for separate `ModeSwitching` event.
+   - **Action**: Subscribe to `ModeChanged` in ConversationUIService
+
+### High Priority Issues - User Decisions
+
+4. **Checkbox State Persistence** → ✅ **ACCEPTED**
+   - **User Response**: "Ok, that can be added"
+   - **Decision**: Add localStorage persistence to Phase 5
+
+5. **Error Feedback UX** → ✅ **RESOLVED: Console + Transparency**
+   - **User Response**: "That's whole app issue, important is that we have error messages triggering and available, where we send them in UI is task for later refactor/polishing. For now this will do what everyone does, send it to console and transparency events."
+   - **Decision**: Console logging + transparency events only for v1.0. No toast notifications or special UI feedback.
+   - **Action**: Simplify Phase 5 - remove toast notification requirements
+
+6. **Memory Update Prompt Behavior** → ✅ **RESOLVED: Return Error**
+   - **User Response**: "Error, what else. It's up to user whether to retry or not"
+   - **Decision**: Return error on failures. User decides whether to retry.
+   - **Action**: Standard error handling in Phase 4
+
+### Medium Priority Issues - User Decisions
+
+7-15. **Various Nitpicks** → ✅ **RESOLVED**
+   - **User Response**: "Nitpicks. Markdown is already used in our app, we go with that."
+   - **Decision**: Use existing markdown library (already in app). Apply other medium priority items as specified.
 
 ---
 

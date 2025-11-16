@@ -1,8 +1,9 @@
 # Long-Term Memory - Implementation Plan
 
 **Created**: 2025-11-16
-**Status**: Ready for Implementation
-**Related**: LONG_TERM_MEMORY_DESIGN.md
+**Status**: ✅ Finalized - Ready for Implementation
+**Resolution Date**: 2025-11-16
+**Related**: LONG_TERM_MEMORY_DESIGN.md, LONG_TERM_MEMORY_DESIGN_REVIEW.md
 
 ---
 
@@ -15,6 +16,48 @@ Following the proven TDD workflow:
 4. **Commit**: Small, focused commits after each green phase
 
 **Phases**: Bottom-up implementation (Domain → Infrastructure → Application → Presentation)
+
+**Note**: All critical design issues have been resolved. See [LONG_TERM_MEMORY_DESIGN_REVIEW.md](./LONG_TERM_MEMORY_DESIGN_REVIEW.md) for decisions.
+
+---
+
+## Phase 0: Prerequisites (REQUIRED FIRST)
+
+### 0.1 Move IAppModeService to Domain Layer
+
+**Rationale**: `LongTermMemoryToolExecutor` (Infrastructure) needs `IAppModeService`, but it's currently in GUI layer. This violates Clean Architecture.
+
+**Decision**: Option A - Move interface to Domain (APPROVED by user)
+
+**Files to Move**:
+```
+FROM: TransparentAiAgentGui/Services/IAppModeService.cs
+TO:   TransparentAiAgentCore/Domain/UIControl/IAppModeService.cs
+```
+
+**Implementation stays in GUI**:
+- `TransparentAiAgentGui/Services/AppModeService.cs : IAppModeService`
+
+**Steps**:
+1. Create `TransparentAiAgentCore/Domain/UIControl/IAppModeService.cs` with interface
+2. Update `TransparentAiAgentGui/Services/AppModeService.cs` to reference Domain interface
+3. Update all using statements across codebase
+4. Verify solution compiles
+5. Run all existing tests to ensure no regressions
+
+**Commit**: "Move IAppModeService to Domain layer for clean architecture"
+
+---
+
+### 0.2 Verify Markdown Library
+
+**Check**: Confirm app already has markdown rendering library
+
+**Action**:
+- If Markdig exists: note it for Phase 5
+- If not: add NuGet package to TransparentAiAgentGui
+
+**Commit**: (Only if adding package) "Add Markdig NuGet package for memory viewer"
 
 ---
 
@@ -393,9 +436,88 @@ public async Task UpdateMemoryAsync_PermissionDenied_ReturnsFailure()
 
 ---
 
+#### Test 2.1.9: File Path Validation (Security)
+```csharp
+[TestMethod]
+public void Constructor_InvalidStorageDirectory_ThrowsException()
+{
+    // Arrange
+    var config = new LongTermMemoryConfiguration
+    {
+        StorageDirectory = "../../etc/passwd" // Attempt directory traversal
+    };
+
+    // Act & Assert
+    Assert.ThrowsException<InvalidOperationException>(() =>
+        new LongTermMemoryService(config, Mock.Of<ILogger<LongTermMemoryService>>()));
+}
+```
+
+**Implementation**: Validate storage directory is within app base directory
+
+**Commit**: "Add file path validation for security"
+
+---
+
+#### Test 2.1.10: UTF-8 Encoding
+```csharp
+[TestMethod]
+public async Task UpdateMemoryAsync_UnicodeContent_PreservesEncoding()
+{
+    // Arrange
+    var service = CreateService(tempDirectory);
+    var content = "# Memory\n- Name: José 👋\n- Emoji: 🚀";
+
+    // Act
+    await service.UpdateMemoryAsync(AppMode.Normal, content);
+    var readBack = await service.ReadMemoryAsync(AppMode.Normal);
+
+    // Assert
+    Assert.AreEqual(content, readBack);
+}
+```
+
+**Implementation**: Use UTF-8 encoding explicitly in file I/O
+
+**Commit**: "Use explicit UTF-8 encoding for memory files"
+
+---
+
+#### Test 2.1.11: Directory Auto-Creation
+```csharp
+[TestMethod]
+public async Task UpdateMemoryAsync_DirectoryDoesNotExist_CreatesDirectory()
+{
+    // Arrange
+    var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+    var config = new LongTermMemoryConfiguration
+    {
+        StorageDirectory = tempPath
+    };
+    var service = new LongTermMemoryService(config, Mock.Of<ILogger<...>>());
+
+    // Act
+    var result = await service.UpdateMemoryAsync(AppMode.Normal, "test");
+
+    // Assert
+    Assert.IsTrue(result.Success);
+    Assert.IsTrue(Directory.Exists(tempPath));
+
+    // Cleanup
+    Directory.Delete(tempPath, true);
+}
+```
+
+**Implementation**: Create directory if doesn't exist before writing
+
+**Commit**: "Add directory auto-creation in UpdateMemoryAsync"
+
+---
+
 **Service Implementation Skeleton**:
 ```csharp
 using Microsoft.Extensions.Logging;
+using System.Text;
 using TransparentAiAgentCore.Domain.Memory;
 using TransparentAiAgentCore.Domain.UIControl;
 
@@ -413,7 +535,20 @@ public class LongTermMemoryService : ILongTermMemoryService
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _storageDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _config.StorageDirectory);
+
+        // Resolve and validate storage directory
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        _storageDirectory = Path.GetFullPath(Path.Combine(baseDir, _config.StorageDirectory));
+
+        // Security: Ensure storage is within app directory
+        if (!_storageDirectory.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Storage directory must be within application directory. " +
+                $"Configured: {_config.StorageDirectory}, Resolved: {_storageDirectory}");
+        }
+
+        _logger.LogInformation("Memory storage directory: {Directory}", _storageDirectory);
     }
 
     private string GetMemoryFilePath(AppMode mode)
@@ -427,7 +562,58 @@ public class LongTermMemoryService : ILongTermMemoryService
         return Path.Combine(_storageDirectory, fileName);
     }
 
-    // ... implement interface methods
+    public async Task<string> ReadMemoryAsync(AppMode mode, CancellationToken cancellationToken = default)
+    {
+        var filePath = GetMemoryFilePath(mode);
+
+        if (!File.Exists(filePath))
+        {
+            return string.Empty;
+        }
+
+        return await File.ReadAllTextAsync(filePath, Encoding.UTF8, cancellationToken);
+    }
+
+    public async Task<MemoryUpdateResult> UpdateMemoryAsync(
+        AppMode mode,
+        string content,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Validate size
+            if (content.Length > _config.MaxCharacters)
+            {
+                return new MemoryUpdateResult(
+                    Success: false,
+                    Error: $"Memory content exceeds maximum size of {_config.MaxCharacters} characters");
+            }
+
+            var filePath = GetMemoryFilePath(mode);
+
+            // Ensure directory exists
+            Directory.CreateDirectory(_storageDirectory);
+
+            // Write with explicit UTF-8 encoding
+            await File.WriteAllTextAsync(filePath, content, Encoding.UTF8, cancellationToken);
+
+            _logger.LogInformation("Updated {Mode} mode memory ({CharCount} chars)", mode, content.Length);
+
+            return new MemoryUpdateResult(
+                Success: true,
+                CharacterCount: content.Length,
+                UpdatedAt: DateTime.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update memory for {Mode} mode", mode);
+            return new MemoryUpdateResult(
+                Success: false,
+                Error: $"Failed to write memory: {ex.Message}");
+        }
+    }
+
+    // ... implement other interface methods
 }
 ```
 
@@ -796,6 +982,149 @@ public async Task EndConversationAsync_MemoryEnabled_SendsUpdatePrompt()
 
 ---
 
+#### Test 4.1.4: Mode Changed Event - Load New Mode Memory
+```csharp
+[TestMethod]
+public async Task OnModeChanged_MemoryEnabled_LoadsNewModeMemory()
+{
+    // Arrange
+    var mockMemoryService = new Mock<ILongTermMemoryService>();
+    var mockAppModeService = new Mock<IAppModeService>();
+    var mockConversationManager = new Mock<IConversationManager>();
+
+    mockMemoryService.Setup(x => x.ReadMemoryAsync(AppMode.Teaching, It.IsAny<CancellationToken>()))
+        .ReturnsAsync("Teaching mode memory");
+
+    var service = CreateService(
+        memoryService: mockMemoryService.Object,
+        appModeService: mockAppModeService.Object,
+        conversationManager: mockConversationManager.Object);
+
+    await service.SetMemoryEnabledAsync(true);
+
+    // Act - Trigger ModeChanged event
+    mockAppModeService.Setup(x => x.CurrentMode).Returns(AppMode.Teaching);
+    mockAppModeService.Raise(x => x.ModeChanged += null, mockAppModeService.Object, AppMode.Teaching);
+
+    // Assert
+    mockConversationManager.Verify(x => x.UpdateSystemPrompt(
+        It.Is<string>(s => s.Contains("Teaching mode memory"))), Times.Once);
+}
+```
+
+**Implementation**: Subscribe to `ModeChanged` event in constructor
+
+**Commit**: "Add mode switch event handling for memory reload"
+
+---
+
+#### ConversationUIService Implementation Notes
+
+**Key Methods**:
+```csharp
+public ConversationUIService(
+    ILongTermMemoryService memoryService,
+    IAppModeService appModeService,
+    IConversationManager conversationManager,
+    LongTermMemoryConfiguration memoryConfig,
+    ...)
+{
+    _memoryService = memoryService;
+    _appModeService = appModeService;
+    _conversationManager = conversationManager;
+    _memoryConfig = memoryConfig;
+
+    // Subscribe to mode changes
+    _appModeService.ModeChanged += OnModeChanged;
+}
+
+private async void OnModeChanged(object? sender, AppMode newMode)
+{
+    if (IsMemoryEnabled)
+    {
+        await LoadMemoryIntoConversation();
+    }
+}
+
+private async Task LoadMemoryIntoConversation()
+{
+    if (!IsMemoryEnabled) return;
+
+    var memoryContent = await _memoryService.ReadMemoryAsync(_appModeService.CurrentMode);
+
+    if (string.IsNullOrWhiteSpace(memoryContent))
+    {
+        _logger.LogDebug("Memory is empty, skipping injection");
+        return;
+    }
+
+    // Use ConversationManager method to update system prompt
+    // (ConversationManager will handle merging with existing system prompt)
+    await _conversationManager.UpdateSystemPromptWithMemoryAsync(memoryContent);
+
+    _logger.LogInformation("Loaded {CharCount} chars of memory into conversation",
+        memoryContent.Length);
+}
+
+public async Task SetMemoryEnabledAsync(bool enabled)
+{
+    IsMemoryEnabled = enabled;
+
+    if (enabled && _memoryConfig.AutoLoadOnStart)
+    {
+        await LoadMemoryIntoConversation();
+    }
+    else if (!enabled)
+    {
+        // Restore original system prompt (without memory)
+        await _conversationManager.RestoreSystemPromptAsync();
+    }
+}
+
+public async Task EndConversationAsync()
+{
+    if (!IsMemoryEnabled || !_memoryConfig.PromptUpdateOnEnd)
+    {
+        return;
+    }
+
+    var prompt =
+        "CONVERSATION ENDING: Please review our conversation. " +
+        "If you learned anything important about the user (preferences, background, context), " +
+        "update long-term memory using the long_term_memory_update tool. " +
+        "If nothing significant changed, no action needed.";
+
+    using var cts = new CancellationTokenSource(
+        TimeSpan.FromSeconds(_memoryConfig.UpdatePromptTimeoutSeconds));
+
+    try
+    {
+        await _orchestrator.ProcessSystemMessageAsync(
+            new SystemInstructionMessage(prompt),
+            cts.Token);
+
+        _logger.LogInformation("Memory update prompt completed");
+    }
+    catch (OperationCanceledException)
+    {
+        _logger.LogWarning("Memory update prompt timed out after {Timeout}s",
+            _memoryConfig.UpdatePromptTimeoutSeconds);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error during memory update prompt");
+    }
+}
+```
+
+**Note**: ConversationManager needs new methods:
+- `UpdateSystemPromptWithMemoryAsync(string memoryContent)`
+- `RestoreSystemPromptAsync()`
+
+These will be added during Phase 4 implementation.
+
+---
+
 ### 4.2 Update IConversationUIService Interface
 
 **File**: `TransparentAiAgentGui/Services/IConversationUIService.cs`
@@ -899,6 +1228,7 @@ Add checkbox below conversation selector:
 @code {
     [Inject] private ILongTermMemoryService MemoryService { get; set; } = default!;
     [Inject] private LongTermMemoryConfiguration MemoryConfig { get; set; } = default!;
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     private bool isMemoryFeatureEnabled = false;
     private bool isMemoryEnabled = false;
@@ -909,15 +1239,30 @@ Add checkbox below conversation selector:
         await base.OnInitializedAsync();
         isMemoryFeatureEnabled = MemoryConfig.Enabled;
 
-        // Check if memory exists for current mode
+        // Restore checkbox state from localStorage
         if (isMemoryFeatureEnabled)
         {
+            var stored = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "memory_enabled");
+            if (bool.TryParse(stored, out var enabled))
+            {
+                isMemoryEnabled = enabled;
+                if (enabled)
+                {
+                    await OnMemoryToggled(); // Apply saved state
+                }
+            }
+
+            // Check if memory exists for current mode
             hasMemory = await MemoryService.HasMemoryAsync(AppModeService.CurrentMode);
         }
     }
 
     private async Task OnMemoryToggled()
     {
+        // Persist to localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem",
+            "memory_enabled", isMemoryEnabled.ToString());
+
         await ConversationUIService.SetMemoryEnabledAsync(isMemoryEnabled);
 
         if (isMemoryEnabled)
@@ -938,7 +1283,7 @@ Add checkbox below conversation selector:
 }
 ```
 
-**Commit**: "Add memory checkbox to Home page"
+**Commit**: "Add memory checkbox with localStorage persistence"
 
 ---
 
@@ -1095,20 +1440,66 @@ Create new overlay component:
         }
         else
         {
-            // Show error message (toast notification?)
+            // Log error to console and transparency
+            _logger.LogError("Failed to save memory: {Error}", result.Error);
+            // Error visible in transparency events and browser console
         }
     }
 
     private string RenderMarkdown(string markdown)
     {
-        // Use Markdig or similar library to render markdown to HTML
-        // For now, simple pre-formatted display
-        return $"<pre>{System.Web.HttpUtility.HtmlEncode(markdown)}</pre>";
+        // Use existing markdown library in app (Markdig or similar)
+        // Implementation will use app's existing markdown rendering approach
+        return MarkdownHelper.RenderToHtml(markdown);
     }
 }
 ```
 
+**Note**: Error handling uses console logging + transparency events only (no toast notifications per user decision).
+
 **Commit**: "Add MemoryViewerOverlay component"
+
+---
+
+### 5.2.1 Add Character Counter to Memory Editor
+
+**Update MemoryViewerOverlay.razor**:
+```razor
+<div class="memory-editor-container">
+    <textarea class="memory-editor"
+              @bind="editedContent"
+              @bind:event="oninput"
+              rows="20"></textarea>
+
+    <div class="character-count @(editedContent.Length > 10000 ? "over-limit" : "")">
+        <span>@editedContent.Length / 10,000 characters</span>
+        @if (editedContent.Length > 10000)
+        {
+            <span class="error-message">⚠️ Exceeds limit</span>
+        }
+    </div>
+</div>
+```
+
+**CSS**:
+```css
+.character-count {
+    margin-top: 0.5rem;
+    font-size: 0.9em;
+    text-align: right;
+}
+
+.character-count.over-limit {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+.error-message {
+    margin-left: 1rem;
+}
+```
+
+**Commit**: "Add character counter to memory editor"
 
 ---
 
@@ -1408,192 +1799,50 @@ Implementation is complete when:
 
 ---
 
-## Critical Design Review - Implementation Impact
+## Design Review Resolutions - Implementation Updates
 
-**⚠️ BLOCKING ISSUES**: Implementation cannot proceed until critical design issues are resolved.
+**Status**: ✅ ALL ISSUES RESOLVED - Ready to implement
 
-**See**: [LONG_TERM_MEMORY_DESIGN_REVIEW.md](./LONG_TERM_MEMORY_DESIGN_REVIEW.md) for complete analysis.
+**See**: [LONG_TERM_MEMORY_DESIGN_REVIEW.md](./LONG_TERM_MEMORY_DESIGN_REVIEW.md) for complete resolutions.
 
-### Issues Blocking Implementation
+### Key Implementation Decisions (Applied Throughout Plan)
 
-#### 1. AppModeService Layering (Blocks Phase 3)
+1. **✅ AppModeService Layering**: Phase 0 added - Move interface to Domain
+2. **✅ System Message Injection**: ConversationManager handles via `UpdateSystemPrompt()` / `RestoreSystemPrompt()` methods
+3. **✅ Mode Switch Events**: Use existing `ModeChanged` event (Phase 4)
+4. **✅ Error Feedback**: Console logging + transparency events only (simplified Phase 5)
+5. **✅ Markdown Library**: Use existing markdown library in app
+6. **✅ localStorage Persistence**: Added to Phase 5.1
 
-**Problem**: `LongTermMemoryToolExecutor` needs `IAppModeService`, but interface is in GUI layer.
+### Phase Updates Applied
 
-**Solution Required**: Move `IAppModeService` to Domain layer before Phase 1.
-
-**New Phase 0** (if Option A chosen):
-- Move `TransparentAiAgentGui/Services/IAppModeService.cs` → `TransparentAiAgentCore/Domain/UIControl/IAppModeService.cs`
-- Update all references
-- Verify existing code still compiles
-- Run existing tests
-- **Commit**: "Move IAppModeService to Domain layer for clean architecture"
-
-**Alternative**: If Option B or C chosen, update Phase 3 accordingly.
-
-#### 2. System Message Injection (Affects Phase 4)
-
-**Problem**: Design doesn't specify HOW to inject memory into conversation.
-
-**Solution Required**: Add explicit implementation to Phase 4.1:
-
-```csharp
-// In ConversationUIService.LoadMemoryIntoConversation()
-private async Task LoadMemoryIntoConversation()
-{
-    if (!IsMemoryEnabled) return;
-
-    var memoryContent = await _memoryService.ReadMemoryAsync(_appModeService.CurrentMode);
-
-    if (string.IsNullOrWhiteSpace(memoryContent))
-    {
-        _logger.LogDebug("Memory empty, skipping injection");
-        return;
-    }
-
-    // Get current system prompt
-    var currentPrompt = _appConfiguration.Agent.SystemPrompt;
-
-    // Merge memory into system prompt
-    var mergedPrompt = $@"{currentPrompt}
-
----
-
-## LONG-TERM MEMORY
-
-{memoryContent}
-
----
-
-Use this memory to personalize your responses. You can update it anytime using the long_term_memory_update tool.";
-
-    // Update conversation manager
-    _conversationManager.UpdateSystemPrompt(mergedPrompt);
-
-    _logger.LogInformation("Loaded {CharCount} chars of memory into conversation",
-        memoryContent.Length);
-}
-```
-
-**Also needed**: Restore original prompt when disabling memory:
-```csharp
-public async Task SetMemoryEnabledAsync(bool enabled)
-{
-    IsMemoryEnabled = enabled;
-
-    if (enabled)
-    {
-        await LoadMemoryIntoConversation();
-    }
-    else
-    {
-        // Restore original system prompt
-        var originalPrompt = _appConfiguration.Agent.SystemPrompt;
-        _conversationManager.UpdateSystemPrompt(originalPrompt);
-    }
-}
-```
-
-#### 3. Mode Switch Event Handling (Affects Phase 4)
-
-**Problem**: No specification for hooking into mode switch to trigger memory operations.
-
-**Solution Required**: Update AppModeService and ConversationUIService in Phase 4.
-
-**Option A**: Add event subscription in ConversationUIService constructor:
-```csharp
-public ConversationUIService(...)
-{
-    // ... existing code
-
-    // Subscribe to mode change to load new mode's memory
-    _appModeService.ModeChanged += OnModeChanged;
-}
-
-private async void OnModeChanged(object? sender, AppMode newMode)
-{
-    if (IsMemoryEnabled)
-    {
-        await LoadMemoryIntoConversation(); // Load new mode's memory
-    }
-}
-```
-
-**Option B**: Add ModeSwitching event to AppModeService:
-```csharp
-// In IAppModeService (Domain)
-event EventHandler<AppMode>? ModeSwitching; // BEFORE switch
-event EventHandler<AppMode>? ModeChanged;   // AFTER switch
-
-// In AppModeService implementation
-public async Task SwitchModeAsync(AppMode newMode, bool clearConversation = false)
-{
-    // Fire BEFORE switching
-    ModeSwitching?.Invoke(this, newMode);
-
-    // Prompt for memory update (via ConversationUIService subscriber)
-    // ... wait for completion
-
-    // Do mode switch
-    // ...
-
-    // Fire AFTER switching
-    ModeChanged?.Invoke(this, newMode);
-}
-```
-
-### Updated Phase Breakdown
-
-**Phase 0: Prerequisites** (NEW - 1-2 hours)
-- 0.1: Resolve AppModeService layering (move interface or choose alternative)
-- 0.2: Add Markdig NuGet package to TransparentAiAgentGui project
-- 0.3: Verify all critical design decisions documented
-
-**Phase 2 Additions**:
-- Add to 2.1: File path validation (security)
-- Add to 2.1: UTF-8 encoding explicit
-- Add to 2.1: Directory auto-creation
-- Add Test 2.1.9: Path validation test
-- Add Test 2.1.10: UTF-8 encoding test
-
-**Phase 4 Additions**:
-- Add to 4.1: Explicit system message injection implementation
-- Add to 4.1: Prompt restoration when disabling memory
-- Add to 4.1: Mode switch event subscription
-- Add Test 4.1.4: System message injection test
-- Add Test 4.1.5: Mode switch triggers memory load test
-
-**Phase 5 Additions**:
-- Add to 5.1: localStorage persistence for checkbox state
-- Add to 5.3: Character counter in memory editor
-- Add to 5.3: Last updated timestamp display
-- Add to 5.3: Error toast notifications
-- Add Test 5.1.1: localStorage persistence test
-- Add Test 5.3.1: Character counter shows correctly
-- Add Test 5.3.2: Error feedback displays
+**Phase 0** (NEW): Prerequisites including IAppModeService move
+**Phase 2**: Added file path validation, UTF-8 encoding, directory auto-creation
+**Phase 4**: Added ConversationManager integration, ModeChanged event subscription
+**Phase 5**: Simplified error handling (no toast notifications), added localStorage, character counter
 
 ### Revised Estimated Effort
 
 - **Phase 0**: 1-2 hours (prerequisites)
 - **Phase 1**: 1-2 hours (domain models, interfaces)
-- **Phase 2**: 4-5 hours (service + additional validations + tests)
+- **Phase 2**: 4-5 hours (service + validations + tests)
 - **Phase 3**: 2-3 hours (tools, executor, registry + tests)
 - **Phase 4**: 3-4 hours (application integration + event handling + tests)
-- **Phase 5**: 4-5 hours (UI + localStorage + error feedback + tests)
+- **Phase 5**: 3-4 hours (UI + localStorage + character counter - simplified from original)
 - **Phase 6**: 2-3 hours (integration tests, manual testing)
 - **Phase 7**: 2-3 hours (documentation)
 - **Phase 8**: 1-2 hours (cleanup, polish)
 
-**Total**: ~20-29 hours (3-4 full development days)
+**Total**: ~19-28 hours (3-4 full development days)
 
-### Decision Checklist Before Implementation
+### Implementation Ready Checklist
 
-- [ ] **CRITICAL**: AppModeService layering solution chosen (A, B, or C?)
-- [ ] **CRITICAL**: System message injection approach approved
-- [ ] **CRITICAL**: Mode switch event handling approach approved
-- [ ] **HIGH**: Error feedback strategy defined (toast? inline? both?)
-- [ ] **HIGH**: Markdown library chosen (Markdig?)
-- [ ] **MEDIUM**: Checkbox persistence via localStorage approved
-- [ ] **MEDIUM**: Known limitations documented and accepted
+- [x] **CRITICAL**: AppModeService layering solution chosen → Option A (Phase 0)
+- [x] **CRITICAL**: System message injection approach → ConversationManager methods
+- [x] **CRITICAL**: Mode switch event handling → Use ModeChanged event
+- [x] **HIGH**: Error feedback strategy → Console + transparency only
+- [x] **HIGH**: Markdown library → Use existing in app
+- [x] **MEDIUM**: Checkbox persistence → localStorage in Phase 5.1
+- [x] **MEDIUM**: Known limitations documented and accepted
 
-**Status**: ⛔ BLOCKED - Awaiting user decisions on critical issues
+**Status**: ✅ READY FOR IMPLEMENTATION
