@@ -814,7 +814,6 @@ During Phase 5 manual testing with real MCP servers, discovered Azure OpenAI ret
 
 **Date**: 2025-11-15
 **Status**: ✅ Implemented
-**Related**: `LLM_SELECTOR_DESIGN.md`, `LLM_SELECTOR_IMPLEMENTATION_PLAN.md`
 
 **Context**: Users need the ability to configure multiple LLM providers (different models, regions, providers) and switch between them dynamically via UI dropdown without restarting the application. This enables experimentation with different models, multi-region fallback, and provider comparison.
 
@@ -967,8 +966,7 @@ Individual Providers (Anthropic, Azure OpenAI, OpenAI)
 **Documentation**:
 - User Guide: `docs/05-guides/deployment/llm-provider-selector.md`
 - Component: `docs/04-components/llm/llm-provider-manager.md`
-- Design: `LLM_SELECTOR_DESIGN.md` (detailed design discussion)
-- Implementation: `LLM_SELECTOR_IMPLEMENTATION_PLAN.md` (13-step plan)
+- Architecture: This design decision (DD-026) documents the key decisions and rationale
 
 **Future Enhancements** (explicitly NOT implemented):
 - [ ] Provider health checks
