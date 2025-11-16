@@ -6,7 +6,7 @@
   "summary": "LLMs trained to perform explicit multi-step reasoning before answering, using chain-of-thought to solve complex problems",
   "knowledgeGapLikelihood": "high",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "Reasoning models (also called Large Reasoning Models or LRMs) are LLMs specifically trained to perform explicit step-by-step reasoning before generating answers. Unlike standard LLMs that immediately respond, reasoning models use 'chain-of-thought' (CoT) to break down problems, try different approaches, recognize mistakes, and self-correct. OpenAI's o1 (Sept 2024) and o3 (Dec 2024) pioneered this approach, trained via reinforcement learning to spend 'thinking time' solving problems. Critical insight: Performance scales with both train-time compute (RL training) and test-time compute (thinking duration).",
     "keyPoints": [

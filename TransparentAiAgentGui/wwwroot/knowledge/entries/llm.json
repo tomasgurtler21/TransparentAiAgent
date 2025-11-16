@@ -6,7 +6,7 @@
   "summary": "AI models using transformers to understand and generate human language, with critical limitations around hallucinations and biases",
   "knowledgeGapLikelihood": "low",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "Large Language Models (LLMs) are AI systems using transformer architectures (introduced 2017) trained on massive text datasets to understand, generate, and manipulate human language. They excel at natural language processing, code generation, and information synthesis. However, LLMs have CRITICAL limitations: they hallucinate (generate plausible but false information), lack true understanding (pattern matching vs. reasoning), are frozen in time (training data cutoff), and amplify biases from training data. Understanding these limitations is essential for responsible deployment.",
     "keyPoints": [

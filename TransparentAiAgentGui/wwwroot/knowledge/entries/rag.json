@@ -6,7 +6,7 @@
   "summary": "Architecture pattern combining LLM generation with external knowledge retrieval for accurate, grounded responses",
   "knowledgeGapLikelihood": "medium",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "RAG (Retrieval-Augmented Generation) is an architectural pattern that enhances LLM responses by retrieving relevant information from external knowledge bases before generating answers. It addresses the fundamental limitation that LLMs can only use knowledge from their training data, which becomes outdated and cannot include private/proprietary information. RAG enables LLMs to access current, domain-specific, and private knowledge while reducing hallucinations. CRITICAL: While early RAG was automatic (query → retrieve → generate), modern RAG is often a TOOL that agents/LLMs call when needed, giving agents control over when to retrieve knowledge.",
     "keyPoints": [

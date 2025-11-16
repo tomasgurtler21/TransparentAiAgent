@@ -6,7 +6,7 @@
   "summary": "Patterns and architectures for coordinating multiple AI agents to solve complex tasks through collaboration",
   "knowledgeGapLikelihood": "high",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "Multi-agent orchestration coordinates multiple specialized AI agents to solve complex tasks that exceed single-agent capabilities. Instead of one generalist agent, systems deploy multiple specialist agents (e.g., research agent, coding agent, QA agent) with a coordinator managing collaboration. The 2025 landscape has consolidated around five dominant patterns: centralized orchestration, decentralized coordination, hierarchical structures, event-driven systems, and hybrid human-AI orchestration. Critical tradeoff: Single agents are simpler and cheaper; multi-agent systems handle complexity better but increase cost and coordination overhead.",
     "keyPoints": [

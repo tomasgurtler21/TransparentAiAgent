@@ -6,7 +6,7 @@
   "summary": "Maximum input+output tokens an LLM can process in a single request, with critical performance and cost implications",
   "knowledgeGapLikelihood": "low",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "Context window (or context limit) is the maximum number of tokens (input + output combined) an LLM can process in a single request. As of 2025, leading models offer 128K-200K tokens (Claude 3.5 Sonnet: 200K, GPT-4: 128K) with some reaching 1M+ (Gemini 1.5 Pro). However, a large window doesn't mean usable capacity - performance degrades significantly as you approach limits due to 'lost-in-the-middle' effect and quadratic computational costs. Critical rule: Stay at 80-85% of max limit for reliable performance.",
     "keyPoints": [

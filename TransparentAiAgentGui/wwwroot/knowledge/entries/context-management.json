@@ -6,7 +6,7 @@
   "summary": "Techniques for managing conversation history and context to prevent exceeding token limits while maintaining coherence",
   "knowledgeGapLikelihood": "medium",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "Context management addresses the challenge of maintaining long-running conversations within fixed context window limits (typically 128K-200K tokens). As conversations grow, the combined context (system prompt + history + current query + tool results) can exceed limits, causing failures or degraded performance. Core strategies: (1) Sliding window (keep recent N messages), (2) Summarization (compress old history), (3) Memory formation (extract key facts), (4) Prioritization (rank by relevance). Production systems increasingly use hybrid approaches. Critical metric: Smart memory systems like Mem0 cut token costs 80-90% while improving response quality 26% vs. basic history management.",
     "keyPoints": [

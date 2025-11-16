@@ -6,7 +6,7 @@
   "summary": "Core software components needed to build AI agents: LLM provider, UI/interface, tool system, and orchestrator",
   "knowledgeGapLikelihood": "medium",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "Building an AI agent requires four fundamental software components: (1) LLM Provider (the reasoning engine), (2) UI/Interface (user interaction layer), (3) Tool System (external capabilities), and (4) Orchestrator (coordinates components and manages conversation flow). Unlike design patterns (ReAct, Reflection), this is the concrete SOFTWARE architecture - the components you must implement or integrate to build a functioning agent.",
     "keyPoints": [

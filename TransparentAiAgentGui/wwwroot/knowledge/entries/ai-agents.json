@@ -6,7 +6,7 @@
   "summary": "Autonomous AI systems that plan, reason, and act to complete tasks with minimal human oversight",
   "knowledgeGapLikelihood": "medium",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "AI agents are autonomous software systems that go beyond reactive question-answering to proactively plan, reason, and execute multi-step tasks with minimal human intervention. The concept of 'agency' refers to the system's autonomous decision-making capability - it acts with agency to fulfill objectives rather than simply responding to commands. Unlike traditional AI assistants that execute single, well-defined requests, agents operate in a continuous perception-decision-action loop.",
     "keyPoints": [

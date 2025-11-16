@@ -6,7 +6,7 @@
   "summary": "Open standard protocol for connecting AI assistants to data sources and tools, created by Anthropic in 2024",
   "knowledgeGapLikelihood": "high",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "The Model Context Protocol (MCP) is an open standard created by Anthropic (open-sourced November 2024) for building secure, two-way connections between AI assistants and external data sources, tools, and systems. MCP standardizes how LLMs access content repositories, business tools, and development environments, replacing proprietary integration approaches. It deliberately re-uses concepts from the Language Server Protocol (LSP) and uses JSON-RPC 2.0 over stdio or HTTP transports. Major adoption: OpenAI integrated MCP across ChatGPT, Agents SDK, and APIs in March 2025.",
     "keyPoints": [

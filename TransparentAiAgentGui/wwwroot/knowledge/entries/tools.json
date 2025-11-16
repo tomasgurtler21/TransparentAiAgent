@@ -6,7 +6,7 @@
   "summary": "Mechanisms enabling LLMs to interact with external systems through structured function calls",
   "knowledgeGapLikelihood": "low",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "Function calling (also called tool use) enables LLMs to output structured requests to external systems rather than generating vague natural-language instructions. Instead of returning 'you should check the weather API', the LLM outputs a structured call like 'call get_weather(city=\"London\")'. This is the foundational mechanism that enables AI agents to interact with databases, APIs, file systems, and other external tools, transforming LLMs from text generators into systems that drive real-world actions.",
     "keyPoints": [

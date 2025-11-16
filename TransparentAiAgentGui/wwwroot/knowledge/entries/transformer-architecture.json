@@ -6,7 +6,7 @@
   "summary": "Neural network architecture using self-attention mechanisms, foundational to modern LLMs since 2017",
   "knowledgeGapLikelihood": "low",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "The Transformer is the foundational neural network architecture for modern LLMs, introduced in the 2017 paper 'Attention Is All You Need' (173,000+ citations, top 10 most-cited papers of 21st century). Unlike previous architectures using recurrence or convolution, Transformers rely entirely on self-attention mechanisms to process sequences. The CRITICAL limitation: Self-attention has quadratic computational complexity O(n²) with sequence length, making long contexts exponentially expensive. This quadratic cost is the root cause of context window limits and why 200K token requests cost ~4x more than 100K token requests.",
     "keyPoints": [

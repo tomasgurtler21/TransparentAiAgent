@@ -6,7 +6,7 @@
   "summary": "Design patterns for building AI agents including ReAct, reflection, planning, and multi-step reasoning",
   "knowledgeGapLikelihood": "medium",
   "lastUpdated": "2025-11-15",
-  "lastChecked": null,
+  "lastChecked": "1990-01-01",
   "content": {
     "overview": "AI agent architectures define how agents reason, plan, and act to accomplish goals. The most influential patterns in 2025 are ReAct (Reasoning and Acting), Reflection (self-critique and improvement), and Planning (goal decomposition). These patterns can be combined, with the most effective solutions weaving together tool use, reflection, planning, and adaptive reasoning. Critical insight: Simple architectures (ReAct + Tools) often match complex architectures' accuracy at 50% lower cost.",
     "keyPoints": [
