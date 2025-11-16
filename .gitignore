@@ -416,3 +416,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Track dependency DLLs in lib/ folder (external dependencies)
+# Note: *.pdb is globally ignored on line 93, so we need to explicitly allow lib/ contents
+!lib/**/*.dll
+!lib/**/*.pdb
+!lib/**/*.xml

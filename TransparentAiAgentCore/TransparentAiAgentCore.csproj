@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -12,10 +12,14 @@
     <PackageReference Include="Azure.Identity" Version="1.13.1" />
     <PackageReference Include="OpenAI" Version="2.7.0" />
     <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
+    <PackageReference Include="System.Text.Json" Version="9.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\anthropic-sdk-csharp\src\Anthropic.Client\Anthropic.Client.csproj" />
+    <Reference Include="Anthropic.Client">
+      <HintPath>..\lib\Anthropic.Client\Anthropic.Client.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>

@@ -62,7 +62,7 @@ builder.Services.AddSingleton<IConversationRepository>(sp =>
 {
     var messageSerializer = sp.GetRequiredService<MessageSerializer>();
     var logger = sp.GetRequiredService<ILogger<JsonConversationRepository>>();
-    var conversationsPath = Path.Combine(builder.Environment.ContentRootPath, "conversations");
+    var conversationsPath = Path.Combine(builder.Environment.ContentRootPath, "data", "conversations");
     return new JsonConversationRepository(messageSerializer, logger, conversationsPath);
 });
 builder.Services.AddScoped<IConversationHistoryManager, ConversationHistoryManager>();
@@ -127,7 +127,7 @@ builder.Services.AddScoped<IConversationManager>(sp =>
 builder.Services.AddSingleton<IKnowledgeLibrary>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<JsonKnowledgeLibrary>>();
-    var knowledgeBasePath = Path.Combine(builder.Environment.WebRootPath, "knowledge");
+    var knowledgeBasePath = Path.Combine(builder.Environment.ContentRootPath, "data", "knowledge");
     return new JsonKnowledgeLibrary(knowledgeBasePath, logger);
 });
 builder.Services.AddSingleton<BuiltInKnowledgeToolRegistry>();
@@ -375,7 +375,7 @@ var app = builder.Build();
 // Load scenarios from JSON files (Phase 10a - Teaching Mode Scenarios)
 try
 {
-    var scenariosPath = Path.Combine(builder.Environment.WebRootPath, "scenarios");
+    var scenariosPath = Path.Combine(builder.Environment.ContentRootPath, "data", "scenarios");
 
     if (Directory.Exists(scenariosPath))
     {
@@ -474,6 +474,32 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Auto-open browser on startup
+var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+lifetime.ApplicationStarted.Register(() =>
+{
+    try
+    {
+        // Get the URL from configuration or use default
+        var urls = app.Urls;
+        var url = urls.FirstOrDefault() ?? "http://localhost:5000";
+
+        // Open browser on Windows, macOS, or Linux
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = url,
+            UseShellExecute = true
+        };
+        System.Diagnostics.Process.Start(psi);
+
+        Console.WriteLine($"🌐 Opening browser at {url}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠ Could not open browser automatically: {ex.Message}");
+    }
+});
 
 // Configuration API endpoints
 app.MapGet("/api/config", (IConfigurationService configService) =>

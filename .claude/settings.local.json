@@ -1,22 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
-      "Bash(dotnet build:*)",
-      "Bash(dotnet test:*)",
-      "WebSearch",
-      "WebFetch(domain:github.com)",
-      "mcp__context7__get-library-docs",
-      "Skill(tdd)",
-      "Bash(Select-String -Pattern \"(Failed|Passed:|Failed:)\" -Context 2,5)",
-      "Bash($null)",
-      "Bash(Select-String -Pattern \"(Passed|Failed):\" -Context 0,1)",
-      "Bash(findstr:*)",
-      "Bash(dir:*)",
-      "Bash(Select-String -Pattern \"ConversationSelector|conversation selector\" -Path CONVERSATION_HISTORY_DESIGN.md -Context 5)",
-      "Bash(dotnet list:*)",
-      "Bash(Select-String -Pattern \"(error|Failed|passed)\" -Context 2)"
-    ]
+      "Bash(Select-Object Name)"
+    ],
+    "deny": [],
+    "ask": []
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
