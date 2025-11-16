@@ -810,6 +810,176 @@ During Phase 5 manual testing with real MCP servers, discovered Azure OpenAI ret
 
 ---
 
+### DD-026: LLM Provider Selector Architecture
+
+**Date**: 2025-11-15
+**Status**: ✅ Implemented
+**Related**: `LLM_SELECTOR_DESIGN.md`, `LLM_SELECTOR_IMPLEMENTATION_PLAN.md`
+
+**Context**: Users need the ability to configure multiple LLM providers (different models, regions, providers) and switch between them dynamically via UI dropdown without restarting the application. This enables experimentation with different models, multi-region fallback, and provider comparison.
+
+**Decision**: Implement **Provider Manager Pattern** with configuration-based provider definitions
+
+**Architecture**:
+
+```
+Application Layer
+    ↓ GetActiveProvider()
+ILLMProviderManager (Domain)
+    ↓ Implements
+LLMProviderManager (Infrastructure)
+    ├─ Lazy Loading (create on first use)
+    ├─ Caching (reuse instances)
+    ├─ Thread-Safe Switching
+    └─ Configuration Persistence
+    ↓ Creates via
+LLMProviderFactory
+    ↓ Creates
+Individual Providers (Anthropic, Azure OpenAI, OpenAI)
+```
+
+**Configuration Structure**:
+
+```json
+{
+  "LLM": {
+    "ActiveProvider": "claude-fast",
+    "DefaultParameters": {
+      "Temperature": 0.7,
+      "TopP": 1.0,
+      "MaxTokens": 4096
+    },
+    "Providers": {
+      "claude-fast": {
+        "Type": "Anthropic",
+        "DisplayName": "Claude Haiku (Fast)",
+        "Model": "claude-haiku-4-5-20251001",
+        "ApiKey": "...",
+        "Parameters": { /* optional overrides */ }
+      },
+      "azure-gpt4": {
+        "Type": "AzureOpenAI",
+        "DisplayName": "Azure GPT-4",
+        "Endpoint": "https://...",
+        "DeploymentName": "gpt-4",
+        "ApiKey": "..."
+      }
+    }
+  }
+}
+```
+
+**Key Design Decisions**:
+
+1. **Named Provider Configs**: Each provider has a unique configuration name (e.g., "claude-fast", "azure-eastus") instead of provider+model identifiers
+   - Rationale: Supports multiple instances of same model with different configurations (e.g., multiple Azure regions)
+
+2. **Three-Tier Parameter System**:
+   - DefaultParameters: Shared defaults for all providers
+   - Provider Base: Inherits from defaults
+   - ParameterOverrides: Provider-specific overrides
+   - Rationale: DRY principle while allowing experimentation
+
+3. **Provider Manager Pattern** (vs alternatives):
+   - ✅ Clean separation: routing (manager) vs creation (factory) vs execution (providers)
+   - ✅ Testable: Easy to mock ILLMProviderManager
+   - ✅ Flexible: Can add features without affecting consumers
+   - ❌ Alternatives considered:
+     - Scoped providers: Lifecycle complexity
+     - Factory-only: No caching, no centralized management
+
+4. **Lazy Loading + Caching**:
+   - Providers created only when first used
+   - Instances cached for reuse
+   - Rationale: Faster startup, lower resource usage, reuse connections
+
+5. **Configuration Validation** (Structure Only):
+   - Validate ALL provider configs at startup (fast)
+   - Check required fields, formats, structure
+   - NO connectivity checks (would waste API tokens)
+   - Rationale: Catch 90% of errors without API costs
+
+6. **UI Placement**: Provider selector in header next to conversation selector
+   - Layout: Conversation selector (left), Provider selector (right)
+   - Horizontal layout for desktop, stacked for mobile
+   - Rationale: Easy access, doesn't disrupt workflow
+
+7. **Persistence**: ActiveProvider stored in appsettings.json
+   - Single file approach (config and runtime state together)
+   - Written when user switches providers
+   - Rationale: Consistent with current practice (already writing temp/top_p), simpler for single-user desktop app
+
+8. **Backward Compatibility**: NOT REQUIRED
+   - Breaking changes acceptable (pre-release)
+   - Simpler implementation without migration code
+   - Rationale: No public release yet
+
+9. **Instance Lifecycle**: Lazy-load on first use, then cache
+   - Provider creation (~200-500ms) only when needed
+   - Cached instances reused (~1ms access)
+   - Proper disposal on shutdown
+   - Rationale: Performance (avoid recreating HTTP clients)
+
+10. **NO Advanced Features**: No auto-fallback, routing, or load balancing
+    - User explicitly selects provider
+    - No hidden automatic decisions
+    - Rationale: **Transparency principle** - user must always know which provider is active
+
+**Options Considered**:
+
+| Approach | Pros | Cons | Decision |
+|----------|------|------|----------|
+| **Scoped Providers** | Simple registration | Lifecycle issues, requires all consumers to be scoped | ❌ Rejected |
+| **Provider Manager** | Clean separation, testable, flexible | More code | ✅ **Selected** |
+| **Factory-Only** | Minimal changes | No caching, factory becomes service | ❌ Rejected |
+| **Validate Connectivity** | Catch errors early | Wastes tokens, slow startup | ❌ Rejected |
+| **Validate Structure Only** | Fast, catches 90% of errors | Some errors found at runtime | ✅ **Selected** |
+| **Two Config Files** | Cleaner separation | More complexity | ❌ Rejected |
+| **Single Config File** | Simpler, consistent with current | Mixes static/runtime | ✅ **Selected** |
+
+**Consequences**:
+
+**Positive**:
+- ✅ Dynamic provider switching without restart
+- ✅ Easy experimentation with different models/parameters
+- ✅ Multi-region support (e.g., multiple Azure endpoints)
+- ✅ Configuration-driven (no code changes to add providers)
+- ✅ Transparent to user (always knows which provider is active)
+- ✅ Well-tested architecture (872+ tests passing)
+- ✅ Backward compatible for consumers (existing code works via adapter)
+
+**Negative**:
+- ⚠️ More complex than singleton provider
+- ⚠️ Pattern matching order matters (AssistantToolCallMessage before AssistantMessage)
+- ⚠️ Configuration structure more verbose
+- ⚠️ Need to restart app to add new provider types (by design)
+
+**Implementation**:
+- **Phase**: Implemented in Phase 8 extension (Nov 2025)
+- **Effort**: ~7-12 days across 13 implementation steps
+- **Status**: ✅ Complete, all tests passing
+- **Files**:
+  - Domain: `ILLMProviderManager`, `ProviderInfo`, `ProviderConfig`
+  - Infrastructure: `LLMProviderManager`, `LLMProviderFactory` (updated), `ProviderConfigValidator`
+  - UI: `ProviderSelector.razor`, `ProviderStateService`
+  - Tests: 872+ tests passing (including provider manager, validation, UI tests)
+
+**Documentation**:
+- User Guide: `docs/05-guides/deployment/llm-provider-selector.md`
+- Component: `docs/04-components/llm/llm-provider-manager.md`
+- Design: `LLM_SELECTOR_DESIGN.md` (detailed design discussion)
+- Implementation: `LLM_SELECTOR_IMPLEMENTATION_PLAN.md` (13-step plan)
+
+**Future Enhancements** (explicitly NOT implemented):
+- [ ] Provider health checks
+- [ ] Automatic failover
+- [ ] Load balancing
+- [ ] Concurrent provider execution
+
+**Note**: These features were explicitly decided against to maintain the transparency principle - user must always know which provider is being used.
+
+---
+
 ## Pending Decisions
 
 The following decisions will be made during implementation:
@@ -826,4 +996,4 @@ The following decisions will be made during implementation:
 
 ---
 
-**Last Updated**: 2025-11-01 (Added DD-025: Tool Call Message Architecture Refactoring)
+**Last Updated**: 2025-11-16 (Added DD-026: LLM Provider Selector Architecture)
