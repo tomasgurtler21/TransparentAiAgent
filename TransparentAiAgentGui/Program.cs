@@ -264,10 +264,11 @@ if (isLLMConfigured)
         builder.Services.AddScoped<IProviderStateService, ProviderStateService>();
 
         // Also register ILLMProvider for backward compatibility (delegates to active provider)
+        // Uses DelegatingLLMProvider to ensure current active provider is used on every request
         builder.Services.AddSingleton<ILLMProvider>(sp =>
         {
             var manager = sp.GetRequiredService<TransparentAiAgentCore.Domain.LLM.ILLMProviderManager>();
-            return manager.GetActiveProvider();
+            return new DelegatingLLMProvider(manager);
         });
     }
     else
