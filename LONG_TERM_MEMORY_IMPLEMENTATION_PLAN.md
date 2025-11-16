@@ -1405,3 +1405,195 @@ Implementation is complete when:
 4. Commit frequently
 5. Push after each phase
 6. Update this document if any changes needed during implementation
+
+---
+
+## Critical Design Review - Implementation Impact
+
+**⚠️ BLOCKING ISSUES**: Implementation cannot proceed until critical design issues are resolved.
+
+**See**: [LONG_TERM_MEMORY_DESIGN_REVIEW.md](./LONG_TERM_MEMORY_DESIGN_REVIEW.md) for complete analysis.
+
+### Issues Blocking Implementation
+
+#### 1. AppModeService Layering (Blocks Phase 3)
+
+**Problem**: `LongTermMemoryToolExecutor` needs `IAppModeService`, but interface is in GUI layer.
+
+**Solution Required**: Move `IAppModeService` to Domain layer before Phase 1.
+
+**New Phase 0** (if Option A chosen):
+- Move `TransparentAiAgentGui/Services/IAppModeService.cs` → `TransparentAiAgentCore/Domain/UIControl/IAppModeService.cs`
+- Update all references
+- Verify existing code still compiles
+- Run existing tests
+- **Commit**: "Move IAppModeService to Domain layer for clean architecture"
+
+**Alternative**: If Option B or C chosen, update Phase 3 accordingly.
+
+#### 2. System Message Injection (Affects Phase 4)
+
+**Problem**: Design doesn't specify HOW to inject memory into conversation.
+
+**Solution Required**: Add explicit implementation to Phase 4.1:
+
+```csharp
+// In ConversationUIService.LoadMemoryIntoConversation()
+private async Task LoadMemoryIntoConversation()
+{
+    if (!IsMemoryEnabled) return;
+
+    var memoryContent = await _memoryService.ReadMemoryAsync(_appModeService.CurrentMode);
+
+    if (string.IsNullOrWhiteSpace(memoryContent))
+    {
+        _logger.LogDebug("Memory empty, skipping injection");
+        return;
+    }
+
+    // Get current system prompt
+    var currentPrompt = _appConfiguration.Agent.SystemPrompt;
+
+    // Merge memory into system prompt
+    var mergedPrompt = $@"{currentPrompt}
+
+---
+
+## LONG-TERM MEMORY
+
+{memoryContent}
+
+---
+
+Use this memory to personalize your responses. You can update it anytime using the long_term_memory_update tool.";
+
+    // Update conversation manager
+    _conversationManager.UpdateSystemPrompt(mergedPrompt);
+
+    _logger.LogInformation("Loaded {CharCount} chars of memory into conversation",
+        memoryContent.Length);
+}
+```
+
+**Also needed**: Restore original prompt when disabling memory:
+```csharp
+public async Task SetMemoryEnabledAsync(bool enabled)
+{
+    IsMemoryEnabled = enabled;
+
+    if (enabled)
+    {
+        await LoadMemoryIntoConversation();
+    }
+    else
+    {
+        // Restore original system prompt
+        var originalPrompt = _appConfiguration.Agent.SystemPrompt;
+        _conversationManager.UpdateSystemPrompt(originalPrompt);
+    }
+}
+```
+
+#### 3. Mode Switch Event Handling (Affects Phase 4)
+
+**Problem**: No specification for hooking into mode switch to trigger memory operations.
+
+**Solution Required**: Update AppModeService and ConversationUIService in Phase 4.
+
+**Option A**: Add event subscription in ConversationUIService constructor:
+```csharp
+public ConversationUIService(...)
+{
+    // ... existing code
+
+    // Subscribe to mode change to load new mode's memory
+    _appModeService.ModeChanged += OnModeChanged;
+}
+
+private async void OnModeChanged(object? sender, AppMode newMode)
+{
+    if (IsMemoryEnabled)
+    {
+        await LoadMemoryIntoConversation(); // Load new mode's memory
+    }
+}
+```
+
+**Option B**: Add ModeSwitching event to AppModeService:
+```csharp
+// In IAppModeService (Domain)
+event EventHandler<AppMode>? ModeSwitching; // BEFORE switch
+event EventHandler<AppMode>? ModeChanged;   // AFTER switch
+
+// In AppModeService implementation
+public async Task SwitchModeAsync(AppMode newMode, bool clearConversation = false)
+{
+    // Fire BEFORE switching
+    ModeSwitching?.Invoke(this, newMode);
+
+    // Prompt for memory update (via ConversationUIService subscriber)
+    // ... wait for completion
+
+    // Do mode switch
+    // ...
+
+    // Fire AFTER switching
+    ModeChanged?.Invoke(this, newMode);
+}
+```
+
+### Updated Phase Breakdown
+
+**Phase 0: Prerequisites** (NEW - 1-2 hours)
+- 0.1: Resolve AppModeService layering (move interface or choose alternative)
+- 0.2: Add Markdig NuGet package to TransparentAiAgentGui project
+- 0.3: Verify all critical design decisions documented
+
+**Phase 2 Additions**:
+- Add to 2.1: File path validation (security)
+- Add to 2.1: UTF-8 encoding explicit
+- Add to 2.1: Directory auto-creation
+- Add Test 2.1.9: Path validation test
+- Add Test 2.1.10: UTF-8 encoding test
+
+**Phase 4 Additions**:
+- Add to 4.1: Explicit system message injection implementation
+- Add to 4.1: Prompt restoration when disabling memory
+- Add to 4.1: Mode switch event subscription
+- Add Test 4.1.4: System message injection test
+- Add Test 4.1.5: Mode switch triggers memory load test
+
+**Phase 5 Additions**:
+- Add to 5.1: localStorage persistence for checkbox state
+- Add to 5.3: Character counter in memory editor
+- Add to 5.3: Last updated timestamp display
+- Add to 5.3: Error toast notifications
+- Add Test 5.1.1: localStorage persistence test
+- Add Test 5.3.1: Character counter shows correctly
+- Add Test 5.3.2: Error feedback displays
+
+### Revised Estimated Effort
+
+- **Phase 0**: 1-2 hours (prerequisites)
+- **Phase 1**: 1-2 hours (domain models, interfaces)
+- **Phase 2**: 4-5 hours (service + additional validations + tests)
+- **Phase 3**: 2-3 hours (tools, executor, registry + tests)
+- **Phase 4**: 3-4 hours (application integration + event handling + tests)
+- **Phase 5**: 4-5 hours (UI + localStorage + error feedback + tests)
+- **Phase 6**: 2-3 hours (integration tests, manual testing)
+- **Phase 7**: 2-3 hours (documentation)
+- **Phase 8**: 1-2 hours (cleanup, polish)
+
+**Total**: ~20-29 hours (3-4 full development days)
+
+### Decision Checklist Before Implementation
+
+- [ ] **CRITICAL**: AppModeService layering solution chosen (A, B, or C?)
+- [ ] **CRITICAL**: System message injection approach approved
+- [ ] **CRITICAL**: Mode switch event handling approach approved
+- [ ] **HIGH**: Error feedback strategy defined (toast? inline? both?)
+- [ ] **HIGH**: Markdown library chosen (Markdig?)
+- [ ] **MEDIUM**: Checkbox persistence via localStorage approved
+- [ ] **MEDIUM**: Known limitations documented and accepted
+
+**Status**: ⛔ BLOCKED - Awaiting user decisions on critical issues

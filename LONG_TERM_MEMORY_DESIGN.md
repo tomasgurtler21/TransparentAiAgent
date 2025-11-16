@@ -951,3 +951,27 @@ The feature is successful if:
 **Decision**: TBD in implementation plan
 - Defer to implementation phase
 - Likely: empty file until first update (simpler)
+
+---
+
+## Critical Design Review
+
+**⚠️ IMPORTANT**: A comprehensive critical review has identified several issues that must be resolved before implementation.
+
+**See**: [LONG_TERM_MEMORY_DESIGN_REVIEW.md](./LONG_TERM_MEMORY_DESIGN_REVIEW.md)
+
+### Critical Issues Summary
+
+1. **🚨 CRITICAL**: AppModeService layering violation - interface must move to Domain layer
+2. **🚨 CRITICAL**: System message injection point unclear - need explicit specification
+3. **🚨 CRITICAL**: Mode switch event handling not specified
+
+### High Priority Issues
+
+4. Checkbox state persistence missing (localStorage)
+5. Error feedback UX not specified
+6. Memory update prompt behavior underspecified
+
+### Action Required
+
+Review the detailed analysis in `LONG_TERM_MEMORY_DESIGN_REVIEW.md` and make decisions on critical issues before proceeding with implementation.
