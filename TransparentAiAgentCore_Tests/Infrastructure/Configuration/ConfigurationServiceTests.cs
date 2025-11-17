@@ -42,12 +42,19 @@ public class ConfigurationServiceTests
             },
             LLM = new LLMConfiguration
             {
-                Provider = "Anthropic",
-                Temperature = 0.8,
-                Anthropic = new AnthropicConfiguration
+                ActiveProvider = "claude-fast",
+                DefaultParameters = new ProviderParameters(0.8, null, null),
+                Providers = new Dictionary<string, ProviderConfig>
                 {
-                    ApiKey = "test-key",
-                    Model = "claude-3-5-sonnet-20241022"
+                    ["claude-fast"] = new ProviderConfig(
+                        type: "Anthropic",
+                        displayName: "Claude Fast",
+                        parameters: new Dictionary<string, object>
+                        {
+                            ["Model"] = "claude-3-5-sonnet-20241022",
+                            ["ApiKey"] = "test-key"
+                        }
+                    )
                 }
             }
         };
@@ -60,8 +67,9 @@ public class ConfigurationServiceTests
         Assert.AreSame(newConfig, retrieved);
         Assert.AreEqual("Custom prompt", retrieved.Agent.SystemPrompt);
         Assert.AreEqual(50, retrieved.Agent.ContextWindowSize);
-        Assert.AreEqual("Anthropic", retrieved.LLM.Provider);
-        Assert.AreEqual(0.8, retrieved.LLM.Temperature);
+        Assert.AreEqual("claude-fast", retrieved.LLM.ActiveProvider);
+        Assert.IsTrue(retrieved.LLM.Providers.ContainsKey("claude-fast"));
+        Assert.AreEqual(0.8, retrieved.LLM.DefaultParameters?.Temperature);
     }
 
     [TestMethod]
@@ -153,16 +161,22 @@ public class ConfigurationServiceTests
             },
             LLM = new LLMConfiguration
             {
-                Provider = "AzureOpenAI",
-                Temperature = 0.7,
-                MaxTokens = 1000,
-                TopP = 1.0,
-                AzureOpenAI = new AzureOpenAIConfiguration
+                ActiveProvider = "azure-gpt4",
+                DefaultParameters = new ProviderParameters(0.7, 1.0, 1000),
+                Providers = new Dictionary<string, ProviderConfig>
                 {
-                    AuthenticationMode = AuthenticationMode.ApiKey,
-                    ApiKey = "test-key",
-                    Endpoint = "https://test.openai.azure.com",
-                    DeploymentName = "gpt-4"
+                    ["azure-gpt4"] = new ProviderConfig(
+                        type: "AzureOpenAI",
+                        displayName: "Azure GPT-4",
+                        parameters: new Dictionary<string, object>
+                        {
+                            ["Endpoint"] = "https://test.openai.azure.com",
+                            ["ApiKey"] = "test-key",
+                            ["DeploymentName"] = "gpt-4",
+                            ["ApiVersion"] = "2024-02-15-preview",
+                            ["AuthenticationMode"] = "ApiKey"
+                        }
+                    )
                 }
             },
             MCP = new MCPConfiguration

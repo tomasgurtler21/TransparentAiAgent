@@ -61,7 +61,8 @@ public class UIMessageConversionTests
         // Assert
         Assert.AreEqual("Hello", uiMsg.Content);
         Assert.IsTrue(uiMsg.IsAutoMessage, "ScenarioUserMessage should be marked as auto message");
-        Assert.AreEqual("Teaching step 1", uiMsg.Annotation, "Annotation should be set from ScenarioUserMessage");
+        Assert.IsTrue(uiMsg.Annotation?.StartsWith("Teaching step 1") == true, "Annotation should start with the scenario annotation");
+        Assert.IsTrue(uiMsg.Annotation?.Contains("(Note: This hint was not sent to the LLM") == true, "Annotation should include context note");
         Assert.AreEqual(MessageRole.User, uiMsg.Role);
     }
 
@@ -109,7 +110,8 @@ public class UIMessageConversionTests
         // Assert
         Assert.AreEqual("Response", uiMsg.Content);
         Assert.IsTrue(uiMsg.IsAutoMessage, "ScenarioAssistantMessage should be marked as auto message");
-        Assert.AreEqual("Teaching response 1", uiMsg.Annotation);
+        Assert.IsTrue(uiMsg.Annotation?.StartsWith("Teaching response 1") == true, "Annotation should start with the scenario annotation");
+        Assert.IsTrue(uiMsg.Annotation?.Contains("(Note: This hint was not sent to the LLM") == true, "Annotation should include context note");
         Assert.AreEqual(MessageRole.Assistant, uiMsg.Role);
     }
 

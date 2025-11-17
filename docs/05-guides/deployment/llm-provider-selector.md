@@ -115,16 +115,55 @@ Additional fields depend on provider type:
 
 #### Azure OpenAI Provider
 
+**With API Key Authentication:**
 ```json
 {
   "Type": "AzureOpenAI",
-  "DisplayName": "GPT-4 (Azure East US)",
-  "Endpoint": "https://your-resource.openai.azure.com/",
-  "DeploymentName": "gpt-4",
-  "ApiVersion": "2024-02-15-preview",
-  "ApiKey": "your-azure-api-key"
+  "DisplayName": "GPT-4 (Azure - API Key)",
+  "Parameters": {
+    "Endpoint": "https://your-resource.openai.azure.com/",
+    "DeploymentName": "gpt-4",
+    "ApiVersion": "2024-02-15-preview",
+    "AuthenticationMode": "ApiKey",
+    "ApiKey": "your-azure-api-key"
+  }
 }
 ```
+
+**With DefaultAzureCredential (OAuth - Recommended for Production):**
+```json
+{
+  "Type": "AzureOpenAI",
+  "DisplayName": "GPT-4 (Azure - OAuth)",
+  "Parameters": {
+    "Endpoint": "https://your-resource.openai.azure.com/",
+    "DeploymentName": "gpt-4",
+    "ApiVersion": "2024-02-15-preview",
+    "AuthenticationMode": "DefaultAzureCredential",
+    "TenantId": "optional-tenant-id"
+  }
+}
+```
+
+**With InteractiveBrowserCredential (OAuth - Best for Desktop Apps):**
+```json
+{
+  "Type": "AzureOpenAI",
+  "DisplayName": "GPT-4 (Azure - Interactive)",
+  "Parameters": {
+    "Endpoint": "https://your-resource.openai.azure.com/",
+    "DeploymentName": "gpt-4",
+    "ApiVersion": "2024-02-15-preview",
+    "AuthenticationMode": "InteractiveBrowserCredential",
+    "TenantId": "optional-tenant-id"
+  }
+}
+```
+
+**Authentication Modes:**
+- `ApiKey` - Static API key (simple, less secure)
+- `DefaultAzureCredential` - Automatically discovers credentials from environment, managed identity, Azure CLI (`az login`), Visual Studio, etc. No API key needed!
+- `InteractiveBrowserCredential` - Opens browser popup for interactive Microsoft account login. Best for GUI applications.
 
 #### OpenAI Provider
 
@@ -180,6 +219,127 @@ Override defaults for specific providers using `Parameters`:
 ```
 
 **Result**: `Temperature` and `TopP` come from defaults, `MaxTokens` is overridden to 8192.
+
+---
+
+## Azure OpenAI OAuth Authentication
+
+Azure OpenAI supports **three authentication modes**: API Key, DefaultAzureCredential, and InteractiveBrowserCredential.
+
+### Authentication Modes
+
+| Mode | Use Case | Requires API Key | Setup |
+|------|----------|------------------|-------|
+| `ApiKey` | Simple development | ✅ Yes | Copy API key from Azure Portal |
+| `DefaultAzureCredential` | Production, servers, CI/CD | ❌ No | Assign Azure RBAC role, run `az login` for local dev |
+| `InteractiveBrowserCredential` | Desktop GUI apps | ❌ No | Assign Azure RBAC role, user logs in via browser |
+
+### DefaultAzureCredential (Recommended for Production)
+
+**What it does:** Automatically discovers credentials from multiple sources in this order:
+1. Environment variables (service principal)
+2. Workload Identity (Azure Kubernetes)
+3. Managed Identity (Azure App Service, Container Apps, VMs)
+4. Azure CLI (`az login`) - for local development
+5. Visual Studio / VS Code credentials
+
+**Configuration:**
+```json
+{
+  "azure-gpt4-oauth": {
+    "Type": "AzureOpenAI",
+    "DisplayName": "Azure GPT-4 (OAuth)",
+    "Parameters": {
+      "Endpoint": "https://your-resource.openai.azure.com/",
+      "DeploymentName": "gpt-4",
+      "ApiVersion": "2024-02-15-preview",
+      "AuthenticationMode": "DefaultAzureCredential",
+      "TenantId": "optional-tenant-id"  // Only needed for multi-tenant scenarios
+    }
+  }
+}
+```
+
+**Prerequisites:**
+1. **Assign Azure RBAC Role** to your user/managed identity:
+   - Role: `Cognitive Services OpenAI User` or `Cognitive Services OpenAI Contributor`
+   - Scope: Your Azure OpenAI resource
+   - Via Azure Portal: Resource → Access Control (IAM) → Add role assignment
+   - Via CLI: `az role assignment create --role "Cognitive Services OpenAI User" --assignee your-email@company.com --scope /subscriptions/{sub-id}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{resource-name}`
+
+2. **For local development:**
+   - Install Azure CLI: `winget install Microsoft.AzureCLI`
+   - Login: `az login`
+   - Your credentials are cached and used automatically
+
+3. **For production (Azure-hosted apps):**
+   - Enable Managed Identity on your App Service/Container/VM
+   - Assign the RBAC role to the managed identity
+   - No secrets needed in configuration!
+
+### InteractiveBrowserCredential (Best for Desktop Apps)
+
+**What it does:** Opens a browser popup for interactive Microsoft account login. User authenticates with their Microsoft/Azure AD account.
+
+**Configuration:**
+```json
+{
+  "azure-gpt4-interactive": {
+    "Type": "AzureOpenAI",
+    "DisplayName": "Azure GPT-4 (Interactive)",
+    "Parameters": {
+      "Endpoint": "https://your-resource.openai.azure.com/",
+      "DeploymentName": "gpt-4",
+      "ApiVersion": "2024-02-15-preview",
+      "AuthenticationMode": "InteractiveBrowserCredential",
+      "TenantId": "optional-tenant-id"
+    }
+  }
+}
+```
+
+**Prerequisites:**
+1. Same RBAC role assignment as DefaultAzureCredential
+2. User must have permission to access the Azure OpenAI resource
+3. Browser available for popup (doesn't work in headless environments)
+
+**When to use:**
+- Desktop GUI applications (like this Blazor app)
+- User-facing tools where each user has their own Azure credentials
+- Development environments where you want explicit login control
+
+### Multi-Region Failover with OAuth
+
+You can configure multiple Azure OpenAI providers in different regions, all using OAuth:
+
+```json
+{
+  "Providers": {
+    "azure-eastus": {
+      "Type": "AzureOpenAI",
+      "DisplayName": "Azure GPT-4 (East US)",
+      "Parameters": {
+        "Endpoint": "https://eastus-resource.openai.azure.com/",
+        "DeploymentName": "gpt-4",
+        "ApiVersion": "2024-02-15-preview",
+        "AuthenticationMode": "DefaultAzureCredential"
+      }
+    },
+    "azure-westus": {
+      "Type": "AzureOpenAI",
+      "DisplayName": "Azure GPT-4 (West US - Backup)",
+      "Parameters": {
+        "Endpoint": "https://westus-resource.openai.azure.com/",
+        "DeploymentName": "gpt-4",
+        "ApiVersion": "2024-02-15-preview",
+        "AuthenticationMode": "DefaultAzureCredential"
+      }
+    }
+  }
+}
+```
+
+Switch between regions via the UI dropdown if one region experiences issues!
 
 ---
 
@@ -388,7 +548,7 @@ Reasoning models have **special requirements**:
 }
 ```
 
-### Example 2: Multi-Region Azure OpenAI
+### Example 2: Multi-Region Azure OpenAI with OAuth
 
 ```json
 {
@@ -402,24 +562,30 @@ Reasoning models have **special requirements**:
     "azure-eastus": {
       "Type": "AzureOpenAI",
       "DisplayName": "GPT-4 (East US)",
-      "Endpoint": "https://eastus-resource.openai.azure.com/",
-      "DeploymentName": "gpt-4",
-      "ApiVersion": "2024-02-15-preview",
-      "ApiKey": "YOUR_AZURE_KEY"
+      "Parameters": {
+        "Endpoint": "https://eastus-resource.openai.azure.com/",
+        "DeploymentName": "gpt-4",
+        "ApiVersion": "2024-02-15-preview",
+        "AuthenticationMode": "DefaultAzureCredential"
+      }
     },
     "azure-westus": {
       "Type": "AzureOpenAI",
       "DisplayName": "GPT-4 (West US - Backup)",
-      "Endpoint": "https://westus-resource.openai.azure.com/",
-      "DeploymentName": "gpt-4",
-      "ApiVersion": "2024-02-15-preview",
-      "ApiKey": "YOUR_AZURE_KEY"
+      "Parameters": {
+        "Endpoint": "https://westus-resource.openai.azure.com/",
+        "DeploymentName": "gpt-4",
+        "ApiVersion": "2024-02-15-preview",
+        "AuthenticationMode": "DefaultAzureCredential"
+      }
     }
   }
 }
 ```
 
-### Example 3: Mixed Providers
+**Note:** Using OAuth (DefaultAzureCredential) means no API keys in configuration! Just run `az login` locally or enable Managed Identity in production.
+
+### Example 3: Mixed Providers with Different Auth Modes
 
 ```json
 {
@@ -433,26 +599,45 @@ Reasoning models have **special requirements**:
     "claude-fast": {
       "Type": "Anthropic",
       "DisplayName": "Claude Haiku",
-      "Model": "claude-haiku-4-5-20251001",
-      "ApiKey": "YOUR_ANTHROPIC_KEY"
+      "Parameters": {
+        "Model": "claude-haiku-4-5-20251001",
+        "ApiKey": "YOUR_ANTHROPIC_KEY"
+      }
     },
-    "azure-gpt4": {
+    "azure-gpt4-oauth": {
       "Type": "AzureOpenAI",
-      "DisplayName": "Azure GPT-4",
-      "Endpoint": "https://your-resource.openai.azure.com/",
-      "DeploymentName": "gpt-4",
-      "ApiVersion": "2024-02-15-preview",
-      "ApiKey": "YOUR_AZURE_KEY"
+      "DisplayName": "Azure GPT-4 (OAuth)",
+      "Parameters": {
+        "Endpoint": "https://your-resource.openai.azure.com/",
+        "DeploymentName": "gpt-4",
+        "ApiVersion": "2024-02-15-preview",
+        "AuthenticationMode": "DefaultAzureCredential"
+      }
+    },
+    "azure-gpt4-apikey": {
+      "Type": "AzureOpenAI",
+      "DisplayName": "Azure GPT-4 (API Key)",
+      "Parameters": {
+        "Endpoint": "https://your-resource.openai.azure.com/",
+        "DeploymentName": "gpt-4",
+        "ApiVersion": "2024-02-15-preview",
+        "AuthenticationMode": "ApiKey",
+        "ApiKey": "YOUR_AZURE_KEY"
+      }
     },
     "openai-gpt4o": {
       "Type": "OpenAI",
       "DisplayName": "OpenAI GPT-4o",
-      "Model": "gpt-4o",
-      "ApiKey": "YOUR_OPENAI_KEY"
+      "Parameters": {
+        "Model": "gpt-4o",
+        "ApiKey": "YOUR_OPENAI_KEY"
+      }
     }
   }
 }
 ```
+
+**Note:** This example shows Azure with both OAuth and API Key authentication methods. You can switch between them via the UI dropdown.
 
 ---
 

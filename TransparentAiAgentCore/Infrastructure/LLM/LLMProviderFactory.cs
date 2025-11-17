@@ -27,25 +27,6 @@ public class LLMProviderFactory : ILLMProviderFactory
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
-    public ILLMProvider CreateProvider()
-    {
-        return CreateProvider(_configuration.LLM.Provider);
-    }
-
-    public ILLMProvider CreateProvider(string providerName)
-    {
-        if (string.IsNullOrWhiteSpace(providerName))
-            throw new ArgumentException("Provider name cannot be null or whitespace", nameof(providerName));
-
-        return providerName.ToLowerInvariant() switch
-        {
-            "azureopenai" => CreateAzureOpenAIProvider(),
-            "openai" => CreateOpenAIProvider(),
-            "anthropic" => CreateAnthropicProvider(),
-            _ => throw new ConfigurationException($"Unknown LLM provider: {providerName}")
-        };
-    }
-
     /// <summary>
     /// Creates a provider instance from a ProviderConfig.
     /// </summary>
@@ -104,7 +85,6 @@ public class LLMProviderFactory : ILLMProviderFactory
         // Extract required parameters
         var endpoint = GetRequiredStringParameter(config, "Endpoint", "AzureOpenAI");
         var deploymentName = GetRequiredStringParameter(config, "DeploymentName", "AzureOpenAI");
-        var apiKey = GetRequiredStringParameter(config, "ApiKey", "AzureOpenAI");
 
         // Get optional parameters
         var apiVersion = config.Parameters.TryGetValue("ApiVersion", out var versionObj)
@@ -123,6 +103,28 @@ public class LLMProviderFactory : ILLMProviderFactory
             "interactivebrowsercredential" => AuthenticationMode.InteractiveBrowserCredential,
             _ => AuthenticationMode.ApiKey
         };
+
+        // ApiKey is only required when using ApiKey authentication
+        string? apiKey = null;
+        if (authenticationMode == AuthenticationMode.ApiKey)
+        {
+            apiKey = GetRequiredStringParameter(config, "ApiKey", "AzureOpenAI");
+        }
+        else
+        {
+            // Optional for OAuth modes (DefaultAzureCredential, InteractiveBrowserCredential)
+            if (config.Parameters.TryGetValue("ApiKey", out var apiKeyObj))
+            {
+                apiKey = apiKeyObj?.ToString();
+            }
+        }
+
+        // Get optional TenantId for OAuth authentication
+        string? tenantId = null;
+        if (config.Parameters.TryGetValue("TenantId", out var tenantIdObj))
+        {
+            tenantId = tenantIdObj?.ToString();
+        }
 
         // Extract IsReasoningModel parameter (critical for o1/o3/GPT-5 models)
         var isReasoningModel = false;
@@ -146,7 +148,8 @@ public class LLMProviderFactory : ILLMProviderFactory
                     ApiKey = apiKey,
                     ApiVersion = apiVersion,
                     AuthenticationMode = authenticationMode,
-                    IsReasoningModel = isReasoningModel  // ✅ Set from config
+                    TenantId = tenantId,
+                    IsReasoningModel = isReasoningModel
                 }
             }
         };
@@ -208,41 +211,5 @@ public class LLMProviderFactory : ILLMProviderFactory
             throw new ConfigurationException($"{providerType} provider requires '{parameterName}' parameter");
 
         return valueObj.ToString() ?? throw new ConfigurationException($"{parameterName} parameter cannot be null");
-    }
-
-    private ILLMProvider CreateAzureOpenAIProvider()
-    {
-        if (_configuration.LLM.AzureOpenAI == null)
-            throw new ConfigurationException("Azure OpenAI configuration is missing");
-
-        return new AzureOpenAIProvider(
-            _authProvider,
-            _configuration.LLM.AzureOpenAI.DeploymentName,
-            _transparencyService,
-            _configuration);
-    }
-
-    private ILLMProvider CreateOpenAIProvider()
-    {
-        if (_configuration.LLM.OpenAI == null)
-            throw new ConfigurationException("OpenAI configuration is missing");
-
-        return new OpenAIProvider(
-            _authProvider,
-            _configuration.LLM.OpenAI.Model,
-            _transparencyService,
-            _configuration);
-    }
-
-    private ILLMProvider CreateAnthropicProvider()
-    {
-        if (_configuration.LLM.Anthropic == null)
-            throw new ConfigurationException("Anthropic configuration is missing");
-
-        return new AnthropicProvider(
-            _authProvider,
-            _configuration.LLM.Anthropic.Model,
-            _transparencyService,
-            _configuration);
     }
 }

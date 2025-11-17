@@ -6,94 +6,25 @@ namespace TransparentAiAgentCore_Tests.Domain.Configuration;
 [TestClass]
 public class LLMConfigurationTests
 {
+    // ===== Multi-Provider Validation Tests =====
+
     [TestMethod]
-    public void Validate_NullProvider_ThrowsConfigurationException()
+    public void Validate_NullProviders_ThrowsConfigurationException()
     {
         // Arrange
-        var config = new LLMConfiguration { Provider = null! };
+        var config = new LLMConfiguration { Providers = null };
 
         // Act & Assert
         Assert.ThrowsException<ConfigurationException>(() => config.Validate());
     }
 
     [TestMethod]
-    public void Validate_EmptyProvider_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration { Provider = "" };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_TemperatureBelowZero_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration { Temperature = -0.1 };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_TemperatureAboveTwo_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration { Temperature = 2.1 };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_TopPBelowZero_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration { TopP = -0.1 };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_TopPAboveOne_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration { TopP = 1.1 };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_MaxTokensZero_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration { MaxTokens = 0 };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_MaxTokensNegative_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration { MaxTokens = -1 };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_AzureOpenAI_MissingConfig_ThrowsConfigurationException()
+    public void Validate_EmptyProviders_ThrowsConfigurationException()
     {
         // Arrange
         var config = new LLMConfiguration
         {
-            Provider = "AzureOpenAI",
-            AzureOpenAI = null
+            Providers = new Dictionary<string, ProviderConfig>()
         };
 
         // Act & Assert
@@ -101,18 +32,15 @@ public class LLMConfigurationTests
     }
 
     [TestMethod]
-    public void Validate_AzureOpenAI_InvalidConfig_ThrowsConfigurationException()
+    public void Validate_NullActiveProvider_ThrowsConfigurationException()
     {
         // Arrange
         var config = new LLMConfiguration
         {
-            Provider = "AzureOpenAI",
-            AzureOpenAI = new AzureOpenAIConfiguration
+            ActiveProvider = null,
+            Providers = new Dictionary<string, ProviderConfig>
             {
-                AuthenticationMode = AuthenticationMode.ApiKey,
-                Endpoint = "", // Invalid
-                ApiKey = "test-key",
-                DeploymentName = "gpt-4"
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
             }
         };
 
@@ -121,77 +49,166 @@ public class LLMConfigurationTests
     }
 
     [TestMethod]
-    public void Validate_AzureOpenAI_ValidConfig_DoesNotThrow()
+    public void Validate_EmptyActiveProvider_ThrowsConfigurationException()
     {
         // Arrange
         var config = new LLMConfiguration
         {
-            Provider = "AzureOpenAI",
-            AzureOpenAI = new AzureOpenAIConfiguration
+            ActiveProvider = "",
+            Providers = new Dictionary<string, ProviderConfig>
             {
-                AuthenticationMode = AuthenticationMode.ApiKey,
-                Endpoint = "https://test.openai.azure.com",
-                ApiKey = "test-key",
-                DeploymentName = "gpt-4",
-                ApiVersion = "2024-02-15-preview"
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
             }
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_ActiveProviderNotInProviders_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "non-existent",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            }
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_DefaultParametersTemperatureBelowZero_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            },
+            DefaultParameters = new ProviderParameters(-0.1, null, null)
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_DefaultParametersTemperatureAboveTwo_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            },
+            DefaultParameters = new ProviderParameters(2.1, null, null)
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_DefaultParametersTopPBelowZero_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            },
+            DefaultParameters = new ProviderParameters(null, -0.1, null)
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_DefaultParametersTopPAboveOne_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            },
+            DefaultParameters = new ProviderParameters(null, 1.1, null)
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_DefaultParametersMaxTokensZero_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            },
+            DefaultParameters = new ProviderParameters(null, null, 0)
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_DefaultParametersMaxTokensNegative_ThrowsConfigurationException()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            },
+            DefaultParameters = new ProviderParameters(null, null, -1)
+        };
+
+        // Act & Assert
+        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_ValidMultiProviderConfig_DoesNotThrow()
+    {
+        // Arrange
+        var config = new LLMConfiguration
+        {
+            ActiveProvider = "test",
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["test"] = new ProviderConfig("Anthropic", "Test", new Dictionary<string, object>())
+            },
+            DefaultParameters = new ProviderParameters(0.7, 1.0, 4096)
         };
 
         // Act & Assert - Should not throw
         config.Validate();
     }
 
-    [TestMethod]
-    public void Validate_Anthropic_MissingConfig_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration
-        {
-            Provider = "Anthropic",
-            Anthropic = null
-        };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_Anthropic_InvalidConfig_ThrowsConfigurationException()
-    {
-        // Arrange
-        var config = new LLMConfiguration
-        {
-            Provider = "Anthropic",
-            Anthropic = new AnthropicConfiguration
-            {
-                ApiKey = "", // Invalid
-                Model = "claude-3-5-sonnet-20241022"
-            }
-        };
-
-        // Act & Assert
-        Assert.ThrowsException<ConfigurationException>(() => config.Validate());
-    }
-
-    [TestMethod]
-    public void Validate_Anthropic_ValidConfig_DoesNotThrow()
-    {
-        // Arrange
-        var config = new LLMConfiguration
-        {
-            Provider = "Anthropic",
-            Anthropic = new AnthropicConfiguration
-            {
-                ApiKey = "test-key",
-                Model = "claude-3-5-sonnet-20241022"
-            }
-        };
-
-        // Act & Assert - Should not throw
-        config.Validate();
-    }
-
-    // New tests for multi-provider configuration
+    // ===== Multi-Provider Configuration Tests =====
 
     [TestMethod]
     public void LLMConfiguration_MultipleProviders_LoadsSuccessfully()
@@ -237,30 +254,4 @@ public class LLMConfigurationTests
         Assert.AreEqual(4096, config.DefaultParameters.MaxTokens);
     }
 
-    [TestMethod]
-    public void LLMConfiguration_NullProviders_AllowsNullForBackwardCompatibility()
-    {
-        // Arrange & Act
-        var config = new LLMConfiguration
-        {
-            Providers = null
-        };
-
-        // Assert - Should not throw, allows null for backward compatibility
-        Assert.IsNull(config.Providers);
-    }
-
-    [TestMethod]
-    public void LLMConfiguration_EmptyProviders_AllowsEmptyDictionary()
-    {
-        // Arrange & Act
-        var config = new LLMConfiguration
-        {
-            Providers = new Dictionary<string, ProviderConfig>()
-        };
-
-        // Assert
-        Assert.IsNotNull(config.Providers);
-        Assert.AreEqual(0, config.Providers.Count);
-    }
 }

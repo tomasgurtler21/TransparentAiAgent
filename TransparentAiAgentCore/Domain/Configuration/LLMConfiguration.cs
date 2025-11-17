@@ -2,83 +2,131 @@ using TransparentAiAgentCore.Domain.Exceptions;
 
 namespace TransparentAiAgentCore.Domain.Configuration;
 
+/// <summary>
+/// LLM configuration using multi-provider structure.
+/// Allows defining multiple LLM providers and switching between them dynamically.
+/// </summary>
 public class LLMConfiguration
 {
-    // New multi-provider properties
+    // ===== USER-FACING MULTI-PROVIDER CONFIGURATION =====
+
+    /// <summary>
+    /// The configuration name of the currently active provider.
+    /// Must match a key in the Providers dictionary.
+    /// </summary>
     public string? ActiveProvider { get; set; }
+
+    /// <summary>
+    /// Default parameters inherited by all providers.
+    /// Can be overridden per-provider using ParameterOverrides.
+    /// </summary>
     public ProviderParameters? DefaultParameters { get; set; }
+
+    /// <summary>
+    /// Dictionary of provider configurations.
+    /// Key = configuration name, Value = provider configuration.
+    /// At least one provider must be defined.
+    /// </summary>
     public Dictionary<string, ProviderConfig>? Providers { get; set; }
 
-    // Existing properties (kept for backward compatibility during transition)
+    // ===== INTERNAL PROPERTIES (Used by provider factory pattern - DO NOT SET IN appsettings.json) =====
+    // These properties are used internally when the factory creates temporary AppConfiguration
+    // objects to pass to provider constructors. They should NOT be configured by users.
+
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
+    /// </summary>
     public string Provider { get; set; } = "AzureOpenAI";
+
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
+    /// </summary>
     public double? Temperature { get; set; }
+
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
+    /// </summary>
     public double? TopP { get; set; }
+
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
+    /// </summary>
     public int MaxTokens { get; set; } = 4096;
 
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
+    /// </summary>
     public AzureOpenAIConfiguration? AzureOpenAI { get; set; }
+
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
+    /// </summary>
     public OpenAIConfiguration? OpenAI { get; set; }
+
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
+    /// </summary>
     public AnthropicConfiguration? Anthropic { get; set; }
 
+    /// <summary>
+    /// Validates the LLM configuration.
+    /// </summary>
+    /// <exception cref="ConfigurationException">Thrown when configuration is invalid.</exception>
     public void Validate()
     {
-        // Check if using new multi-provider structure
-        if (Providers != null && Providers.Count > 0)
+        // Require Providers dictionary
+        if (Providers == null || Providers.Count == 0)
         {
-            // Validate new structure
-            if (string.IsNullOrWhiteSpace(ActiveProvider))
-                throw new ConfigurationException("ActiveProvider cannot be null or whitespace when using multi-provider configuration");
+            throw new ConfigurationException(
+                "LLM configuration requires at least one provider. " +
+                "Define providers in the 'Providers' dictionary. " +
+                "See appsettings.Example.json or docs/05-guides/deployment/llm-provider-selector.md for examples.");
+        }
 
-            if (!Providers.ContainsKey(ActiveProvider))
-                throw new ConfigurationException($"ActiveProvider '{ActiveProvider}' not found in Providers dictionary");
+        // Require ActiveProvider
+        if (string.IsNullOrWhiteSpace(ActiveProvider))
+        {
+            throw new ConfigurationException(
+                "ActiveProvider cannot be null or whitespace. " +
+                "Specify which provider to use from the Providers dictionary.");
+        }
 
-            // Validate default parameters if present
-            if (DefaultParameters != null)
+        // ActiveProvider must exist in Providers
+        if (!Providers.ContainsKey(ActiveProvider))
+        {
+            throw new ConfigurationException(
+                $"ActiveProvider '{ActiveProvider}' not found in Providers dictionary. " +
+                $"Available providers: {string.Join(", ", Providers.Keys)}");
+        }
+
+        // Validate default parameters if present
+        if (DefaultParameters != null)
+        {
+            if (DefaultParameters.Temperature.HasValue &&
+                (DefaultParameters.Temperature.Value < 0 || DefaultParameters.Temperature.Value > 2))
             {
-                if (DefaultParameters.Temperature.HasValue && (DefaultParameters.Temperature.Value < 0 || DefaultParameters.Temperature.Value > 2))
-                    throw new ConfigurationException("DefaultParameters Temperature must be between 0 and 2");
-
-                if (DefaultParameters.TopP.HasValue && (DefaultParameters.TopP.Value < 0 || DefaultParameters.TopP.Value > 1))
-                    throw new ConfigurationException("DefaultParameters TopP must be between 0 and 1");
-
-                if (DefaultParameters.MaxTokens.HasValue && DefaultParameters.MaxTokens.Value <= 0)
-                    throw new ConfigurationException("DefaultParameters MaxTokens must be greater than 0");
+                throw new ConfigurationException("DefaultParameters Temperature must be between 0 and 2");
             }
 
-            // Note: ProviderConfig validation is done by ProviderConfigValidator
-            return;
+            if (DefaultParameters.TopP.HasValue &&
+                (DefaultParameters.TopP.Value < 0 || DefaultParameters.TopP.Value > 1))
+            {
+                throw new ConfigurationException("DefaultParameters TopP must be between 0 and 1");
+            }
+
+            if (DefaultParameters.MaxTokens.HasValue && DefaultParameters.MaxTokens.Value <= 0)
+            {
+                throw new ConfigurationException("DefaultParameters MaxTokens must be greater than 0");
+            }
         }
 
-        // Validate old structure (backward compatibility)
-        if (string.IsNullOrWhiteSpace(Provider))
-            throw new ConfigurationException("Provider cannot be null or whitespace");
-
-        if (Temperature.HasValue && (Temperature.Value < 0 || Temperature.Value > 2))
-            throw new ConfigurationException("Temperature must be between 0 and 2");
-
-        if (TopP.HasValue && (TopP.Value < 0 || TopP.Value > 1))
-            throw new ConfigurationException("TopP must be between 0 and 1");
-
-        if (MaxTokens <= 0)
-            throw new ConfigurationException("MaxTokens must be greater than 0");
-
-        // Validate provider-specific config
-        if (Provider.Equals("AzureOpenAI", StringComparison.OrdinalIgnoreCase))
-        {
-            if (AzureOpenAI == null)
-                throw new ConfigurationException("AzureOpenAI configuration is required when Provider is AzureOpenAI");
-            AzureOpenAI.Validate();
-        }
-        else if (Provider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
-        {
-            if (OpenAI == null)
-                throw new ConfigurationException("OpenAI configuration is required when Provider is OpenAI");
-            OpenAI.Validate();
-        }
-        else if (Provider.Equals("Anthropic", StringComparison.OrdinalIgnoreCase))
-        {
-            if (Anthropic == null)
-                throw new ConfigurationException("Anthropic configuration is required when Provider is Anthropic");
-            Anthropic.Validate();
-        }
+        // Note: Individual ProviderConfig validation is done by ProviderConfigValidator
     }
 }

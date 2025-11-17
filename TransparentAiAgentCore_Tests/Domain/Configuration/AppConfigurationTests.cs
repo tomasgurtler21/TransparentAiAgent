@@ -19,14 +19,21 @@ public class AppConfigurationTests
             },
             LLM = new LLMConfiguration
             {
-                Provider = "AzureOpenAI",
-                AzureOpenAI = new AzureOpenAIConfiguration
+                ActiveProvider = "azure-gpt4",
+                Providers = new Dictionary<string, ProviderConfig>
                 {
-                    AuthenticationMode = AuthenticationMode.ApiKey,
-                    Endpoint = "https://test.openai.azure.com",
-                    ApiKey = "test-key",
-                    DeploymentName = "gpt-4",
-                    ApiVersion = "2024-02-15-preview"
+                    ["azure-gpt4"] = new ProviderConfig(
+                        type: "AzureOpenAI",
+                        displayName: "Azure GPT-4",
+                        parameters: new Dictionary<string, object>
+                        {
+                            ["Endpoint"] = "https://test.openai.azure.com",
+                            ["ApiKey"] = "test-key",
+                            ["DeploymentName"] = "gpt-4",
+                            ["ApiVersion"] = "2024-02-15-preview",
+                            ["AuthenticationMode"] = "ApiKey"
+                        }
+                    )
                 }
             },
             MCP = new MCPConfiguration()
@@ -66,8 +73,7 @@ public class AppConfigurationTests
             },
             LLM = new LLMConfiguration
             {
-                Provider = "AzureOpenAI",
-                AzureOpenAI = null // Invalid
+                Providers = null // Invalid - no providers
             }
         };
 
@@ -88,14 +94,21 @@ public class AppConfigurationTests
             },
             LLM = new LLMConfiguration
             {
-                Provider = "AzureOpenAI",
-                AzureOpenAI = new AzureOpenAIConfiguration
+                ActiveProvider = "azure-gpt4",
+                Providers = new Dictionary<string, ProviderConfig>
                 {
-                    AuthenticationMode = AuthenticationMode.ApiKey,
-                    Endpoint = "https://test.openai.azure.com",
-                    ApiKey = "test-key",
-                    DeploymentName = "gpt-4",
-                    ApiVersion = "2024-02-15-preview"
+                    ["azure-gpt4"] = new ProviderConfig(
+                        type: "AzureOpenAI",
+                        displayName: "Azure GPT-4",
+                        parameters: new Dictionary<string, object>
+                        {
+                            ["Endpoint"] = "https://test.openai.azure.com",
+                            ["ApiKey"] = "test-key",
+                            ["DeploymentName"] = "gpt-4",
+                            ["ApiVersion"] = "2024-02-15-preview",
+                            ["AuthenticationMode"] = "ApiKey"
+                        }
+                    )
                 }
             },
             MCP = new MCPConfiguration

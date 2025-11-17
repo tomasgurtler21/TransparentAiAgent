@@ -3,28 +3,18 @@ using TransparentAiAgentCore.Domain.Configuration;
 namespace TransparentAiAgentCore.Domain.LLM;
 
 /// <summary>
-/// Factory interface for creating LLM provider instances.
+/// Factory interface for creating LLM provider instances from multi-provider configuration.
 /// </summary>
 public interface ILLMProviderFactory
 {
     /// <summary>
-    /// Creates a provider instance using the default configured provider.
-    /// </summary>
-    /// <returns>An ILLMProvider instance.</returns>
-    ILLMProvider CreateProvider();
-
-    /// <summary>
-    /// Creates a provider instance by provider name.
-    /// </summary>
-    /// <param name="providerName">The provider name (e.g., "Anthropic", "AzureOpenAI").</param>
-    /// <returns>An ILLMProvider instance.</returns>
-    ILLMProvider CreateProvider(string providerName);
-
-    /// <summary>
     /// Creates a provider instance from a ProviderConfig.
+    /// This is used for the multi-provider configuration structure where providers
+    /// are defined in the Providers dictionary.
     /// </summary>
-    /// <param name="configName">The configuration name.</param>
-    /// <param name="config">The provider configuration.</param>
-    /// <returns>An ILLMProvider instance.</returns>
+    /// <param name="configName">The configuration name (key in the Providers dictionary).</param>
+    /// <param name="config">The provider configuration containing type, parameters, and overrides.</param>
+    /// <returns>An ILLMProvider instance configured according to the ProviderConfig.</returns>
+    /// <exception cref="ConfigurationException">Thrown when provider type is unknown or required parameters are missing.</exception>
     ILLMProvider CreateProvider(string configName, ProviderConfig config);
 }

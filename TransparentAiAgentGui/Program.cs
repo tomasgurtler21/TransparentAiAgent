@@ -345,15 +345,6 @@ try
                 return new DelegatingLLMProvider(manager);
             });
         }
-        else
-        {
-            // Fallback to old single-provider system
-            builder.Services.AddSingleton<ILLMProvider>(sp =>
-            {
-                var factory = sp.GetRequiredService<LLMProviderFactory>();
-                return factory.CreateProvider();
-            });
-        }
 
         // Scoped to support scoped IToolManager and IConversationManager
         builder.Services.AddScoped<IAgentOrchestrator>(sp =>

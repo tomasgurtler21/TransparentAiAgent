@@ -2,14 +2,36 @@
 
 **TransparentAiAgent Configuration Instructions**
 
-Last Updated: 2025-10-28
-Current Phase: Phase 4 (Basic UI Complete)
+Last Updated: 2025-11-17
+Current Phase: Phase 9 (Multi-Provider Support)
 
 ---
 
-## Quick Start
+**⚠️ This Guide is Archived**
 
-### Minimum Required Configuration
+This guide documented the **legacy single-provider configuration** format which has been **removed** as of Phase 9.
+
+**→ Use the Multi-Provider Configuration Instead:**
+- **[LLM Provider Selector Guide](llm-provider-selector.md)** - Complete configuration guide
+- **appsettings.Example.json** - Working configuration examples
+
+**Why Multi-Provider is Better:**
+- ✅ Configure multiple providers (Claude, Azure OpenAI, OpenAI)
+- ✅ Switch providers via UI dropdown without restart
+- ✅ Multi-region failover
+- ✅ Different authentication modes per provider
+- ✅ Cleaner, more flexible configuration structure
+
+---
+
+## Legacy Documentation (Archived)
+
+The content below is preserved for historical reference but **no longer works** with the current version.
+
+<details>
+<summary>Click to expand legacy documentation</summary>
+
+### Minimum Required Configuration (LEGACY - NO LONGER SUPPORTED)
 
 To use TransparentAiAgent, you need to configure at least one LLM provider. Currently supported:
 - ✅ **Azure OpenAI** (Phase 2)
@@ -742,3 +764,5 @@ These will be added in later phases:
 **Configuration Version**: 1.1 (OAuth support added)
 
 ---
+
+</details>
