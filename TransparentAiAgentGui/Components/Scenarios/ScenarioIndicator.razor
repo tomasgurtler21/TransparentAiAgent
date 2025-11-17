@@ -1,4 +1,5 @@
 @using TransparentAiAgentCore.Application.Scenarios
+@using TransparentAiAgentCore.Domain.Scenarios
 @inject IScenarioExecutor ScenarioExecutor
 @implements IDisposable
 
@@ -12,6 +13,30 @@
                 <span class="text-muted">
                     Step @currentStepNumber/@totalSteps
                 </span>
+                @if (ScenarioExecutor.IsPaused && !string.IsNullOrEmpty(pauseMessage))
+                {
+                    <div class="pause-message">
+                        <span class="pause-icon">⏸️</span>
+                        <span>@pauseMessage</span>
+                    </div>
+                }
+            </div>
+            <div class="indicator-actions">
+                @if (ScenarioExecutor.IsPaused)
+                {
+                    <button class="btn btn-success btn-sm" @onclick="ResumeScenario">
+                        ▶️ Resume
+                    </button>
+                }
+                else if (ScenarioExecutor.State == ScenarioExecutionState.Running)
+                {
+                    <button class="btn btn-warning btn-sm" @onclick="PauseScenario">
+                        ⏸️ Pause
+                    </button>
+                }
+                <button class="btn btn-danger btn-sm" @onclick="StopScenario">
+                    ⏹️ Stop
+                </button>
             </div>
         </div>
     </div>
@@ -20,18 +45,22 @@
 @code {
     private int currentStepNumber = 0;
     private int totalSteps = 0;
+    private string? pauseMessage = null;
 
     protected override void OnInitialized()
     {
         ScenarioExecutor.ScenarioStarted += OnScenarioStarted;
         ScenarioExecutor.StepExecuted += OnStepExecuted;
         ScenarioExecutor.ScenarioCompleted += OnScenarioCompleted;
+        ScenarioExecutor.ScenarioPaused += OnScenarioPaused;
+        ScenarioExecutor.ScenarioResumed += OnScenarioResumed;
 
         UpdateStepInfo();
     }
 
     private void OnScenarioStarted(object? sender, ScenarioExecutionEventArgs e)
     {
+        pauseMessage = null;
         UpdateStepInfo();
         InvokeAsync(StateHasChanged);
     }
@@ -45,6 +74,18 @@
     private void OnScenarioCompleted(object? sender, ScenarioExecutionEventArgs e)
     {
         UpdateStepInfo();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnScenarioPaused(object? sender, ScenarioPausedEventArgs e)
+    {
+        pauseMessage = e.PauseMessage;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnScenarioResumed(object? sender, ScenarioExecutionEventArgs e)
+    {
+        pauseMessage = null;
         InvokeAsync(StateHasChanged);
     }
 
@@ -62,6 +103,21 @@
         }
     }
 
+    private void PauseScenario()
+    {
+        ScenarioExecutor.PauseScenario();
+    }
+
+    private void ResumeScenario()
+    {
+        ScenarioExecutor.ResumeScenario();
+    }
+
+    private void StopScenario()
+    {
+        ScenarioExecutor.StopScenario();
+    }
+
     public void Dispose()
     {
         if (ScenarioExecutor != null)
@@ -69,6 +125,8 @@
             ScenarioExecutor.ScenarioStarted -= OnScenarioStarted;
             ScenarioExecutor.StepExecuted -= OnStepExecuted;
             ScenarioExecutor.ScenarioCompleted -= OnScenarioCompleted;
+            ScenarioExecutor.ScenarioPaused -= OnScenarioPaused;
+            ScenarioExecutor.ScenarioResumed -= OnScenarioResumed;
         }
     }
 }

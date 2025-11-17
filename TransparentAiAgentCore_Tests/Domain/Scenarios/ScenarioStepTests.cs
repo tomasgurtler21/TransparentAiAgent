@@ -237,4 +237,55 @@ public class ScenarioStepTests
         Assert.AreEqual(ScenarioStepType.DisableUserInput, disableInput.Type);
         Assert.AreEqual(ScenarioStepType.EnableUserInput, enableInput.Type);
     }
+
+    // Phase 10c: Pause/Resume functionality tests
+
+    [TestMethod]
+    public void ScenarioStep_PauseForUser_WithMessage_CreatesSuccessfully()
+    {
+        // Act
+        var step = new ScenarioStep(
+            ScenarioStepType.PauseForUser,
+            pauseMessage: "Examine the UI and click Resume when ready");
+
+        // Assert
+        Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
+        Assert.AreEqual("Examine the UI and click Resume when ready", step.PauseMessage);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_PauseForUser_WithoutMessage_CreatesSuccessfully()
+    {
+        // Act
+        var step = new ScenarioStep(ScenarioStepType.PauseForUser);
+
+        // Assert
+        Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
+        Assert.IsNull(step.PauseMessage); // PauseMessage is optional
+    }
+
+    [TestMethod]
+    public void ScenarioStep_PauseForUser_WithMessageKey_SetsProperty()
+    {
+        // Act
+        var step = new ScenarioStep(
+            ScenarioStepType.PauseForUser,
+            pauseMessageKey: "scenarios.demo.step5.pauseMessage",
+            pauseMessage: "Fallback message");
+
+        // Assert
+        Assert.AreEqual("scenarios.demo.step5.pauseMessage", step.PauseMessageKey);
+        Assert.AreEqual("Fallback message", step.PauseMessage);
+    }
+
+    [TestMethod]
+    public void ScenarioStep_PauseForUser_AllowsNullContent()
+    {
+        // Act - PauseForUser should not require content
+        var step = new ScenarioStep(ScenarioStepType.PauseForUser);
+
+        // Assert - Should not throw, content is not required for PauseForUser
+        Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
+        Assert.IsNull(step.Content);
+    }
 }

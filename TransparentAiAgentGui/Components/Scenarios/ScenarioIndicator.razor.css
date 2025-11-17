@@ -44,5 +44,28 @@
 
 .indicator-info .text-muted {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 1); /* Full opacity for better readability */
+    font-weight: 500; /* Add slight weight for better visibility */
+}
+
+.indicator-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-left: 1rem;
+}
+
+.pause-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.pause-icon {
+    font-size: 1.2rem;
 }

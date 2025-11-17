@@ -64,5 +64,11 @@ public enum ScenarioStepType
     /// <summary>
     /// Directly manipulates UI state via UI control tools.
     /// </summary>
-    UIControl
+    UIControl,
+
+    /// <summary>
+    /// Pauses scenario execution and waits for user to click Resume.
+    /// Used to give users time to examine UI state, configuration, or other aspects.
+    /// </summary>
+    PauseForUser
 }

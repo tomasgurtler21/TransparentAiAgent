@@ -3,7 +3,9 @@
     "allow": [
       "Bash(Select-Object Name)",
       "Skill(tdd)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(Select-Object -Last 50)",
+      "Bash(dotnet build:*)"
     ],
     "deny": [],
     "ask": []

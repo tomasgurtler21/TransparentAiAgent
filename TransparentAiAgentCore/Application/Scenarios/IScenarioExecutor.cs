@@ -23,6 +23,16 @@ public interface IScenarioExecutor
     int CurrentStepIndex { get; }
 
     /// <summary>
+    /// Gets the current execution state of the scenario.
+    /// </summary>
+    ScenarioExecutionState State { get; }
+
+    /// <summary>
+    /// Gets whether the scenario is currently paused.
+    /// </summary>
+    bool IsPaused { get; }
+
+    /// <summary>
     /// Event fired when scenario execution starts.
     /// </summary>
     event EventHandler<ScenarioExecutionEventArgs>? ScenarioStarted;
@@ -55,6 +65,16 @@ public interface IScenarioExecutor
     event EventHandler<ScenarioStreamingUpdateEventArgs>? StreamingUpdate;
 
     /// <summary>
+    /// Event fired when scenario is paused (user-initiated or step-initiated).
+    /// </summary>
+    event EventHandler<ScenarioPausedEventArgs>? ScenarioPaused;
+
+    /// <summary>
+    /// Event fired when scenario is resumed.
+    /// </summary>
+    event EventHandler<ScenarioExecutionEventArgs>? ScenarioResumed;
+
+    /// <summary>
     /// Starts executing a scenario.
     /// </summary>
     /// <param name="scenario">The scenario to execute.</param>
@@ -66,6 +86,19 @@ public interface IScenarioExecutor
     /// Stops the currently executing scenario.
     /// </summary>
     void StopScenario();
+
+    /// <summary>
+    /// Pauses the currently executing scenario.
+    /// Can only be called when state is Running.
+    /// </summary>
+    /// <param name="message">Optional message explaining why scenario is paused.</param>
+    void PauseScenario(string? message = null);
+
+    /// <summary>
+    /// Resumes a paused scenario.
+    /// Can only be called when state is Paused.
+    /// </summary>
+    void ResumeScenario();
 }
 
 /// <summary>
@@ -127,5 +160,28 @@ public class ScenarioStreamingUpdateEventArgs : EventArgs
     {
         ContentDelta = contentDelta;
         IsComplete = isComplete;
+    }
+}
+
+/// <summary>
+/// Event args for scenario pause events.
+/// </summary>
+public class ScenarioPausedEventArgs : EventArgs
+{
+    /// <summary>
+    /// Gets the scenario that was paused.
+    /// </summary>
+    public ScenarioDefinition Scenario { get; }
+
+    /// <summary>
+    /// Gets the optional message explaining why the scenario was paused.
+    /// Null when user manually pauses, populated when PauseForUser step executes.
+    /// </summary>
+    public string? PauseMessage { get; }
+
+    public ScenarioPausedEventArgs(ScenarioDefinition scenario, string? pauseMessage)
+    {
+        Scenario = scenario;
+        PauseMessage = pauseMessage;
     }
 }

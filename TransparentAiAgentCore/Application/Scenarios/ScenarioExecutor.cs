@@ -18,11 +18,17 @@ public class ScenarioExecutor : IScenarioExecutor
     private CancellationTokenSource? _cts;
     private readonly object _lock = new();
     private bool _userInputEnabled = true;
+    private ScenarioExecutionState _state = ScenarioExecutionState.NotRunning;
+    private readonly SemaphoreSlim _pauseSemaphore = new(0);
+    private readonly object _pauseLock = new();
+    private string? _pauseMessage = null;
 
     public ScenarioDefinition? CurrentScenario { get; private set; }
     public bool IsExecuting { get; private set; }
     public int CurrentStepIndex { get; private set; } = -1;
     public bool UserInputEnabled => _userInputEnabled;
+    public ScenarioExecutionState State => _state;
+    public bool IsPaused => _state == ScenarioExecutionState.Paused;
 
     public ScenarioExecutor(
         IAgentOrchestrator orchestrator,
@@ -40,6 +46,8 @@ public class ScenarioExecutor : IScenarioExecutor
     public event EventHandler<ScenarioStepEventArgs>? StepExecuted;
     public event EventHandler<AutoMessageSentEventArgs>? AutoMessageSent;
     public event EventHandler<ScenarioStreamingUpdateEventArgs>? StreamingUpdate;
+    public event EventHandler<ScenarioPausedEventArgs>? ScenarioPaused;
+    public event EventHandler<ScenarioExecutionEventArgs>? ScenarioResumed;
 
     public async Task ExecuteScenarioAsync(ScenarioDefinition scenario, CancellationToken cancellationToken = default)
     {
@@ -59,6 +67,12 @@ public class ScenarioExecutor : IScenarioExecutor
 
         try
         {
+            // Set state to Running
+            lock (_pauseLock)
+            {
+                _state = ScenarioExecutionState.Running;
+            }
+
             // Fire started event
             ScenarioStarted?.Invoke(this, new ScenarioExecutionEventArgs(scenario));
 
@@ -76,11 +90,24 @@ public class ScenarioExecutor : IScenarioExecutor
                     await Task.Delay(step.DelayMs, _cts.Token);
                 }
 
-                // Execute the step (for now, just mark it as executed)
+                // Execute the step
                 await ExecuteStepAsync(step, scenario, i, _cts.Token);
 
                 // Fire step executed event
                 StepExecuted?.Invoke(this, new ScenarioStepEventArgs(scenario, step, i));
+
+                // Check if we should pause (either manually or via PauseForUser step)
+                if (IsPaused)
+                {
+                    // Wait for resume signal
+                    await _pauseSemaphore.WaitAsync(_cts.Token);
+                }
+            }
+
+            // Set state to Completed
+            lock (_pauseLock)
+            {
+                _state = ScenarioExecutionState.Completed;
             }
 
             // Fire completed event
@@ -88,10 +115,20 @@ public class ScenarioExecutor : IScenarioExecutor
         }
         catch (OperationCanceledException)
         {
-            // Scenario was cancelled/stopped - this is expected
+            // Scenario was cancelled/stopped
+            lock (_pauseLock)
+            {
+                _state = ScenarioExecutionState.NotRunning;
+            }
         }
         catch (Exception ex)
         {
+            // Set state to Failed
+            lock (_pauseLock)
+            {
+                _state = ScenarioExecutionState.Failed;
+            }
+
             // Fire failed event
             ScenarioFailed?.Invoke(this, new ScenarioExecutionEventArgs(scenario, ex.Message));
             throw;
@@ -113,7 +150,43 @@ public class ScenarioExecutor : IScenarioExecutor
     {
         lock (_lock)
         {
+            // If paused, release semaphore so cancellation can propagate
+            lock (_pauseLock)
+            {
+                if (IsPaused)
+                {
+                    _state = ScenarioExecutionState.NotRunning;
+                    _pauseSemaphore.Release();
+                }
+            }
+
             _cts?.Cancel();
+        }
+    }
+
+    public void PauseScenario(string? message = null)
+    {
+        lock (_pauseLock)
+        {
+            if (_state != ScenarioExecutionState.Running)
+                return; // Can only pause if running
+
+            _state = ScenarioExecutionState.Paused;
+            _pauseMessage = message;
+            ScenarioPaused?.Invoke(this, new ScenarioPausedEventArgs(CurrentScenario!, message));
+        }
+    }
+
+    public void ResumeScenario()
+    {
+        lock (_pauseLock)
+        {
+            if (_state != ScenarioExecutionState.Paused)
+                return; // Can only resume if paused
+
+            _state = ScenarioExecutionState.Running;
+            _pauseSemaphore.Release(); // Unblock the waiting task
+            ScenarioResumed?.Invoke(this, new ScenarioExecutionEventArgs(CurrentScenario!));
         }
     }
 
@@ -178,6 +251,10 @@ public class ScenarioExecutor : IScenarioExecutor
 
                 case ScenarioStepType.UIControl:
                     await ExecuteUIControlStepAsync(step, cancellationToken);
+                    break;
+
+                case ScenarioStepType.PauseForUser:
+                    ExecutePauseForUserStep(step);
                     break;
 
                 default:
@@ -367,5 +444,13 @@ public class ScenarioExecutor : IScenarioExecutor
         throw new NotImplementedException(
             "UIControl step execution requires integration with UIControlService. " +
             $"Tool: {step.UIControlTool}");
+    }
+
+    private void ExecutePauseForUserStep(ScenarioStep step)
+    {
+        // Pause the scenario with the provided message
+        // The pause will occur after this step completes (in the main execution loop)
+        var message = step.PauseMessage;
+        PauseScenario(message);
     }
 }

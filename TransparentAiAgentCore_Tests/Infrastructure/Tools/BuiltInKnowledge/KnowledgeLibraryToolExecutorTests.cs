@@ -18,7 +18,7 @@ public class KnowledgeLibraryToolExecutorTests
     {
         _mockLibrary = new MockKnowledgeLibrary();
         _executor = new KnowledgeLibraryToolExecutor(_mockLibrary, NullLogger<KnowledgeLibraryToolExecutor>.Instance);
-        _tool = new KnowledgeLibraryTool();
+        _tool = new KnowledgeLibraryTool(new List<KnowledgeEntrySummary>());
     }
 
     [TestMethod]
