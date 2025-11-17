@@ -13,10 +13,10 @@
 This plan implements multi-language support for teaching scenarios using translation overlay files. Each session is independent and can be executed in isolation, following TDD principles.
 
 **Architecture Pattern**:
-- Base scenario JSON contains structure + English content (backward compatible)
-- Translation files (de.json, cz.json) contain only translated strings
-- Loader merges translation overlay based on selected language
-- Always fallback to English if translation missing
+- Base scenario JSON contains structure + English content + translation keys (e.g., `nameKey`, `contentKey`)
+- Translation files (en.json, de.json, cz.json) are flat key-value dictionaries
+- Loader looks up translations by key, falls back to inline English if key missing
+- Industry-standard i18n pattern compatible with translation management tools
 
 ---
 
@@ -210,41 +210,55 @@ builder.Services.AddSingleton<ILanguageService, LanguageService>();
 **Create Directory Structure**:
 ```
 TransparentAiAgentGui/data/translations/
-├── en.json (optional, for completeness)
-├── de.json
-└── cz.json
+├── en.json (base language)
+├── de.json (German)
+└── cz.json (Czech)
 ```
 
-**Translation File Schema** (`de.json` example):
+**Translation File Schema** (flat key-value format):
 ```json
+// en.json (base language)
 {
-  "$schema": "https://transparentaiagent.dev/schemas/scenario-translations/v1",
-  "language": "de",
-  "scenarios": {
-    "context-limits-advanced": {
-      "name": "Kontextgrenzen (Fortgeschritten)",
-      "description": "Erleben Sie echtes Kontextfenster-Trunkieren",
-      "steps": {
-        "0": {
-          "content": "Hallo, mein Name ist John Doe.",
-          "annotation": "Das Modell wird sich diesen Namen merken... vorerst."
-        },
-        "1": {
-          "content": "Wie ist mein Name?",
-          "annotation": "Überprüfung, ob das Modell den Namen noch im Kontext hat."
-        }
-        // ... continue for all 10 steps
-      }
-    }
-  }
+  "scenarios.context-limits-advanced.name": "Context Limits (Advanced)",
+  "scenarios.context-limits-advanced.description": "Experience genuine context window truncation",
+  "scenarios.context-limits-advanced.step0.content": "Hi, my name is John Doe.",
+  "scenarios.context-limits-advanced.step0.annotation": "The model will remember this name... for now.",
+  "scenarios.context-limits-advanced.step1.content": "What is my name?",
+  "scenarios.context-limits-advanced.step1.annotation": "Verifying the model still has the name in context."
+}
+
+// de.json (German - initially empty, filled in Session 4)
+{
+  "scenarios.context-limits-advanced.name": "Kontextgrenzen (Fortgeschritten)",
+  "scenarios.context-limits-advanced.description": "Erlebe echte Kontextfenster-Trunkierung"
+}
+
+// cz.json (Czech - initially empty, filled in Session 4)
+{
+  "scenarios.context-limits-advanced.name": "Limity kontextu (Pokročilé)",
+  "scenarios.context-limits-advanced.description": "Zažij skutečné zkrácení kontextového okna"
 }
 ```
 
-**Create Placeholder Files** (Session 1 creates structure, Session 4 fills content):
-- Create `en.json`, `de.json`, `cz.json` with empty scenario objects
-- Document schema structure
+**Key Naming Convention**:
+- Format: `{namespace}.{scenario-id}.{field}` or `{namespace}.{scenario-id}.{step-index}.{field}`
+- Examples:
+  - `scenarios.context-limits-advanced.name`
+  - `scenarios.context-limits-advanced.step0.content`
+  - `scenarios.context-limits-advanced.step0.annotation`
 
-**No Tests Needed**: This is data definition, validated by loader in Session 2
+**Create Placeholder Files**:
+- Create `en.json` with all keys for context-limits-advanced scenario
+- Create `de.json` and `cz.json` with empty objects `{}`
+- Session 4 will fill with complete translations
+
+**Benefits**:
+- Flat structure easy for translators
+- Compatible with translation management software (Crowdin, Lokalise)
+- Can export to CSV/XLIFF formats
+- Simple validation: count keys per language
+
+**No Tests Needed**: Data definition, validated by loader in Session 2
 
 ### Commit & Push
 
@@ -295,22 +309,22 @@ Implement translation file loading and merging with base scenarios.
 
 ### TDD Components
 
-#### 2.1: TranslationLoader (Infrastructure Layer)
+#### 2.1: TranslationService (Infrastructure Layer)
 
 **Location**: `TransparentAiAgentCore/Infrastructure/Localization/`
 
 **Files to Create**:
-- `ScenarioTranslation.cs` (DTO for translation JSON)
-- `TranslationLoader.cs` (loads and merges translations)
+- `ITranslationService.cs` (interface for translation lookup)
+- `TranslationService.cs` (loads translation files and provides key lookup)
 
-**Tests Location**: `TransparentAiAgentCore_Tests/Infrastructure/Localization/TranslationLoaderTests.cs`
+**Tests Location**: `TransparentAiAgentCore_Tests/Infrastructure/Localization/TranslationServiceTests.cs`
 
 **TDD Cycle**:
 
 ##### RED: Write tests first
 ```csharp
 [TestClass]
-public class TranslationLoaderTests
+public class TranslationServiceTests
 {
     private const string TestTranslationsPath = "./TestData/translations";
 
@@ -319,7 +333,16 @@ public class TranslationLoaderTests
     {
         // Create test translation files
         Directory.CreateDirectory(TestTranslationsPath);
-        CreateTestTranslationFile("de", "German Name", "German Description");
+        CreateTestTranslationFile("en", new Dictionary<string, string>
+        {
+            { "test.key1", "English Value 1" },
+            { "test.key2", "English Value 2" }
+        });
+        CreateTestTranslationFile("de", new Dictionary<string, string>
+        {
+            { "test.key1", "German Value 1" }
+            // Missing test.key2 - should fallback to English
+        });
     }
 
     [TestCleanup]
@@ -330,153 +353,144 @@ public class TranslationLoaderTests
     }
 
     [TestMethod]
-    public async Task LoadTranslation_ExistingFile_ReturnsTranslation()
+    public async Task GetTranslation_ExistingKey_ReturnsTranslation()
     {
         // Arrange
-        var loader = new TranslationLoader(TestTranslationsPath);
+        var languageService = new LanguageService();
+        languageService.SetLanguage("de");
+        var translationService = new TranslationService(TestTranslationsPath, languageService);
+        await translationService.LoadTranslationsAsync();
 
         // Act
-        var translation = await loader.LoadTranslationAsync("de", "test-scenario");
+        var result = translationService.GetTranslation("test.key1");
 
         // Assert
-        Assert.IsNotNull(translation);
-        Assert.AreEqual("German Name", translation.Name);
+        Assert.AreEqual("German Value 1", result);
     }
 
     [TestMethod]
-    public async Task LoadTranslation_MissingFile_ReturnsNull()
+    public async Task GetTranslation_MissingKey_FallbackToEnglish()
     {
         // Arrange
-        var loader = new TranslationLoader(TestTranslationsPath);
+        var languageService = new LanguageService();
+        languageService.SetLanguage("de");
+        var translationService = new TranslationService(TestTranslationsPath, languageService);
+        await translationService.LoadTranslationsAsync();
 
         // Act
-        var translation = await loader.LoadTranslationAsync("fr", "test-scenario");
+        var result = translationService.GetTranslation("test.key2");
 
         // Assert
-        Assert.IsNull(translation); // Fallback to null, caller uses English
+        Assert.AreEqual("English Value 2", result); // Falls back to English
     }
 
     [TestMethod]
-    public async Task MergeTranslation_ValidTranslation_OverridesBaseFields()
+    public async Task GetTranslation_KeyNotInAnyLanguage_ReturnsNull()
     {
         // Arrange
-        var loader = new TranslationLoader(TestTranslationsPath);
-        var baseScenario = CreateTestScenario("English Name", "English Desc");
-        var translation = await loader.LoadTranslationAsync("de", "test-scenario");
+        var languageService = new LanguageService();
+        var translationService = new TranslationService(TestTranslationsPath, languageService);
+        await translationService.LoadTranslationsAsync();
 
         // Act
-        var merged = loader.MergeTranslation(baseScenario, translation);
+        var result = translationService.GetTranslation("nonexistent.key");
 
         // Assert
-        Assert.AreEqual("German Name", merged.Name);
-        Assert.AreEqual("German Description", merged.Description);
+        Assert.IsNull(result);
     }
 
     [TestMethod]
-    public void MergeTranslation_NullTranslation_ReturnsOriginal()
+    public async Task GetTranslation_EnglishLanguage_ReturnsEnglishValue()
     {
         // Arrange
-        var loader = new TranslationLoader(TestTranslationsPath);
-        var baseScenario = CreateTestScenario("English Name", "English Desc");
+        var languageService = new LanguageService(); // Default "en"
+        var translationService = new TranslationService(TestTranslationsPath, languageService);
+        await translationService.LoadTranslationsAsync();
 
         // Act
-        var merged = loader.MergeTranslation(baseScenario, null);
+        var result = translationService.GetTranslation("test.key1");
 
         // Assert
-        Assert.AreEqual("English Name", merged.Name); // Unchanged
+        Assert.AreEqual("English Value 1", result);
+    }
+
+    [TestMethod]
+    public async Task LanguageChange_ReloadsTranslations()
+    {
+        // Arrange
+        var languageService = new LanguageService();
+        var translationService = new TranslationService(TestTranslationsPath, languageService);
+        await translationService.LoadTranslationsAsync();
+
+        // Act
+        languageService.SetLanguage("de");
+        await Task.Delay(100); // Give event handler time to reload
+
+        var result = translationService.GetTranslation("test.key1");
+
+        // Assert
+        Assert.AreEqual("German Value 1", result);
     }
 
     // Helper methods
-    private void CreateTestTranslationFile(string lang, string name, string desc)
+    private void CreateTestTranslationFile(string lang, Dictionary<string, string> translations)
     {
-        var json = $$"""
+        var json = JsonSerializer.Serialize(translations, new JsonSerializerOptions
         {
-            "language": "{{lang}}",
-            "scenarios": {
-                "test-scenario": {
-                    "name": "{{name}}",
-                    "description": "{{desc}}"
-                }
-            }
-        }
-        """;
+            WriteIndented = true
+        });
         File.WriteAllText(Path.Combine(TestTranslationsPath, $"{lang}.json"), json);
-    }
-
-    private ScenarioDefinition CreateTestScenario(string name, string desc)
-    {
-        return new ScenarioDefinition(
-            id: "test-scenario",
-            name: name,
-            description: desc,
-            steps: new[] { new ScenarioStep(ScenarioStepType.WaitForResponse) }
-        );
     }
 }
 ```
 
-**Run Tests**: `dotnet test --filter "FullyQualifiedName~TranslationLoaderTests"`
-**Expected**: All tests FAIL (RED) - TranslationLoader doesn't exist yet
+**Run Tests**: `dotnet test --filter "FullyQualifiedName~TranslationServiceTests"`
+**Expected**: All tests FAIL (RED) - TranslationService doesn't exist yet
 
 ##### GREEN: Implement minimal code
 
-**ScenarioTranslation.cs** (DTO):
+**ITranslationService.cs** (Interface):
 ```csharp
-using System.Text.Json.Serialization;
-
 namespace TransparentAiAgentCore.Infrastructure.Localization;
 
 /// <summary>
-/// DTO for translation JSON files.
-/// Represents translated strings for a single scenario.
+/// Service for looking up translations by key.
+/// Supports fallback to base language (English).
 /// </summary>
-public class ScenarioTranslation
+public interface ITranslationService
 {
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
+    /// <summary>
+    /// Gets translation for the specified key in current language.
+    /// Falls back to English if key not found in current language.
+    /// Returns null if key not found in any language.
+    /// </summary>
+    string? GetTranslation(string key);
 
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
-
-    [JsonPropertyName("steps")]
-    public Dictionary<string, StepTranslation>? Steps { get; set; }
-}
-
-public class StepTranslation
-{
-    [JsonPropertyName("content")]
-    public string? Content { get; set; }
-
-    [JsonPropertyName("annotation")]
-    public string? Annotation { get; set; }
-}
-
-/// <summary>
-/// Root DTO for translation file.
-/// </summary>
-public class TranslationFile
-{
-    [JsonPropertyName("language")]
-    public string? Language { get; set; }
-
-    [JsonPropertyName("scenarios")]
-    public Dictionary<string, ScenarioTranslation>? Scenarios { get; set; }
+    /// <summary>
+    /// Loads translation files for current and base language.
+    /// Called automatically on initialization and language change.
+    /// </summary>
+    Task LoadTranslationsAsync();
 }
 ```
 
-**TranslationLoader.cs**:
+**TranslationService.cs**:
 ```csharp
 using System.Text.Json;
-using TransparentAiAgentCore.Domain.Scenarios;
+using TransparentAiAgentCore.Application.Localization;
 
 namespace TransparentAiAgentCore.Infrastructure.Localization;
 
 /// <summary>
-/// Loads translation files and merges them with base scenarios.
+/// Loads flat key-value translation files and provides lookup.
 /// </summary>
-public class TranslationLoader
+public class TranslationService : ITranslationService
 {
     private readonly string _translationsPath;
+    private readonly ILanguageService _languageService;
+    private Dictionary<string, string> _currentTranslations = new();
+    private Dictionary<string, string> _baseTranslations = new(); // English fallback
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -484,32 +498,62 @@ public class TranslationLoader
         AllowTrailingCommas = true
     };
 
-    public TranslationLoader(string translationsPath)
+    public TranslationService(string translationsPath, ILanguageService languageService)
     {
         _translationsPath = translationsPath ?? throw new ArgumentNullException(nameof(translationsPath));
+        _languageService = languageService ?? throw new ArgumentNullException(nameof(languageService));
+
+        // Subscribe to language changes
+        _languageService.LanguageChanged += OnLanguageChanged;
     }
 
-    /// <summary>
-    /// Loads translation for a specific language and scenario.
-    /// Returns null if translation file doesn't exist or scenario not found.
-    /// </summary>
-    public async Task<ScenarioTranslation?> LoadTranslationAsync(string languageCode, string scenarioId)
+    private async void OnLanguageChanged(object? sender, string newLanguage)
+    {
+        await LoadTranslationsAsync();
+    }
+
+    public async Task LoadTranslationsAsync()
+    {
+        // Always load English as base/fallback
+        _baseTranslations = await LoadTranslationFileAsync("en") ?? new Dictionary<string, string>();
+
+        // Load current language (if not English)
+        if (_languageService.CurrentLanguage != "en")
+        {
+            _currentTranslations = await LoadTranslationFileAsync(_languageService.CurrentLanguage)
+                ?? new Dictionary<string, string>();
+        }
+        else
+        {
+            _currentTranslations = _baseTranslations;
+        }
+    }
+
+    public string? GetTranslation(string key)
+    {
+        // Try current language first
+        if (_currentTranslations.TryGetValue(key, out var translation))
+            return translation;
+
+        // Fallback to English
+        if (_baseTranslations.TryGetValue(key, out var baseTranslation))
+            return baseTranslation;
+
+        // Key not found in any language
+        return null;
+    }
+
+    private async Task<Dictionary<string, string>?> LoadTranslationFileAsync(string languageCode)
     {
         var filePath = Path.Combine(_translationsPath, $"{languageCode}.json");
 
         if (!File.Exists(filePath))
-            return null; // Fallback to base language
+            return null;
 
         try
         {
             var json = await File.ReadAllTextAsync(filePath);
-            var translationFile = JsonSerializer.Deserialize<TranslationFile>(json, JsonOptions);
-
-            if (translationFile?.Scenarios == null)
-                return null;
-
-            translationFile.Scenarios.TryGetValue(scenarioId, out var translation);
-            return translation;
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonOptions);
         }
         catch (Exception)
         {
@@ -517,151 +561,186 @@ public class TranslationLoader
             return null;
         }
     }
+}
+```
 
-    /// <summary>
-    /// Merges translation onto base scenario definition.
-    /// Returns new ScenarioDefinition with translated strings.
-    /// </summary>
-    public ScenarioDefinition MergeTranslation(
-        ScenarioDefinition baseScenario,
-        ScenarioTranslation? translation)
+**Run Tests**: `dotnet test --filter "FullyQualifiedName~TranslationServiceTests"`
+**Expected**: All tests PASS (GREEN)
+
+##### REFACTOR: Extract translation file path logic if needed
+
+#### 2.2: Update Scenario DTOs for Translation Keys
+
+**File**: `TransparentAiAgentCore/Infrastructure/Scenarios/JsonScenarioLoader.cs`
+
+**Modify DTOs** to support *Key fields:
+
+```csharp
+private class ScenarioDto
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("nameKey")]
+    public string? NameKey { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("descriptionKey")]
+    public string? DescriptionKey { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    // ... existing fields ...
+
+    public ScenarioDefinition ToScenarioDefinition(ITranslationService translationService)
     {
-        if (translation == null)
-            return baseScenario; // No translation, return original
+        // Resolve name: translation key → translated value OR inline fallback
+        var resolvedName = NameKey != null
+            ? translationService.GetTranslation(NameKey) ?? Name
+            : Name;
 
-        // Merge scenario-level fields
-        var name = translation.Name ?? baseScenario.Name;
-        var description = translation.Description ?? baseScenario.Description;
+        // Resolve description
+        var resolvedDescription = DescriptionKey != null
+            ? translationService.GetTranslation(DescriptionKey) ?? Description
+            : Description;
 
-        // Merge step-level fields
-        var translatedSteps = new List<ScenarioStep>();
-        for (int i = 0; i < baseScenario.Steps.Count; i++)
-        {
-            var baseStep = baseScenario.Steps[i];
-            var stepTranslation = translation.Steps?.GetValueOrDefault(i.ToString());
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(Id))
+            throw new ArgumentException("Scenario 'id' is required");
+        if (string.IsNullOrWhiteSpace(resolvedName))
+            throw new ArgumentException("Scenario 'name' or translation is required");
 
-            if (stepTranslation != null)
-            {
-                // Create new step with translated content
-                var translatedStep = new ScenarioStep(
-                    type: baseStep.Type,
-                    content: stepTranslation.Content ?? baseStep.Content,
-                    delayMs: baseStep.DelayMs,
-                    configOverlay: baseStep.ConfigOverlay,
-                    annotation: stepTranslation.Annotation ?? baseStep.Annotation,
-                    visibleTo: baseStep.VisibleTo,
-                    condition: baseStep.Condition,
-                    conditionParameters: baseStep.ConditionParameters,
-                    onTimeout: baseStep.OnTimeout,
-                    uiControlTool: baseStep.UIControlTool,
-                    uiControlArguments: baseStep.UIControlArguments
-                );
-                translatedSteps.Add(translatedStep);
-            }
-            else
-            {
-                translatedSteps.Add(baseStep); // No translation for this step
-            }
-        }
+        var domainSteps = Steps.Select(s => s.ToScenarioStep(translationService)).ToList();
 
-        // Return new scenario with merged translations
         return new ScenarioDefinition(
-            id: baseScenario.Id,
-            name: name,
-            description: description,
-            steps: translatedSteps,
-            category: baseScenario.Category,
-            difficulty: baseScenario.Difficulty,
-            estimatedDurationSeconds: baseScenario.EstimatedDurationSeconds
+            id: Id,
+            name: resolvedName!,
+            description: resolvedDescription,
+            steps: domainSteps,
+            category: Category,
+            difficulty: Difficulty,
+            estimatedDurationSeconds: EstimatedDurationSeconds
+        );
+    }
+}
+
+private class ScenarioStepDto
+{
+    // ... existing fields ...
+
+    [JsonPropertyName("contentKey")]
+    public string? ContentKey { get; set; }
+
+    [JsonPropertyName("content")]
+    public string? Content { get; set; }
+
+    [JsonPropertyName("annotationKey")]
+    public string? AnnotationKey { get; set; }
+
+    [JsonPropertyName("annotation")]
+    public string? Annotation { get; set; }
+
+    public ScenarioStep ToScenarioStep(ITranslationService translationService)
+    {
+        // Resolve content using translation key
+        var resolvedContent = ContentKey != null
+            ? translationService.GetTranslation(ContentKey) ?? Content
+            : Content;
+
+        // Resolve annotation using translation key
+        var resolvedAnnotation = AnnotationKey != null
+            ? translationService.GetTranslation(AnnotationKey) ?? Annotation
+            : Annotation;
+
+        // Map JSON string to enum (existing code)
+        var stepType = Type?.ToLowerInvariant() switch
+        {
+            "auto_message" => ScenarioStepType.AutoMessage,
+            "wait_for_response" => ScenarioStepType.WaitForResponse,
+            "scenario_user_message" => ScenarioStepType.ScenarioUserMessage,
+            // ... rest of mappings
+        };
+
+        return new ScenarioStep(
+            type: stepType,
+            content: resolvedContent,
+            delayMs: delayMsValue,
+            configOverlay: configOverlayValue,
+            annotation: resolvedAnnotation,
+            // ... rest of parameters
         );
     }
 }
 ```
 
-**Run Tests**: `dotnet test --filter "FullyQualifiedName~TranslationLoaderTests"`
-**Expected**: All tests PASS (GREEN)
-
-##### REFACTOR: Extract translation file path logic if needed
-
-#### 2.2: Integrate with JsonScenarioLoader
-
-**File**: `TransparentAiAgentCore/Infrastructure/Scenarios/JsonScenarioLoader.cs`
+#### 2.3: Update JsonScenarioLoader Constructor
 
 **Modify**:
-- Add constructor parameter for `ILanguageService` and `TranslationLoader`
-- After loading base scenario, load translation and merge
+- Inject `ITranslationService`
+- Pass to DTO conversion methods
 
-**Changes**:
 ```csharp
 public class JsonScenarioLoader
 {
-    private readonly ILanguageService _languageService;
-    private readonly TranslationLoader _translationLoader;
+    private readonly ITranslationService _translationService;
 
-    public JsonScenarioLoader(
-        ILanguageService languageService,
-        string translationsPath)
+    public JsonScenarioLoader(ITranslationService translationService)
     {
-        _languageService = languageService ?? throw new ArgumentNullException(nameof(languageService));
-        _translationLoader = new TranslationLoader(translationsPath);
+        _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
     }
 
     public async Task<ScenarioDefinition> LoadFromFileAsync(string filePath)
     {
-        // ... existing code to load base scenario ...
+        // ... existing JSON loading code ...
 
-        var baseScenario = dto.ToScenarioDefinition();
-
-        // Load and merge translation if not English
-        if (_languageService.CurrentLanguage != "en")
-        {
-            var translation = await _translationLoader.LoadTranslationAsync(
-                _languageService.CurrentLanguage,
-                baseScenario.Id);
-
-            if (translation != null)
-            {
-                return _translationLoader.MergeTranslation(baseScenario, translation);
-            }
-        }
-
-        return baseScenario;
+        // Convert DTO to domain model with translation resolution
+        return dto.ToScenarioDefinition(_translationService);
     }
 }
 ```
 
-**Tests**: Update `JsonScenarioLoaderTests` to verify language integration
-- Test loading with English (no translation)
-- Test loading with German (translation applied)
-- Test loading with missing translation (fallback to English)
+**Tests**: Update `JsonScenarioLoaderTests`
+- Test scenario with translation keys resolves correctly
+- Test fallback to inline content when key missing
+- Test mixed keys and inline content
 
 ### Commit & Push
 
 **Commit Message**:
 ```
-Implement translation loader and merging logic
+Implement translation service with key-based lookup
 
-Created TranslationLoader to load and merge scenario translations:
-- Loads translation JSON files by language code
-- Merges translations onto base scenario (overlay pattern)
-- Graceful fallback if translation missing
-- Returns null for missing files/scenarios
+Created TranslationService for industry-standard i18n:
+- Loads flat key-value translation JSON files
+- GetTranslation(key) with automatic English fallback
+- Subscribes to language changes and reloads
+- Compatible with translation management tools
 
-Integrated with JsonScenarioLoader:
-- Uses ILanguageService to determine current language
-- Automatically applies translations when loading scenarios
-- English scenarios loaded directly (no translation file needed)
+Updated JsonScenarioLoader for translation keys:
+- Added *Key fields to DTOs (nameKey, contentKey, annotationKey)
+- Resolves translations during DTO→domain conversion
+- Falls back to inline English content if key missing
+- Backward compatible (works without keys)
 
-Tests: TranslationLoaderTests (4 tests, all passing)
-Tests: JsonScenarioLoaderTests updated for language integration
+Benefits:
+- Industry standard pattern (i18next, gettext compatible)
+- Can export to CSV/XLIFF for translators
+- Easy validation and tooling support
+
+Tests: TranslationServiceTests (5 tests, all passing)
+Tests: JsonScenarioLoaderTests updated for key resolution
 Follows Lean TDD methodology
 ```
 
 ### Success Criteria
-- ✅ TranslationLoader tests all pass
-- ✅ JsonScenarioLoader integration tests pass
-- ✅ Translation merging works correctly
-- ✅ Fallback to English works
+- ✅ TranslationService tests all pass
+- ✅ JsonScenarioLoader DTO tests pass
+- ✅ Translation key lookup works correctly
+- ✅ Fallback to inline English works
+- ✅ Backward compatible (scenarios without keys still work)
 - ✅ Committed and pushed
 
 ---
@@ -682,8 +761,8 @@ Wire up language selection to scenario registry and add UI selector.
 **File**: `TransparentAiAgentCore/Infrastructure/Scenarios/ScenarioRegistry.cs`
 
 **Changes**:
-- Inject `ILanguageService`
-- Subscribe to `LanguageChanged` event
+- Inject `ITranslationService`
+- Subscribe to `LanguageChanged` event (via TranslationService)
 - Reload scenarios when language changes
 
 **Implementation**:
@@ -692,16 +771,19 @@ public class ScenarioRegistry : IScenarioRegistry
 {
     private readonly JsonScenarioLoader _loader;
     private readonly ILanguageService _languageService;
+    private readonly ITranslationService _translationService;
     private List<ScenarioDefinition> _scenarios = new();
     private readonly string _scenariosPath;
 
     public ScenarioRegistry(
         JsonScenarioLoader loader,
         ILanguageService languageService,
+        ITranslationService translationService,
         string scenariosPath)
     {
         _loader = loader ?? throw new ArgumentNullException(nameof(loader));
         _languageService = languageService ?? throw new ArgumentNullException(nameof(languageService));
+        _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
         _scenariosPath = scenariosPath;
 
         // Subscribe to language changes
@@ -713,6 +795,9 @@ public class ScenarioRegistry : IScenarioRegistry
 
     private async void OnLanguageChanged(object? sender, string newLanguage)
     {
+        // TranslationService will reload automatically (subscribed to same event)
+        // Wait a bit for translations to load, then reload scenarios
+        await Task.Delay(50);
         await LoadScenariosAsync();
     }
 
@@ -732,7 +817,7 @@ public class ScenarioRegistry : IScenarioRegistry
 
 **Tests**: Update `ScenarioRegistryTests`
 - Test that registry reloads scenarios on language change
-- Test that scenarios are in current language
+- Test that scenarios resolve correct translations
 
 #### 3.2: Update DI Registration
 
@@ -740,12 +825,32 @@ public class ScenarioRegistry : IScenarioRegistry
 
 **Update**:
 ```csharp
-// Register scenario loader with language service
-builder.Services.AddSingleton<JsonScenarioLoader>(sp =>
+using TransparentAiAgentCore.Application.Localization;
+using TransparentAiAgentCore.Infrastructure.Localization;
+
+// ... existing code ...
+
+// Register language service (from Session 1)
+builder.Services.AddSingleton<ILanguageService, LanguageService>();
+
+// Register translation service
+builder.Services.AddSingleton<ITranslationService>(sp =>
 {
     var languageService = sp.GetRequiredService<ILanguageService>();
     var translationsPath = Path.Combine(builder.Environment.ContentRootPath, "data", "translations");
-    return new JsonScenarioLoader(languageService, translationsPath);
+    var translationService = new TranslationService(translationsPath, languageService);
+
+    // Load translations on startup
+    translationService.LoadTranslationsAsync().Wait();
+
+    return translationService;
+});
+
+// Register scenario loader with translation service
+builder.Services.AddSingleton<JsonScenarioLoader>(sp =>
+{
+    var translationService = sp.GetRequiredService<ITranslationService>();
+    return new JsonScenarioLoader(translationService);
 });
 
 // Register scenario registry
@@ -753,8 +858,9 @@ builder.Services.AddSingleton<IScenarioRegistry>(sp =>
 {
     var loader = sp.GetRequiredService<JsonScenarioLoader>();
     var languageService = sp.GetRequiredService<ILanguageService>();
+    var translationService = sp.GetRequiredService<ITranslationService>();
     var scenariosPath = Path.Combine(builder.Environment.ContentRootPath, "data", "scenarios");
-    return new ScenarioRegistry(loader, languageService, scenariosPath);
+    return new ScenarioRegistry(loader, languageService, translationService, scenariosPath);
 });
 ```
 
@@ -884,7 +990,64 @@ Read `context-limits-advanced.json` and extract all translatable strings:
 - All step `content` fields (10 steps)
 - All step `annotation` fields (10 steps)
 
-#### 4.2: AI-Assisted Translation
+#### 4.2: Add Translation Keys to Base Scenario
+
+**File**: `TransparentAiAgentGui/data/scenarios/context-limits-advanced.json`
+
+**Update** to add *Key fields while keeping inline English content:
+
+```json
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "context-limits-advanced",
+  "version": "1.0",
+  "nameKey": "scenarios.context-limits-advanced.name",
+  "name": "Context Limits (Advanced)",
+  "descriptionKey": "scenarios.context-limits-advanced.description",
+  "description": "Experience genuine context window truncation",
+  "category": "context-management",
+  "difficulty": "intermediate",
+  "estimatedDurationSeconds": 180,
+  "steps": [
+    {
+      "type": "apply_config_overlay",
+      "overlay": {
+        "messageLimit": 8,
+        "systemPromptAddition": "Note: You are experiencing a teaching scenario about context windows."
+      },
+      "annotation": "Message limit reduced to 10 to demonstrate truncation."
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step0.content",
+      "content": "Hi, my name is John Doe.",
+      "annotationKey": "scenarios.context-limits-advanced.step0.annotation",
+      "annotation": "The model will remember this name... for now.",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step1.content",
+      "content": "What is my name?",
+      "annotationKey": "scenarios.context-limits-advanced.step1.annotation",
+      "annotation": "Verifying the model still has the name in context.",
+      "delay": 2000
+    }
+    // ... continue for all steps (see existing scenario file)
+  ]
+}
+```
+
+**Pattern**:
+- Add `nameKey` and `descriptionKey` at scenario level
+- Add `contentKey` and `annotationKey` for each step that has content/annotation
+- Keep inline English values as fallback
+- No keys needed for steps without translatable content (e.g., `wait_for_response`)
+
+#### 4.3: AI-Assisted Translation
 
 Use AI to translate all strings to German and Czech.
 
@@ -906,7 +1069,7 @@ Source (English):
 [paste content]
 ```
 
-#### 4.3: Review Translations
+#### 4.4: Review Translations
 
 **German Review** (if native speaker available):
 - Verify "du" form used consistently
@@ -920,59 +1083,78 @@ Source (English):
 
 **Note**: AI quality should be sufficient for MVP. Native review can be done post-release.
 
-#### 4.4: Create Translation Files
+#### 4.5: Create Translation Files
 
-**File**: `TransparentAiAgentGui/data/translations/de.json`
+**File**: `TransparentAiAgentGui/data/translations/en.json` (base language)
 ```json
 {
-  "$schema": "https://transparentaiagent.dev/schemas/scenario-translations/v1",
-  "language": "de",
-  "scenarios": {
-    "context-limits-advanced": {
-      "name": "Kontextgrenzen (Fortgeschritten)",
-      "description": "Erlebe echte Kontextfenster-Trunkierung",
-      "steps": {
-        "0": {
-          "content": "Hallo, mein Name ist John Doe.",
-          "annotation": "Das Modell wird sich diesen Namen merken... vorerst."
-        },
-        "1": {
-          "content": "Wie ist mein Name?",
-          "annotation": "Überprüfung, ob das Modell den Namen noch im Kontext hat."
-        }
-        // ... complete all 10 steps
-      }
-    }
-  }
+  "scenarios.context-limits-advanced.name": "Context Limits (Advanced)",
+  "scenarios.context-limits-advanced.description": "Experience genuine context window truncation",
+  "scenarios.context-limits-advanced.step0.content": "Hi, my name is John Doe.",
+  "scenarios.context-limits-advanced.step0.annotation": "The model will remember this name... for now.",
+  "scenarios.context-limits-advanced.step1.content": "What is my name?",
+  "scenarios.context-limits-advanced.step1.annotation": "Verifying the model still has the name in context.",
+  "scenarios.context-limits-advanced.step2.content": "Demo message, just respond 'Confirmed'.",
+  "scenarios.context-limits-advanced.step2.annotation": "Filling context to force truncation...",
+  "scenarios.context-limits-advanced.step3.content": "Demo message, just respond 'Confirmed'.",
+  "scenarios.context-limits-advanced.step4.content": "Demo message, just respond 'Confirmed'.",
+  "scenarios.context-limits-advanced.step5.content": "How many demo messages did I send you?",
+  "scenarios.context-limits-advanced.step5.annotation": "Testing if model tracked the count.",
+  "scenarios.context-limits-advanced.step6.content": "What is my name?",
+  "scenarios.context-limits-advanced.step6.annotation": "The name should now be truncated. Model genuinely won't know.",
+  "scenarios.context-limits-advanced.step7.content": "How do you not know my name?? I told you it several messages ago! What is going on??",
+  "scenarios.context-limits-advanced.step7.annotation": "Expressing confusion - this should be a teaching moment.",
+  "scenarios.context-limits-advanced.step8.annotation": "Message limit restored. Model can now access more context and teach effectively."
 }
 ```
 
-**File**: `TransparentAiAgentGui/data/translations/cz.json`
+**File**: `TransparentAiAgentGui/data/translations/de.json` (German)
 ```json
 {
-  "$schema": "https://transparentaiagent.dev/schemas/scenario-translations/v1",
-  "language": "cz",
-  "scenarios": {
-    "context-limits-advanced": {
-      "name": "Limity kontextu (Pokročilé)",
-      "description": "Zažij skutečné zkrácení kontextového okna",
-      "steps": {
-        "0": {
-          "content": "Ahoj, jmenuji se John Doe.",
-          "annotation": "Model si toto jméno zapamatuje... prozatím."
-        },
-        "1": {
-          "content": "Jaké je moje jméno?",
-          "annotation": "Ověření, zda model má jméno stále v kontextu."
-        }
-        // ... complete all 10 steps
-      }
-    }
-  }
+  "scenarios.context-limits-advanced.name": "Kontextgrenzen (Fortgeschritten)",
+  "scenarios.context-limits-advanced.description": "Erlebe echte Kontextfenster-Trunkierung",
+  "scenarios.context-limits-advanced.step0.content": "Hallo, mein Name ist John Doe.",
+  "scenarios.context-limits-advanced.step0.annotation": "Das Modell wird sich diesen Namen merken... vorerst.",
+  "scenarios.context-limits-advanced.step1.content": "Wie ist mein Name?",
+  "scenarios.context-limits-advanced.step1.annotation": "Überprüfung, ob das Modell den Namen noch im Kontext hat.",
+  "scenarios.context-limits-advanced.step2.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.step2.annotation": "Fülle den Kontext, um Trunkierung zu erzwingen...",
+  "scenarios.context-limits-advanced.step3.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.step4.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.step5.content": "Wie viele Demo-Nachrichten habe ich dir geschickt?",
+  "scenarios.context-limits-advanced.step5.annotation": "Teste, ob das Modell die Anzahl verfolgt hat.",
+  "scenarios.context-limits-advanced.step6.content": "Wie ist mein Name?",
+  "scenarios.context-limits-advanced.step6.annotation": "Der Name sollte jetzt trunkiert sein. Das Modell weiß es wirklich nicht.",
+  "scenarios.context-limits-advanced.step7.content": "Wie kannst du meinen Namen nicht kennen?? Ich habe ihn dir vor mehreren Nachrichten gesagt! Was ist los??",
+  "scenarios.context-limits-advanced.step7.annotation": "Verwirrung ausdrücken - dies sollte ein Lehrmoment sein.",
+  "scenarios.context-limits-advanced.step8.annotation": "Nachrichtenlimit wiederhergestellt. Das Modell kann jetzt auf mehr Kontext zugreifen und effektiv lehren."
 }
 ```
 
-**Optional**: Create `en.json` for completeness (copy from base scenario)
+**File**: `TransparentAiAgentGui/data/translations/cz.json` (Czech)
+```json
+{
+  "scenarios.context-limits-advanced.name": "Limity kontextu (Pokročilé)",
+  "scenarios.context-limits-advanced.description": "Zažij skutečné zkrácení kontextového okna",
+  "scenarios.context-limits-advanced.step0.content": "Ahoj, jmenuji se John Doe.",
+  "scenarios.context-limits-advanced.step0.annotation": "Model si toto jméno zapamatuje... prozatím.",
+  "scenarios.context-limits-advanced.step1.content": "Jaké je moje jméno?",
+  "scenarios.context-limits-advanced.step1.annotation": "Ověření, zda model má jméno stále v kontextu.",
+  "scenarios.context-limits-advanced.step2.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.step2.annotation": "Plnění kontextu k vynucení zkrácení...",
+  "scenarios.context-limits-advanced.step3.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.step4.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.step5.content": "Kolik demo zpráv jsem ti poslal?",
+  "scenarios.context-limits-advanced.step5.annotation": "Test, zda model sledoval počet.",
+  "scenarios.context-limits-advanced.step6.content": "Jaké je moje jméno?",
+  "scenarios.context-limits-advanced.step6.annotation": "Jméno by mělo být nyní zkráceno. Model to opravdu neví.",
+  "scenarios.context-limits-advanced.step7.content": "Jak to, že neznáš moje jméno?? Řekl jsem ti ho před několika zprávami! Co se děje??",
+  "scenarios.context-limits-advanced.step7.annotation": "Vyjádření zmatku - toto by měl být poučný moment.",
+  "scenarios.context-limits-advanced.step8.annotation": "Limit zpráv obnoven. Model nyní může přistupovat k většímu kontextu a efektivně učit."
+}
+```
+
+**Note**: Flat key-value format - easy for translators and compatible with CSV/XLIFF export
 
 ### End-to-End Testing
 

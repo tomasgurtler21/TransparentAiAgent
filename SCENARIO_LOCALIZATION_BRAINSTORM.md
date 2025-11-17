@@ -533,59 +533,70 @@ I'd lean toward **separate JSON files per language** because:
 
 ### Clarifications & Considerations
 
-#### 1. Alternative 2 Implementation Variant
+#### 1. Translation Keys Implementation (Industry Standard)
 
-**Original Alternative 2** proposed translation keys in base scenario:
-```json
-// Base scenario with keys
-{
-  "steps": [
-    { "type": "scenario_user_message", "translationKey": "step1_content" }
-  ]
-}
-```
+**Approach**: Use translation keys with flat key-value translation files (industry standard i18n pattern).
 
-**Recommended Variant** (based on your answers):
+**Base scenario with translation keys**:
 ```json
-// Base scenario (current format, includes English content)
 {
   "id": "context-limits-advanced",
-  "name": "Context Limits (Advanced)",  // English inline
+  "nameKey": "scenarios.context-limits-advanced.name",
+  "name": "Context Limits (Advanced)",  // Inline English fallback
+  "descriptionKey": "scenarios.context-limits-advanced.description",
   "description": "Experience genuine context window truncation",
   "steps": [
     {
       "type": "scenario_user_message",
-      "content": "Hi, my name is John Doe.",  // English inline
+      "contentKey": "scenarios.context-limits-advanced.step0.content",
+      "content": "Hi, my name is John Doe.",
+      "annotationKey": "scenarios.context-limits-advanced.step0.annotation",
       "annotation": "The model will remember this name... for now."
     }
   ]
 }
+```
 
-// Translation overlay file: de.json
+**Translation file format (flat key-value)**:
+```json
+// en.json (base language)
 {
-  "scenarios": {
-    "context-limits-advanced": {
-      "name": "Kontextgrenzen (Fortgeschritten)",
-      "description": "Erleben Sie echtes Kontextfenster-Trunkieren",
-      "steps": {
-        "0": {  // Step index
-          "content": "Hallo, mein Name ist John Doe.",
-          "annotation": "Das Modell wird sich diesen Namen merken... vorerst."
-        }
-      }
-    }
-  }
+  "scenarios.context-limits-advanced.name": "Context Limits (Advanced)",
+  "scenarios.context-limits-advanced.description": "Experience genuine context window truncation",
+  "scenarios.context-limits-advanced.step0.content": "Hi, my name is John Doe.",
+  "scenarios.context-limits-advanced.step0.annotation": "The model will remember this name... for now.",
+  "scenarios.context-limits-advanced.step1.content": "What is my name?",
+  "scenarios.context-limits-advanced.step1.annotation": "Verifying the model still has the name in context."
+}
+
+// de.json (German translation)
+{
+  "scenarios.context-limits-advanced.name": "Kontextgrenzen (Fortgeschritten)",
+  "scenarios.context-limits-advanced.description": "Erlebe echte Kontextfenster-Trunkierung",
+  "scenarios.context-limits-advanced.step0.content": "Hallo, mein Name ist John Doe.",
+  "scenarios.context-limits-advanced.step0.annotation": "Das Modell wird sich diesen Namen merken... vorerst.",
+  "scenarios.context-limits-advanced.step1.content": "Wie ist mein Name?",
+  "scenarios.context-limits-advanced.step1.annotation": "Überprüfung, ob das Modell den Namen noch im Kontext hat."
+}
+
+// cz.json (Czech translation)
+{
+  "scenarios.context-limits-advanced.name": "Limity kontextu (Pokročilé)",
+  "scenarios.context-limits-advanced.description": "Zažij skutečné zkrácení kontextového okna",
+  "scenarios.context-limits-advanced.step0.content": "Ahoj, jmenuji se John Doe.",
+  "scenarios.context-limits-advanced.step0.annotation": "Model si toto jméno zapamatuje... prozatím."
 }
 ```
 
 **Benefits**:
-- ✅ Base scenario remains unchanged (backward compatible)
-- ✅ English content always available as fallback
-- ✅ Translation files are pure overlays (no structure duplication)
-- ✅ Can load base scenario alone and it works (English)
-- ✅ Loader merges translation overlay when language != "en"
-
-**Is this your mental model?** If yes, this is cleaner than strict Alternative 2.
+- ✅ **Industry standard** - Works with i18next, gettext, .NET .resx patterns
+- ✅ **Professional tooling** - Compatible with Crowdin, Lokalise, Phrase, etc.
+- ✅ **Export/import** - Can convert to CSV, XLIFF, or other formats for translators
+- ✅ **Validation** - Easy to check translation coverage ("Do we have all 47 keys in German?")
+- ✅ **Future-proof** - Aligns with app-wide localization infrastructure
+- ✅ **Searchability** - Can grep for key usage across codebase
+- ✅ **Fallback inline** - English text in scenario works if translation missing
+- ✅ **Flat structure** - Simpler for translators than nested JSON
 
 #### 2. Language Selection Without Persistence
 
