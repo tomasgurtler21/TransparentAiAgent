@@ -2,7 +2,7 @@
 
 **Date**: 2025-11-17
 **Investigator**: Claude
-**Status**: ✅ Solved - Upgrade Path Identified
+**Status**: ✅ FIXED - Upgraded to Stable 2.1.0
 
 ---
 
@@ -347,9 +347,33 @@ Our `AzureOpenAIProvider.cs` implementation is fully compatible with Azure.AI.Op
 
 ---
 
-## Testing Plan
+## ✅ Implementation
 
-After implementing the fix:
+**Date**: 2025-11-17
+
+### Changes Made
+
+Updated `TransparentAiAgentCore/TransparentAiAgentCore.csproj`:
+
+```diff
+   <ItemGroup>
+-    <PackageReference Include="Azure.AI.OpenAI" Version="2.5.0-beta.1" />
++    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+     <PackageReference Include="Azure.Identity" Version="1.13.1" />
+-    <PackageReference Include="OpenAI" Version="2.7.0" />
+     <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
+     <PackageReference Include="System.Text.Json" Version="9.0.1" />
+   </ItemGroup>
+```
+
+**Summary**:
+- ✅ Downgraded Azure.AI.OpenAI from 2.5.0-beta.1 to 2.1.0 (stable)
+- ✅ Removed explicit OpenAI 2.7.0 reference (will be pulled as dependency >= 2.1.0)
+- ✅ No code changes required (all APIs compatible)
+
+### Next Steps for User
+
+After pulling these changes:
 
 1. Clear all NuGet caches: `dotnet nuget locals all --clear`
 2. Rebuild solution: `dotnet build --no-incremental`
