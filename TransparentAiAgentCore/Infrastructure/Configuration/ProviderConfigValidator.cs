@@ -48,7 +48,8 @@ public class ProviderConfigValidator
 
     /// <summary>
     /// Validates Azure OpenAI provider configuration
-    /// Required parameters: Endpoint (valid URL), DeploymentName, ApiKey
+    /// Required parameters: Endpoint (valid URL), DeploymentName
+    /// ApiKey is only required when AuthenticationMode is "ApiKey" or not specified
     /// </summary>
     private ValidationResult ValidateAzureOpenAIConfig(ProviderConfig config)
     {
@@ -69,7 +70,16 @@ public class ProviderConfigValidator
         }
 
         ValidateRequiredParameter(result, config, "DeploymentName", "AzureOpenAI");
-        ValidateRequiredApiKey(result, config, "AzureOpenAI");
+
+        // ApiKey is only required for ApiKey authentication mode
+        var authMode = config.Parameters.ContainsKey("AuthenticationMode")
+            ? config.Parameters["AuthenticationMode"]?.ToString()?.ToLowerInvariant()
+            : "apikey"; // Default to ApiKey if not specified
+
+        if (authMode == "apikey")
+        {
+            ValidateRequiredApiKey(result, config, "AzureOpenAI");
+        }
 
         return result;
     }

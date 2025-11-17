@@ -216,16 +216,17 @@ public class ProviderConfigValidatorTests
     }
 
     [TestMethod]
-    public void ValidateAzureOpenAIConfig_MissingApiKey_ReturnsError()
+    public void ValidateAzureOpenAIConfig_MissingApiKey_WithApiKeyAuthMode_ReturnsError()
     {
-        // Arrange
+        // Arrange - ApiKey is required when AuthenticationMode is "ApiKey"
         var config = new ProviderConfig(
             type: "AzureOpenAI",
             displayName: "Azure GPT-4",
             parameters: new Dictionary<string, object>
             {
                 ["Endpoint"] = "https://test.openai.azure.com/",
-                ["DeploymentName"] = "gpt-4"
+                ["DeploymentName"] = "gpt-4",
+                ["AuthenticationMode"] = "ApiKey"
                 // ApiKey missing
             }
         );
@@ -236,9 +237,111 @@ public class ProviderConfigValidatorTests
         var result = validator.Validate(config);
 
         // Assert
-        Assert.IsFalse(result.IsValid, "Azure OpenAI config without ApiKey should fail validation");
+        Assert.IsFalse(result.IsValid, "Azure OpenAI config without ApiKey should fail validation when using ApiKey auth mode");
         Assert.IsTrue(result.Errors.Any(e => e.Contains("ApiKey")),
             "Error should mention missing ApiKey");
+    }
+
+    [TestMethod]
+    public void ValidateAzureOpenAIConfig_MissingApiKey_DefaultsToApiKeyAuthMode_ReturnsError()
+    {
+        // Arrange - When AuthenticationMode is not specified, it defaults to ApiKey (backward compatible)
+        var config = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "gpt-4"
+                // AuthenticationMode not specified - defaults to ApiKey
+                // ApiKey missing
+            }
+        );
+
+        var validator = new ProviderConfigValidator();
+
+        // Act
+        var result = validator.Validate(config);
+
+        // Assert
+        Assert.IsFalse(result.IsValid, "Azure OpenAI config without ApiKey should fail validation when auth mode defaults to ApiKey");
+        Assert.IsTrue(result.Errors.Any(e => e.Contains("ApiKey")),
+            "Error should mention missing ApiKey");
+    }
+
+    [TestMethod]
+    public void ValidateAzureOpenAIConfig_MissingApiKey_WithDefaultAzureCredential_ReturnsSuccess()
+    {
+        // Arrange - ApiKey is NOT required when using DefaultAzureCredential
+        var config = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "gpt-4",
+                ["AuthenticationMode"] = "DefaultAzureCredential"
+                // ApiKey not needed for OAuth
+            }
+        );
+
+        var validator = new ProviderConfigValidator();
+
+        // Act
+        var result = validator.Validate(config);
+
+        // Assert
+        Assert.IsTrue(result.IsValid, "Azure OpenAI config with DefaultAzureCredential should not require ApiKey");
+    }
+
+    [TestMethod]
+    public void ValidateAzureOpenAIConfig_MissingApiKey_WithInteractiveBrowserCredential_ReturnsSuccess()
+    {
+        // Arrange - ApiKey is NOT required when using InteractiveBrowserCredential
+        var config = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "gpt-4",
+                ["AuthenticationMode"] = "InteractiveBrowserCredential"
+                // ApiKey not needed for OAuth
+            }
+        );
+
+        var validator = new ProviderConfigValidator();
+
+        // Act
+        var result = validator.Validate(config);
+
+        // Assert
+        Assert.IsTrue(result.IsValid, "Azure OpenAI config with InteractiveBrowserCredential should not require ApiKey");
+    }
+
+    [TestMethod]
+    public void ValidateAzureOpenAIConfig_CaseInsensitiveAuthenticationMode_WorksCorrectly()
+    {
+        // Arrange - Test case insensitivity for AuthenticationMode
+        var config = new ProviderConfig(
+            type: "AzureOpenAI",
+            displayName: "Azure GPT-4",
+            parameters: new Dictionary<string, object>
+            {
+                ["Endpoint"] = "https://test.openai.azure.com/",
+                ["DeploymentName"] = "gpt-4",
+                ["AuthenticationMode"] = "DEFAULTAZURECREDENTIAL"  // uppercase
+                // ApiKey not needed
+            }
+        );
+
+        var validator = new ProviderConfigValidator();
+
+        // Act
+        var result = validator.Validate(config);
+
+        // Assert
+        Assert.IsTrue(result.IsValid, "AuthenticationMode should be case-insensitive");
     }
 
     #endregion
