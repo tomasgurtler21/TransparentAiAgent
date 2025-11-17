@@ -3,6 +3,7 @@ using System.Text.Json;
 using TransparentAiAgentCore.Domain.LLM;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.Transparency;
+using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Infrastructure.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools.Validation;
@@ -20,19 +21,22 @@ public class ToolManager : IToolManager
     private readonly ITransparencyService _transparencyService;
     private readonly IToolUsageStatistics _statistics;
     private readonly ToolSchemaValidator _validator;
+    private readonly IAppModeService? _appModeService;
 
     public ToolManager(
         IToolRegistry registry,
         IEnumerable<IToolExecutor> executors,
         ITransparencyService transparencyService,
         IToolUsageStatistics statistics,
-        ToolSchemaValidator validator)
+        ToolSchemaValidator validator,
+        IAppModeService? appModeService = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _executors = executors ?? throw new ArgumentNullException(nameof(executors));
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
         _statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        _appModeService = appModeService; // Optional - may be null if mode service not available
     }
 
     /// <summary>
@@ -165,11 +169,16 @@ public class ToolManager : IToolManager
 
     /// <summary>
     /// Converts registered tools to LLM tool format.
+    /// Filters tools based on current mode: built-in UI control and knowledge library tools
+    /// are only available in Teaching mode.
     /// </summary>
     public List<LLMTool> GetLLMToolDefinitions()
     {
         try
         {
+            // Get current mode (default to Normal if mode service not available)
+            var currentMode = _appModeService?.CurrentMode ?? AppMode.Normal;
+
             // DEBUG: Log registry type and tool count
             var registryType = _registry.GetType().Name;
             var tools = _registry.GetAllTools();
@@ -181,9 +190,10 @@ public class ToolManager : IToolManager
                 {
                     RegistryType = registryType,
                     ToolCount = toolCount,
+                    CurrentMode = currentMode.ToString(),
                     Tools = tools?.Select(t => new { t.Name, t.SourceType }).ToList()
                 }),
-                $"[ToolManager] GetLLMToolDefinitions - Registry: {registryType}, Count: {toolCount}"));
+                $"[ToolManager] GetLLMToolDefinitions - Registry: {registryType}, Count: {toolCount}, Mode: {currentMode}"));
 
             if (tools == null || tools.Count == 0)
             {
@@ -194,7 +204,32 @@ public class ToolManager : IToolManager
                 return new List<LLMTool>();
             }
 
-            var llmTools = tools
+            // Filter tools based on mode
+            // In Normal mode: exclude UI control and knowledge library tools (teaching-specific)
+            // In Teaching mode: include all tools
+            var filteredTools = currentMode == AppMode.Normal
+                ? tools.Where(t => t.SourceType != ToolSourceType.BuiltInUIControl
+                                && t.SourceType != ToolSourceType.BuiltInKnowledge).ToList()
+                : tools;
+
+            var filteredCount = filteredTools.Count();
+            if (filteredCount < toolCount)
+            {
+                var excludedCount = toolCount - filteredCount;
+                _transparencyService.LogEvent(new TransparencyEvent(
+                    TransparencyEventType.SystemState,
+                    JsonSerializer.Serialize(new
+                    {
+                        CurrentMode = currentMode.ToString(),
+                        TotalTools = toolCount,
+                        FilteredTools = filteredCount,
+                        ExcludedTools = excludedCount,
+                        ExcludedTypes = new[] { "BuiltInUIControl", "BuiltInKnowledge" }
+                    }),
+                    $"[ToolManager] Filtered {excludedCount} teaching-mode-only tools (mode: {currentMode})"));
+            }
+
+            var llmTools = filteredTools
                 .Select(t => new LLMTool(t.Name, t.Description, t.ParametersSchema))
                 .ToList();
 
@@ -203,9 +238,10 @@ public class ToolManager : IToolManager
                 JsonSerializer.Serialize(new
                 {
                     ConvertedCount = llmTools.Count,
-                    ToolNames = llmTools.Select(t => t.Name).ToList()
+                    ToolNames = llmTools.Select(t => t.Name).ToList(),
+                    Mode = currentMode.ToString()
                 }),
-                $"[ToolManager] Converted {llmTools.Count} tools to LLM format"));
+                $"[ToolManager] Converted {llmTools.Count} tools to LLM format (mode: {currentMode})"));
 
             return llmTools;
         }
