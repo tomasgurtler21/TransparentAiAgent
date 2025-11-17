@@ -1,10 +1,12 @@
 @using TransparentAiAgentCore.Domain.Scenarios
 @using TransparentAiAgentCore.Application.Scenarios
 @using TransparentAiAgentCore.Domain.UIControl
+@using TransparentAiAgentCore.Application.Localization
 @implements IDisposable
 @inject IScenarioRegistry ScenarioRegistry
 @inject IScenarioExecutor ScenarioExecutor
 @inject IUIControlService UIControlService
+@inject ILanguageService LanguageService
 @rendermode InteractiveServer
 
 <div class="scenario-selector-overlay">
@@ -25,7 +27,13 @@
     {
         <div class="selector-content">
             <div class="scenario-filters">
-                <select class="form-select form-select-sm" @bind="selectedCategory" @bind:after="FilterScenarios">
+                <select class="form-select form-select-sm" @bind="selectedLanguage" @bind:after="OnLanguageChanged">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="cz">🇨🇿 Čeština</option>
+                </select>
+
+                <select class="form-select form-select-sm mt-2" @bind="selectedCategory" @bind:after="FilterScenarios">
                     <option value="">All Categories</option>
                     @foreach (var category in categories)
                     {
@@ -82,9 +90,13 @@
     private List<string> categories = new();
     private string selectedCategory = "";
     private string selectedDifficulty = "";
+    private string selectedLanguage = "en";
 
     protected override void OnInitialized()
     {
+        // Initialize with current language
+        selectedLanguage = LanguageService.CurrentLanguage;
+
         LoadScenarios();
 
         // Subscribe to UI state changes
@@ -131,6 +143,20 @@
                 .Where(s => s.Difficulty == selectedDifficulty)
                 .ToList();
         }
+    }
+
+    private void OnLanguageChanged()
+    {
+        // Update the language service (this will trigger scenario reload)
+        LanguageService.SetLanguage(selectedLanguage);
+
+        // Wait a bit for scenarios to reload, then refresh the UI
+        InvokeAsync(async () =>
+        {
+            await Task.Delay(100);
+            LoadScenarios();
+            StateHasChanged();
+        });
     }
 
     private bool IsScenarioActive(string scenarioId)

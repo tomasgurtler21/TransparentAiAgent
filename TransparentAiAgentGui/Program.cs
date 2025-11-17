@@ -32,6 +32,8 @@ using TransparentAiAgentCore.Infrastructure.ConversationHistory;
 using TransparentAiAgentCore.Domain.Memory;
 using TransparentAiAgentCore.Infrastructure.Memory;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInLongTermMemory;
+using TransparentAiAgentCore.Application.Localization;
+using TransparentAiAgentCore.Infrastructure.Localization;
 
 try
 {
@@ -57,6 +59,22 @@ try
     builder.Services.AddSingleton<ISerializationService, SerializationService>();
     builder.Services.AddSingleton<IToolUsageStatistics, ToolUsageStatistics>();
     builder.Services.AddSingleton<ToolSchemaValidator>();
+
+    // Register Language service (singleton for app-wide state)
+    builder.Services.AddSingleton<ILanguageService, LanguageService>();
+
+    // Register Translation service (singleton for app-wide translation loading)
+    builder.Services.AddSingleton<ITranslationService>(sp =>
+    {
+        var languageService = sp.GetRequiredService<ILanguageService>();
+        var translationsPath = Path.Combine(builder.Environment.ContentRootPath, "data", "translations");
+        var translationService = new TranslationService(translationsPath, languageService);
+
+        // Load translations on startup
+        translationService.LoadTranslationsAsync().Wait();
+
+        return translationService;
+    });
 
     // Register Conversation History services
     builder.Services.AddSingleton<MessageSerializer>();
@@ -410,7 +428,23 @@ try
     builder.Services.AddScoped<LongTermMemoryToolExecutor>();
 
     // Register Scenario services (Phase 10a/10b - Teaching Mode Scenarios)
-    builder.Services.AddSingleton<IScenarioRegistry, ScenarioRegistry>();
+    // Register JsonScenarioLoader first (needed by ScenarioRegistry)
+    builder.Services.AddSingleton<JsonScenarioLoader>(sp =>
+    {
+        var translationService = sp.GetRequiredService<ITranslationService>();
+        return new JsonScenarioLoader(translationService);
+    });
+
+    // Register ScenarioRegistry with automatic scenario loading and language change handling
+    builder.Services.AddSingleton<IScenarioRegistry>(sp =>
+    {
+        var loader = sp.GetRequiredService<JsonScenarioLoader>();
+        var languageService = sp.GetRequiredService<ILanguageService>();
+        var translationService = sp.GetRequiredService<ITranslationService>();
+        var scenariosPath = Path.Combine(builder.Environment.ContentRootPath, "data", "scenarios");
+        return new ScenarioRegistry(loader, languageService, translationService, scenariosPath);
+    });
+
     builder.Services.AddScoped<IConfigurationOverlay>(sp =>
     {
         // Initialize with empty base configuration - could be expanded to load from appsettings if needed
@@ -425,44 +459,33 @@ try
 
     var app = builder.Build();
 
-    // Load scenarios from JSON files (Phase 10a - Teaching Mode Scenarios)
+    // Display loaded scenarios (Phase 10a - Teaching Mode Scenarios)
+    // Note: Scenarios are now loaded automatically by ScenarioRegistry constructor
     try
     {
-        var scenariosPath = Path.Combine(builder.Environment.ContentRootPath, "data", "scenarios");
+        var scenarioRegistry = app.Services.GetRequiredService<IScenarioRegistry>();
+        var scenarios = scenarioRegistry.GetAllScenarios();
 
-        if (Directory.Exists(scenariosPath))
+        if (scenarios.Count > 0)
         {
-            Console.WriteLine($"⏳ Loading teaching scenarios from {scenariosPath}...");
-
-            var scenarioLoader = new JsonScenarioLoader();
-            var scenarios = await scenarioLoader.LoadAllFromDirectoryAsync(scenariosPath);
-
-            var scenarioRegistry = app.Services.GetRequiredService<IScenarioRegistry>();
-            foreach (var scenario in scenarios)
-            {
-                scenarioRegistry.AddScenario(scenario);
-            }
-
             Console.WriteLine($"✓ Loaded {scenarios.Count} teaching scenario(s)");
-            if (scenarios.Count > 0)
+            Console.WriteLine("   Scenarios:");
+            foreach (var scenario in scenarios.OrderBy(s => s.Name))
             {
-                Console.WriteLine("   Scenarios:");
-                foreach (var scenario in scenarios.OrderBy(s => s.Name))
-                {
-                    Console.WriteLine($"     - {scenario.Name} ({scenario.Steps.Count} steps)");
-                }
+                Console.WriteLine($"     - {scenario.Name} ({scenario.Steps.Count} steps)");
             }
         }
         else
         {
-            Console.WriteLine($"⚠ Scenarios directory not found: {scenariosPath}");
-            Console.WriteLine("   No teaching scenarios will be available.");
+            var scenariosPath = Path.Combine(builder.Environment.ContentRootPath, "data", "scenarios");
+            Console.WriteLine($"⚠ No teaching scenarios loaded from {scenariosPath}");
+            Console.WriteLine("   Check that scenario files exist and are valid JSON.");
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"⚠ Failed to load teaching scenarios: {ex.Message}");
-        Console.WriteLine("   The app will start but teaching scenarios will not be available.");
+        Console.WriteLine($"⚠ Failed to access teaching scenarios: {ex.Message}");
+        Console.WriteLine("   The app will start but teaching scenarios may not be available.");
     }
 
     // CRITICAL FIX: Discover tools synchronously BEFORE accepting requests

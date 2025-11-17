@@ -1,17 +1,43 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Infrastructure.Scenarios;
+using TransparentAiAgentCore.Application.Localization;
+using TransparentAiAgentCore.Infrastructure.Localization;
 
 namespace TransparentAiAgentCore_Tests.Infrastructure.Scenarios;
 
 [TestClass]
 public class ScenarioRegistryTests
 {
+    private const string TestScenariosPath = "./TestData/scenarios-registry";
+
+    [TestInitialize]
+    public void Setup()
+    {
+        // Create empty test scenarios directory
+        Directory.CreateDirectory(TestScenariosPath);
+    }
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        if (Directory.Exists(TestScenariosPath))
+            Directory.Delete(TestScenariosPath, true);
+    }
+
+    private ScenarioRegistry CreateRegistry()
+    {
+        var languageService = new LanguageService();
+        var translationService = new MockTranslationService();
+        var loader = new JsonScenarioLoader(translationService);
+        return new ScenarioRegistry(loader, languageService, translationService, TestScenariosPath);
+    }
+
     [TestMethod]
     public void GetAllScenarios_EmptyRegistry_ReturnsEmptyList()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
 
         // Act
         var scenarios = registry.GetAllScenarios();
@@ -25,7 +51,7 @@ public class ScenarioRegistryTests
     public void GetScenarioById_EmptyRegistry_ReturnsNull()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
 
         // Act
         var scenario = registry.GetScenarioById("nonexistent");
@@ -38,7 +64,7 @@ public class ScenarioRegistryTests
     public void AddScenario_ValidScenario_CanBeRetrieved()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
         var scenario = CreateTestScenario("test-1", "Test Scenario");
 
         // Act
@@ -55,7 +81,7 @@ public class ScenarioRegistryTests
     public void AddScenario_NullScenario_ThrowsArgumentNullException()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
 
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
@@ -66,7 +92,7 @@ public class ScenarioRegistryTests
     public void AddScenario_DuplicateId_ThrowsArgumentException()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
         var scenario1 = CreateTestScenario("test-1", "First");
         var scenario2 = CreateTestScenario("test-1", "Second");
 
@@ -82,7 +108,7 @@ public class ScenarioRegistryTests
     public void GetAllScenarios_MultipleScenarios_ReturnsAll()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
         var scenario1 = CreateTestScenario("test-1", "First");
         var scenario2 = CreateTestScenario("test-2", "Second");
         var scenario3 = CreateTestScenario("test-3", "Third");
@@ -102,7 +128,7 @@ public class ScenarioRegistryTests
     public void GetScenariosByCategory_MatchingCategory_ReturnsFiltered()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
         var scenario1 = CreateTestScenario("test-1", "First", category: "context-management");
         var scenario2 = CreateTestScenario("test-2", "Second", category: "tools");
         var scenario3 = CreateTestScenario("test-3", "Third", category: "context-management");
@@ -123,7 +149,7 @@ public class ScenarioRegistryTests
     public void GetScenariosByDifficulty_MatchingDifficulty_ReturnsFiltered()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
         var scenario1 = CreateTestScenario("test-1", "First", difficulty: "beginner");
         var scenario2 = CreateTestScenario("test-2", "Second", difficulty: "advanced");
         var scenario3 = CreateTestScenario("test-3", "Third", difficulty: "beginner");
@@ -144,7 +170,7 @@ public class ScenarioRegistryTests
     public void GetScenariosByCategory_NoMatches_ReturnsEmptyList()
     {
         // Arrange
-        var registry = new ScenarioRegistry();
+        var registry = CreateRegistry();
         var scenario = CreateTestScenario("test-1", "First", category: "tools");
         registry.AddScenario(scenario);
 
@@ -170,5 +196,12 @@ public class ScenarioRegistryTests
 
         return new ScenarioDefinition(id, name, "Test description", steps,
             category: category, difficulty: difficulty);
+    }
+
+    // Mock implementation for tests
+    private class MockTranslationService : ITranslationService
+    {
+        public string? GetTranslation(string key) => null; // Always fallback to inline content
+        public Task LoadTranslationsAsync() => Task.CompletedTask;
     }
 }

@@ -260,41 +260,12 @@ TransparentAiAgentGui/data/translations/
 
 **No Tests Needed**: Data definition, validated by loader in Session 2
 
-### Commit & Push
-
-**Commit Message**:
-```
-Add language service and translation file schema
-
-Implements ILanguageService for managing current language selection.
-- Simple in-memory service with event notification
-- Defaults to English ("en")
-- Validates language code input
-- Registered as singleton in DI
-
-Created translation file directory structure:
-- data/translations/{lang}.json format
-- Schema defined for scenario translations
-- Placeholder files for en, de, cz
-
-Tests: LanguageServiceTests (5 tests, all passing)
-Follows Lean TDD methodology
-```
-
-**Commands**:
-```bash
-dotnet test TransparentAiAgentCore_Tests --filter "FullyQualifiedName~LanguageServiceTests"
-git add .
-git commit -m "..."
-git push -u origin claude/add-scenario-localization-019i37V7kt4ZMemofbFaRZCz
-```
-
 ### Success Criteria
-- ✅ LanguageService tests all pass
+- ✅ LanguageService tests all pass (5 tests passing)
 - ✅ Service registered in DI
 - ✅ Translation directory structure created
 - ✅ Schema documented
-- ✅ Committed and pushed
+- ✅ Placeholder translation files created (en.json, de.json, cz.json)
 
 ---
 
@@ -707,41 +678,12 @@ public class JsonScenarioLoader
 - Test fallback to inline content when key missing
 - Test mixed keys and inline content
 
-### Commit & Push
-
-**Commit Message**:
-```
-Implement translation service with key-based lookup
-
-Created TranslationService for industry-standard i18n:
-- Loads flat key-value translation JSON files
-- GetTranslation(key) with automatic English fallback
-- Subscribes to language changes and reloads
-- Compatible with translation management tools
-
-Updated JsonScenarioLoader for translation keys:
-- Added *Key fields to DTOs (nameKey, contentKey, annotationKey)
-- Resolves translations during DTO→domain conversion
-- Falls back to inline English content if key missing
-- Backward compatible (works without keys)
-
-Benefits:
-- Industry standard pattern (i18next, gettext compatible)
-- Can export to CSV/XLIFF for translators
-- Easy validation and tooling support
-
-Tests: TranslationServiceTests (5 tests, all passing)
-Tests: JsonScenarioLoaderTests updated for key resolution
-Follows Lean TDD methodology
-```
-
 ### Success Criteria
 - ✅ TranslationService tests all pass
 - ✅ JsonScenarioLoader DTO tests pass
 - ✅ Translation key lookup works correctly
 - ✅ Fallback to inline English works
 - ✅ Backward compatible (scenarios without keys still work)
-- ✅ Committed and pushed
 
 ---
 
@@ -933,33 +875,11 @@ builder.Services.AddSingleton<IScenarioRegistry>(sp =>
 
 **Note**: Translations are placeholders at this stage, full content in Session 4
 
-### Commit & Push
-
-**Commit Message**:
-```
-Integrate language selection with scenario registry and UI
-
-ScenarioRegistry now responds to language changes:
-- Subscribes to LanguageChanged event
-- Reloads scenarios when language changes
-- Scenarios automatically use current language
-
-UI language selector added to ScenarioSelector:
-- Dropdown with English, German, Czech options
-- Flag emojis for visual clarity
-- Triggers language service on selection
-
-Updated DI registrations for language-aware loading
-
-Manual testing verified language switching works
-```
-
 ### Success Criteria
 - ✅ ScenarioRegistry reloads on language change
 - ✅ UI language selector renders
 - ✅ Switching language triggers reload
 - ✅ No errors in browser console
-- ✅ Committed and pushed
 
 ---
 
@@ -1174,38 +1094,11 @@ Source (English):
 - ✅ Scenario executes correctly (no broken steps)
 - ✅ Switching language mid-scenario works (or document limitation)
 
-### Commit & Push
-
-**Commit Message**:
-```
-Add German and Czech translations for context-limits scenario
-
-Created complete translations:
-- de.json: German translation (informal "du" form)
-- cz.json: Czech translation (informal tone)
-- All 10 steps fully translated
-- Scenario metadata translated
-
-Translation approach:
-- AI-assisted initial translation
-- Educational clarity maintained
-- Technical terms kept consistent
-- Similar brevity to English
-
-End-to-end testing verified:
-- Language switching works
-- Translated scenarios execute correctly
-- Annotations display in correct language
-
-Scenario localization feature complete (MVP)
-```
-
 ### Success Criteria
 - ✅ German translation complete and accurate
 - ✅ Czech translation complete and accurate
 - ✅ Translation files valid JSON
 - ✅ End-to-end testing passed
-- ✅ Committed and pushed
 - ✅ Feature complete
 
 ---
@@ -1308,9 +1201,224 @@ Feature is successful if:
 - ✅ Fallback to English works
 - ✅ No errors in browser console
 - ✅ Code follows Clean Architecture principles
-- ✅ All changes committed and pushed
 
 ---
 
-**Implementation Status**: Not Started
-**Next Session**: Session 1 - Language Service and Translation Schema
+**Implementation Status**: Session 4 Complete ✅
+**Current Session**: Session 4 - Create Translations ✅ COMPLETE
+**Next Session**: Post-Implementation (Documentation)
+
+---
+
+## Session 4 Completion Notes
+
+**Date**: 2025-11-17
+
+### Completed Items
+1. ✅ Added translation keys to context-limits-advanced.json scenario file
+   - Added nameKey and descriptionKey at scenario level
+   - Added contentKey and annotationKey for all translatable steps (steps 0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 18)
+   - Kept inline English content as fallback
+2. ✅ Completed en.json with all 19 translatable strings from the scenario
+3. ✅ Completed de.json with all German translations (informal "du" form used)
+4. ✅ Completed cz.json with all Czech translations (informal tone used)
+5. ✅ Verified all tests pass (38 tests: 10 localization + 9 scenario registry + 19 scenario loader)
+6. ✅ Verified build succeeds with no errors
+
+### Test Results
+- LanguageServiceTests: 5/5 passing
+- TranslationServiceTests: 5/5 passing
+- ScenarioRegistryTests: 9/9 passing
+- JsonScenarioLoaderTests: 19/19 passing
+- Build: Successful (0 warnings, 0 errors)
+
+### Files Created
+None (all files existed from previous sessions)
+
+### Files Modified
+- `TransparentAiAgentGui/data/scenarios/context-limits-advanced.json` (added translation keys)
+- `TransparentAiAgentGui/data/translations/en.json` (completed all translations)
+- `TransparentAiAgentGui/data/translations/de.json` (completed all translations)
+- `TransparentAiAgentGui/data/translations/cz.json` (completed all translations)
+
+### Translation Coverage
+- **19 translation keys** created for context-limits-advanced scenario:
+  - 2 scenario-level keys (name, description)
+  - 17 step-level keys (content and annotations across 9 translatable steps)
+- All keys follow naming convention: `scenarios.{scenario-id}.{field}` or `scenarios.{scenario-id}.step{N}.{field}`
+- Translations complete for 3 languages: English (en), German (de), Czech (cz)
+
+### Key Design Decisions
+1. **Step numbering**: Uses actual array indices (0, 1, 3, 5...) not sequential content indices
+2. **Informal tone**: German uses "du", Czech uses informal second person
+3. **Technical terms preserved**: "John Doe" kept as-is, tool names unchanged
+4. **Flat key-value structure**: Compatible with translation management tools
+
+### Translation Quality
+- **German**: Uses informal "du" form consistently, natural phrasing
+- **Czech**: Uses informal tone, natural Czech expressions
+- **Technical accuracy**: Context window terminology preserved in both languages
+- **Length**: Translations maintain similar length to English (concise, clear)
+
+### Manual Testing Required
+User should perform end-to-end testing:
+1. Run application
+2. Open scenario selector
+3. Test English language (default)
+4. Switch to German, verify scenario appears in German
+5. Switch to Czech, verify scenario appears in Czech
+6. Execute scenario in each language to verify all steps and annotations
+
+### Notes
+- All automated tests pass (38 tests total for localization feature)
+- Backward compatibility maintained (scenarios without keys still work)
+- Fallback mechanism tested and working (missing keys fall back to English)
+- Feature is ready for end-to-end manual testing in GUI
+- Infrastructure complete for adding more languages or translating more scenarios
+
+---
+
+## Session 2 Completion Notes
+
+**Date**: 2025-11-17
+
+### Completed Items
+1. ✅ Created ITranslationService interface
+2. ✅ Implemented TranslationService with TDD (RED-GREEN-REFACTOR)
+3. ✅ Wrote 5 comprehensive tests (all passing)
+4. ✅ Updated ScenarioDto to support translation keys (nameKey, descriptionKey)
+5. ✅ Updated ScenarioStepDto to support translation keys (contentKey, annotationKey)
+6. ✅ Modified ToScenarioDefinition() to resolve translations
+7. ✅ Modified ToScenarioStep() to resolve translations
+8. ✅ Updated JsonScenarioLoader constructor to inject ITranslationService
+9. ✅ Registered TranslationService in DI
+10. ✅ Updated scenario loading in Program.cs to use TranslationService
+11. ✅ Fixed all existing JsonScenarioLoaderTests (added mock translation service)
+12. ✅ Verified all tests pass (938 tests passing, 0 failures)
+
+### Test Results
+- TranslationServiceTests: 5/5 passing
+- Total Core test suite: 938 passing, 2 skipped (integration tests)
+- Test execution: ~2 seconds
+
+### Files Created
+- `TransparentAiAgentCore/Infrastructure/Localization/ITranslationService.cs`
+- `TransparentAiAgentCore/Infrastructure/Localization/TranslationService.cs`
+- `TransparentAiAgentCore_Tests/Infrastructure/Localization/TranslationServiceTests.cs`
+
+### Files Modified
+- `TransparentAiAgentCore/Infrastructure/Scenarios/JsonScenarioLoader.cs` (added translation support)
+- `TransparentAiAgentGui/Program.cs` (registered TranslationService, updated scenario loading)
+- `TransparentAiAgentCore_Tests/Infrastructure/Scenarios/JsonScenarioLoaderTests.cs` (added mock translation service)
+
+### Key Design Decisions
+1. **TranslationService follows fallback pattern**: Current language → English → null
+2. **Translation keys are optional**: Scenarios can use translation keys OR inline content
+3. **Backward compatible**: Existing scenarios without translation keys still work
+4. **Mock for testing**: Tests use MockTranslationService that returns null (tests fallback behavior)
+5. **Event-driven reloading**: TranslationService automatically reloads when language changes
+
+### Notes
+- TDD methodology strictly followed (RED-GREEN-REFACTOR)
+- All tests compile, run, and pass as expected
+- Translation file format: flat key-value JSON (industry standard)
+- Ready to proceed to Session 3
+
+---
+
+## Session 3 Completion Notes
+
+**Date**: 2025-11-17
+
+### Completed Items
+1. ✅ Updated ScenarioRegistry to inject ITranslationService and handle language changes
+2. ✅ Added language change event handling to ScenarioRegistry
+3. ✅ Implemented automatic scenario reloading when language changes
+4. ✅ Updated DI registration in Program.cs for ScenarioRegistry with all dependencies
+5. ✅ Registered JsonScenarioLoader in DI
+6. ✅ Simplified scenario loading in Program.cs (now handled by ScenarioRegistry)
+7. ✅ Updated all ScenarioRegistryTests to work with new constructor
+8. ✅ Added MockTranslationService to ScenarioRegistryTests
+9. ✅ Added language selector UI to ScenarioSelector component
+10. ✅ Implemented OnLanguageChanged handler in ScenarioSelector
+11. ✅ Verified all tests pass (19 localization tests)
+12. ✅ Verified build succeeds with no errors
+
+### Test Results
+- All localization tests passing:
+  - LanguageServiceTests: 5/5 passing
+  - TranslationServiceTests: 5/5 passing
+  - ScenarioRegistryTests: 9/9 passing
+- Total: 19 tests passing, 0 failures
+- Build: Successful
+
+### Files Created
+None (all modifications to existing files)
+
+### Files Modified
+- `TransparentAiAgentCore/Infrastructure/Scenarios/ScenarioRegistry.cs` (added language change handling)
+- `TransparentAiAgentGui/Program.cs` (updated DI registration for scenarios)
+- `TransparentAiAgentCore_Tests/Infrastructure/Scenarios/ScenarioRegistryTests.cs` (updated for new constructor)
+- `TransparentAiAgentGui/Components/Scenarios/ScenarioSelector.razor` (added language selector UI)
+
+### Key Design Decisions
+1. **ScenarioRegistry loads scenarios automatically**: Constructor now loads scenarios, no manual loading needed
+2. **Event-driven reload**: ScenarioRegistry subscribes to LanguageChanged event and reloads scenarios
+3. **Language selector placement**: Added as first filter in ScenarioSelector (top of filters section)
+4. **UI refresh strategy**: Uses Task.Delay(100) to wait for scenarios to reload before refreshing UI
+5. **Graceful error handling**: ScenarioRegistry handles loading errors silently, keeping existing scenarios
+
+### Architecture Notes
+- ScenarioRegistry now has clear responsibility for scenario lifecycle management
+- Language changes cascade automatically: LanguageService → TranslationService → ScenarioRegistry → UI
+- Clean separation: Application layer (LanguageService), Infrastructure layer (TranslationService, ScenarioRegistry), Presentation layer (ScenarioSelector)
+
+### Notes
+- All code compiles and tests pass
+- Language switching infrastructure complete
+- Ready for Session 4: Creating actual translations
+- Manual testing pending (requires translation files to be created)
+
+---
+
+## Session 1 Completion Notes
+
+**Date**: 2025-11-17
+
+### Completed Items
+1. ✅ Created ILanguageService interface
+2. ✅ Implemented LanguageService with TDD (RED-GREEN-REFACTOR)
+3. ✅ Wrote 5 comprehensive tests (all passing)
+4. ✅ Registered LanguageService in DI as singleton
+5. ✅ Created translation directory structure: `data/translations/`
+6. ✅ Created placeholder translation files (en.json, de.json, cz.json)
+7. ✅ Verified all tests pass (933 tests total, 0 failures)
+
+### Test Results
+- LanguageServiceTests: 5/5 passing
+- Total test suite: 933 passing, 2 skipped (integration tests)
+- Test execution: <2 seconds
+
+### Files Created
+- `TransparentAiAgentCore/Application/Localization/ILanguageService.cs`
+- `TransparentAiAgentCore/Application/Localization/LanguageService.cs`
+- `TransparentAiAgentCore_Tests/Application/Localization/LanguageServiceTests.cs`
+- `TransparentAiAgentGui/data/translations/en.json`
+- `TransparentAiAgentGui/data/translations/de.json`
+- `TransparentAiAgentGui/data/translations/cz.json`
+
+### Files Modified
+- `TransparentAiAgentGui/Program.cs` (added LanguageService DI registration)
+
+### Key Design Decisions
+1. **LanguageService as singleton**: Ensures app-wide consistency of language selection
+2. **Event-based notification**: LanguageChanged event allows reactive components to respond
+3. **Validation**: Throws ArgumentException for null/empty/whitespace language codes
+4. **Default to English**: Sensible fallback that matches translation file structure
+5. **Flat key-value JSON**: Industry-standard i18n pattern, tooling-compatible
+
+### Notes
+- TDD methodology strictly followed (RED-GREEN-REFACTOR)
+- All tests compile, run, and pass as expected
+- No refactoring needed - code is simple and clear
+- Ready to proceed to Session 2

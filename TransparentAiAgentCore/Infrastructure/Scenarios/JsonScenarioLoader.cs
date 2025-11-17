@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using TransparentAiAgentCore.Domain.Scenarios;
+using TransparentAiAgentCore.Infrastructure.Localization;
 
 namespace TransparentAiAgentCore.Infrastructure.Scenarios;
 
@@ -10,12 +11,19 @@ namespace TransparentAiAgentCore.Infrastructure.Scenarios;
 /// </summary>
 public class JsonScenarioLoader
 {
+    private readonly ITranslationService _translationService;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true
     };
+
+    public JsonScenarioLoader(ITranslationService translationService)
+    {
+        _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
+    }
 
     /// <summary>
     /// Loads a single scenario from a JSON file.
@@ -50,7 +58,7 @@ public class JsonScenarioLoader
         }
 
         // Convert DTO to domain model (this will validate required fields)
-        return dto.ToScenarioDefinition();
+        return dto.ToScenarioDefinition(_translationService);
     }
 
     /// <summary>
@@ -98,8 +106,14 @@ public class JsonScenarioLoader
         [JsonPropertyName("id")]
         public string? Id { get; set; }
 
+        [JsonPropertyName("nameKey")]
+        public string? NameKey { get; set; }
+
         [JsonPropertyName("name")]
         public string? Name { get; set; }
+
+        [JsonPropertyName("descriptionKey")]
+        public string? DescriptionKey { get; set; }
 
         [JsonPropertyName("description")]
         public string? Description { get; set; }
@@ -116,23 +130,33 @@ public class JsonScenarioLoader
         [JsonPropertyName("steps")]
         public List<ScenarioStepDto>? Steps { get; set; }
 
-        public ScenarioDefinition ToScenarioDefinition()
+        public ScenarioDefinition ToScenarioDefinition(ITranslationService translationService)
         {
+            // Resolve name: translation key → translated value OR inline fallback
+            var resolvedName = NameKey != null
+                ? translationService.GetTranslation(NameKey) ?? Name
+                : Name;
+
+            // Resolve description
+            var resolvedDescription = DescriptionKey != null
+                ? translationService.GetTranslation(DescriptionKey) ?? Description
+                : Description;
+
             // Validate required fields
             if (string.IsNullOrWhiteSpace(Id))
                 throw new ArgumentException("Scenario 'id' is required");
-            if (string.IsNullOrWhiteSpace(Name))
-                throw new ArgumentException("Scenario 'name' is required");
+            if (string.IsNullOrWhiteSpace(resolvedName))
+                throw new ArgumentException("Scenario 'name' or translation is required");
             if (Steps == null || Steps.Count == 0)
                 throw new ArgumentException("Scenario must have at least one step");
 
-            var domainSteps = Steps.Select(s => s.ToScenarioStep()).ToList();
+            var domainSteps = Steps.Select(s => s.ToScenarioStep(translationService)).ToList();
 
             return new ScenarioDefinition(
                 id: Id,
-                name: Name,
+                name: resolvedName!,
                 steps: domainSteps,
-                description: Description,
+                description: resolvedDescription,
                 category: Category,
                 difficulty: Difficulty,
                 estimatedDurationSeconds: EstimatedDurationSeconds
@@ -150,6 +174,9 @@ public class JsonScenarioLoader
         [JsonPropertyName("type")]
         public string? Type { get; set; }
 
+        [JsonPropertyName("contentKey")]
+        public string? ContentKey { get; set; }
+
         [JsonPropertyName("content")]
         public string? Content { get; set; }
 
@@ -166,6 +193,9 @@ public class JsonScenarioLoader
         public Dictionary<string, object>? Overlay { get; set; }
 
         // Advanced properties (Phase 10b)
+        [JsonPropertyName("annotationKey")]
+        public string? AnnotationKey { get; set; }
+
         [JsonPropertyName("annotation")]
         public string? Annotation { get; set; }
 
@@ -187,8 +217,18 @@ public class JsonScenarioLoader
         [JsonPropertyName("arguments")]
         public Dictionary<string, object>? Arguments { get; set; }
 
-        public ScenarioStep ToScenarioStep()
+        public ScenarioStep ToScenarioStep(ITranslationService translationService)
         {
+            // Resolve content using translation key
+            var resolvedContent = ContentKey != null
+                ? translationService.GetTranslation(ContentKey) ?? Content
+                : Content;
+
+            // Resolve annotation using translation key
+            var resolvedAnnotation = AnnotationKey != null
+                ? translationService.GetTranslation(AnnotationKey) ?? Annotation
+                : Annotation;
+
             // Map JSON string to enum
             var stepType = Type?.ToLowerInvariant() switch
             {
@@ -228,10 +268,10 @@ public class JsonScenarioLoader
 
             return new ScenarioStep(
                 type: stepType,
-                content: Content,
+                content: resolvedContent,
                 delayMs: delayMsValue,
                 configOverlay: configOverlayValue,
-                annotation: Annotation,
+                annotation: resolvedAnnotation,
                 visibleTo: visibleTo,
                 condition: Condition,
                 conditionParameters: Parameters,

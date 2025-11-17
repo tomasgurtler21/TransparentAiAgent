@@ -2,7 +2,9 @@
   "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "context-limits-advanced",
   "version": "1.0",
+  "nameKey": "scenarios.context-limits-advanced.name",
   "name": "Context Limits (Advanced)",
+  "descriptionKey": "scenarios.context-limits-advanced.description",
   "description": "Experience genuine context window truncation",
   "category": "context-management",
   "difficulty": "intermediate",
@@ -14,11 +16,14 @@
         "messageLimit": 8,
         "systemPromptAddition": "Note: You are experiencing a teaching scenario about context windows."
       },
+      "annotationKey": "scenarios.context-limits-advanced.step0.annotation",
       "annotation": "Message limit reduced to 10 to demonstrate truncation."
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step1.content",
       "content": "Hi, my name is John Doe.",
+      "annotationKey": "scenarios.context-limits-advanced.step1.annotation",
       "annotation": "The model will remember this name... for now.",
       "delay": 1000
     },
@@ -27,7 +32,9 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step3.content",
       "content": "What is my name?",
+      "annotationKey": "scenarios.context-limits-advanced.step3.annotation",
       "annotation": "Verifying the model still has the name in context.",
       "delay": 2000
     },
@@ -36,7 +43,9 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step5.content",
       "content": "Demo message, just respond 'Confirmed'.",
+      "annotationKey": "scenarios.context-limits-advanced.step5.annotation",
       "annotation": "Filling context to force truncation...",
       "delay": 1000
     },
@@ -45,6 +54,7 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step7.content",
       "content": "Demo message, just respond 'Confirmed'.",
       "delay": 1000
     },
@@ -53,6 +63,7 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step9.content",
       "content": "Demo message, just respond 'Confirmed'.",
       "delay": 1000
     },
@@ -61,7 +72,9 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step11.content",
       "content": "How many demo messages did I send you?",
+      "annotationKey": "scenarios.context-limits-advanced.step11.annotation",
       "annotation": "Testing if model tracked the count.",
       "delay": 1500
     },
@@ -70,7 +83,9 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step13.content",
       "content": "What is my name?",
+      "annotationKey": "scenarios.context-limits-advanced.step13.annotation",
       "annotation": "The name should now be truncated. Model genuinely won't know.",
       "delay": 2000
     },
@@ -79,7 +94,9 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step15.content",
       "content": "How do you not know my name?? I told you it several messages ago! What is going on??",
+      "annotationKey": "scenarios.context-limits-advanced.step15.annotation",
       "annotation": "Expressing confusion - this should be a teaching moment.",
       "delay": 2000
     },
@@ -88,10 +105,12 @@
     },
     {
       "type": "restore_config_overlay",
+      "annotationKey": "scenarios.context-limits-advanced.step17.annotation",
       "annotation": "Message limit restored. Model can now access more context and teach effectively."
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.step18.content",
       "content": "Scenario 'Context Limits' has ended. The conversation message limit was temporarily reduced to 10 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration"
     },
     {

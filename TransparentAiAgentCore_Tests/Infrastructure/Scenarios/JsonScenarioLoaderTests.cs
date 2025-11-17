@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Text.Json;
 using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Infrastructure.Scenarios;
+using TransparentAiAgentCore.Infrastructure.Localization;
 
 namespace TransparentAiAgentCore_Tests.Infrastructure.Scenarios;
 
@@ -38,6 +39,24 @@ public class JsonScenarioLoaderTests
         }
     }
 
+    /// <summary>
+    /// Creates a mock translation service that returns null for all translations
+    /// (scenarios will use inline fallback values).
+    /// </summary>
+    private ITranslationService CreateMockTranslationService()
+    {
+        return new MockTranslationService();
+    }
+
+    /// <summary>
+    /// Mock translation service for testing - always returns null to test fallback behavior.
+    /// </summary>
+    private class MockTranslationService : ITranslationService
+    {
+        public string? GetTranslation(string key) => null; // Always fallback to inline content
+        public Task LoadTranslationsAsync() => Task.CompletedTask;
+    }
+
     #region LoadFromFileAsync Tests
 
     [TestMethod]
@@ -66,7 +85,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "valid.json");
         await File.WriteAllTextAsync(filePath, validJson);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -104,7 +123,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "minimal.json");
         await File.WriteAllTextAsync(filePath, minimalJson);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -127,7 +146,7 @@ public class JsonScenarioLoaderTests
         var invalidJson = "{ invalid json }";
         var filePath = Path.Combine(TestDataDirectory, "invalid.json");
         await File.WriteAllTextAsync(filePath, invalidJson);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<JsonException>(() => loader.LoadFromFileAsync(filePath));
@@ -150,7 +169,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "missing-name.json");
         await File.WriteAllTextAsync(filePath, jsonMissingName);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<ArgumentException>(() => loader.LoadFromFileAsync(filePath));
@@ -161,7 +180,7 @@ public class JsonScenarioLoaderTests
     {
         // Arrange
         var nonExistentPath = Path.Combine(TestDataDirectory, "does-not-exist.json");
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<FileNotFoundException>(() => loader.LoadFromFileAsync(nonExistentPath));
@@ -192,7 +211,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "all-steps.json");
         await File.WriteAllTextAsync(filePath, allStepTypesJson);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -228,7 +247,7 @@ public class JsonScenarioLoaderTests
         """;
         await File.WriteAllTextAsync(Path.Combine(TestDataDirectory, "scenario1.json"), json1);
         await File.WriteAllTextAsync(Path.Combine(TestDataDirectory, "scenario2.json"), json2);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var results = await loader.LoadAllFromDirectoryAsync(TestDataDirectory);
@@ -243,7 +262,7 @@ public class JsonScenarioLoaderTests
     public async Task LoadAllFromDirectoryAsync_EmptyDirectory_ReturnsEmptyList()
     {
         // Arrange
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var results = await loader.LoadAllFromDirectoryAsync(TestDataDirectory);
@@ -257,7 +276,7 @@ public class JsonScenarioLoaderTests
     {
         // Arrange
         var nonExistentDir = Path.Combine(TestDataDirectory, "does-not-exist");
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<DirectoryNotFoundException>(
@@ -280,7 +299,7 @@ public class JsonScenarioLoaderTests
         await File.WriteAllTextAsync(Path.Combine(TestDataDirectory, "valid.json"), validJson);
         await File.WriteAllTextAsync(Path.Combine(TestDataDirectory, "invalid.json"), invalidJson);
         await File.WriteAllTextAsync(Path.Combine(TestDataDirectory, "readme.txt"), "Not a scenario");
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var results = await loader.LoadAllFromDirectoryAsync(TestDataDirectory);
@@ -314,7 +333,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "scenario-user-msg.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -352,7 +371,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "wait-condition.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -389,7 +408,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "apply-overlay.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -421,7 +440,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "restore-overlay.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -453,7 +472,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "user-input.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -483,7 +502,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "delay.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -519,7 +538,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "ui-control.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -558,7 +577,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "all-advanced.json");
         await File.WriteAllTextAsync(filePath, allAdvancedStepsJson);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);
@@ -592,7 +611,7 @@ public class JsonScenarioLoaderTests
         """;
         var filePath = Path.Combine(TestDataDirectory, "visibility.json");
         await File.WriteAllTextAsync(filePath, json);
-        var loader = new JsonScenarioLoader();
+        var loader = new JsonScenarioLoader(CreateMockTranslationService());
 
         // Act
         var result = await loader.LoadFromFileAsync(filePath);

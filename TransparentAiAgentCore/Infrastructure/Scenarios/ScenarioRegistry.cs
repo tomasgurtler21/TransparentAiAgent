@@ -1,14 +1,72 @@
 using TransparentAiAgentCore.Domain.Scenarios;
+using TransparentAiAgentCore.Application.Localization;
+using TransparentAiAgentCore.Infrastructure.Localization;
 
 namespace TransparentAiAgentCore.Infrastructure.Scenarios;
 
 /// <summary>
 /// In-memory registry for managing teaching scenario definitions.
+/// Automatically reloads scenarios when language changes.
 /// </summary>
 public class ScenarioRegistry : IScenarioRegistry
 {
     private readonly Dictionary<string, ScenarioDefinition> _scenarios = new();
     private readonly object _lock = new();
+    private readonly JsonScenarioLoader _loader;
+    private readonly ILanguageService _languageService;
+    private readonly ITranslationService _translationService;
+    private readonly string _scenariosPath;
+
+    public ScenarioRegistry(
+        JsonScenarioLoader loader,
+        ILanguageService languageService,
+        ITranslationService translationService,
+        string scenariosPath)
+    {
+        _loader = loader ?? throw new ArgumentNullException(nameof(loader));
+        _languageService = languageService ?? throw new ArgumentNullException(nameof(languageService));
+        _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
+        _scenariosPath = scenariosPath ?? throw new ArgumentNullException(nameof(scenariosPath));
+
+        // Subscribe to language changes
+        _languageService.LanguageChanged += OnLanguageChanged;
+
+        // Load scenarios for current language (sync in constructor is acceptable for app startup)
+        LoadScenariosAsync().Wait();
+    }
+
+    private async void OnLanguageChanged(object? sender, string newLanguage)
+    {
+        // TranslationService will reload automatically (subscribed to same event)
+        // Wait a bit for translations to load, then reload scenarios
+        await Task.Delay(50);
+        await LoadScenariosAsync();
+    }
+
+    private async Task LoadScenariosAsync()
+    {
+        try
+        {
+            var scenarios = await _loader.LoadAllFromDirectoryAsync(_scenariosPath);
+
+            lock (_lock)
+            {
+                // Clear existing scenarios
+                _scenarios.Clear();
+
+                // Add newly loaded scenarios
+                foreach (var scenario in scenarios)
+                {
+                    _scenarios[scenario.Id] = scenario;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Log error but don't throw - graceful degradation
+            // Existing scenarios remain in registry
+        }
+    }
 
     public IReadOnlyList<ScenarioDefinition> GetAllScenarios()
     {
