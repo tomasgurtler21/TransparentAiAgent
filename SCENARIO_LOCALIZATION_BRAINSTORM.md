@@ -487,11 +487,205 @@ I'd lean toward **separate JSON files per language** because:
 
 ---
 
+## Answers to Open Questions (2025-11-17)
+
+### 1. Translation Strategy
+**Answer**: AI translation is acceptable for scenarios. Given the simplicity of scenario text (plain educational messages), AI translation should achieve good quality. No specific human review process required, but quality should be validated by translators.
+
+### 2. Language Selection Persistence
+**Answer**: No persistence for now. Postpone saving language preference to app-wide localization. Language selection will be session-only in UI state.
+
+### 3. Category & Difficulty Localization
+**Answer**: Localize display only, keep technical keys in English. Categories and difficulties remain as English technical identifiers until app-wide localization.
+
+### 4. Fallback Behavior
+**Answer**: Always fallback to base language (English). If any translation is missing, use English version. Mixed language in single scenario is acceptable.
+
+### 5. Migration Path
+**Answer**: Implement **Alternative 2 (Separate Translation File + Base Scenario)** immediately. This approach is solid and translation files can be reused for app-wide localization later.
+
+### 6. Scenario ID vs Name
+**Answer**: Current technical IDs (kebab-case) remain unchanged. IDs are language-agnostic.
+
+### 7. Content vs Structure
+**Answer**: Identical structure across all languages. Translation files contain only content, structure defined in base scenario. This prevents structure divergence and is core benefit of separate translation file approach.
+
+### 8. Model Interaction Language
+**Answer**: General system prompt will include "Respond in user's language" directive. This is independent of scenario system - LLM can handle language context. Not scenario-specific concern.
+
+### 9. Testing Strategy
+**Answer**: No validation required for translation files given fallback to base. Translation quality is translator's responsibility, not app development concern.
+
+### 10. Scope for Initial Release
+**Answer**: All three languages (English, German, Czech) for single existing scenario (`context-limits-advanced`). Get infrastructure right with minimal content before adding more scenarios.
+
+---
+
+## Critical Review of Answers
+
+### Strengths of This Approach
+
+✅ **Pragmatic scope** - Single scenario, three languages is perfect MVP
+✅ **Clean architecture** - Alternative 2 aligns with i18n best practices
+✅ **Separation of concerns** - LLM language handling independent of scenarios
+✅ **Simple fallback** - English as base with graceful degradation
+✅ **Future-proof** - Translation files reusable for app-wide localization
+
+### Clarifications & Considerations
+
+#### 1. Alternative 2 Implementation Variant
+
+**Original Alternative 2** proposed translation keys in base scenario:
+```json
+// Base scenario with keys
+{
+  "steps": [
+    { "type": "scenario_user_message", "translationKey": "step1_content" }
+  ]
+}
+```
+
+**Recommended Variant** (based on your answers):
+```json
+// Base scenario (current format, includes English content)
+{
+  "id": "context-limits-advanced",
+  "name": "Context Limits (Advanced)",  // English inline
+  "description": "Experience genuine context window truncation",
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "content": "Hi, my name is John Doe.",  // English inline
+      "annotation": "The model will remember this name... for now."
+    }
+  ]
+}
+
+// Translation overlay file: de.json
+{
+  "scenarios": {
+    "context-limits-advanced": {
+      "name": "Kontextgrenzen (Fortgeschritten)",
+      "description": "Erleben Sie echtes Kontextfenster-Trunkieren",
+      "steps": {
+        "0": {  // Step index
+          "content": "Hallo, mein Name ist John Doe.",
+          "annotation": "Das Modell wird sich diesen Namen merken... vorerst."
+        }
+      }
+    }
+  }
+}
+```
+
+**Benefits**:
+- ✅ Base scenario remains unchanged (backward compatible)
+- ✅ English content always available as fallback
+- ✅ Translation files are pure overlays (no structure duplication)
+- ✅ Can load base scenario alone and it works (English)
+- ✅ Loader merges translation overlay when language != "en"
+
+**Is this your mental model?** If yes, this is cleaner than strict Alternative 2.
+
+#### 2. Language Selection Without Persistence
+
+**Implication**: Language resets to default (English) on page refresh.
+
+**Question**: Where does language selection live?
+- Option A: Component-level state in `ScenarioSelector.razor` (language only affects scenario display)
+- Option B: Service-level state in new `ILanguageService` (can be reused app-wide later)
+
+**Recommendation**: Option B - create `ILanguageService` now even if it's simple. This makes future app-wide localization easier.
+
+```csharp
+public interface ILanguageService
+{
+    string CurrentLanguage { get; }
+    void SetLanguage(string languageCode);
+    event EventHandler<string>? LanguageChanged;
+}
+
+// Simple implementation (no persistence)
+public class LanguageService : ILanguageService
+{
+    public string CurrentLanguage { get; private set; } = "en";
+    public event EventHandler<string>? LanguageChanged;
+
+    public void SetLanguage(string languageCode)
+    {
+        if (CurrentLanguage != languageCode)
+        {
+            CurrentLanguage = languageCode;
+            LanguageChanged?.Invoke(this, languageCode);
+        }
+    }
+}
+```
+
+This adds 1-2 hours but pays off when app-wide localization happens.
+
+#### 3. AI Translation Quality
+
+**Consideration**: Even with simple text, edge cases exist:
+- Cultural references (e.g., "John Doe" - should it be "Max Mustermann" in German?)
+- Tone/formality (German has formal "Sie" vs informal "du")
+- Technical terms consistency
+
+**Recommendation**:
+- Use AI for initial translation
+- Have native speaker do quick review (30 min per language for one scenario)
+- Document translation guidelines (formal vs informal, technical term handling)
+
+This doesn't block development, but improves quality.
+
+#### 4. No Validation for Translation Files
+
+**Risk**: Typos in translation file path or structure could silently fail.
+
+**Mitigation** (optional, low priority):
+- Log warning if translation file not found
+- Unit test that validates translation file structure matches base scenario
+- JSON schema for translation files
+
+Not blocking MVP, but consider for production.
+
+#### 5. Identical Structure Assumption
+
+**Edge case**: Some languages are more verbose than English (German especially).
+
+**Example**:
+- English: "Hi, my name is John Doe." (7 words)
+- German: "Hallo, mein Name ist John Doe." (6 words, but longer characters)
+- Czech: "Ahoj, jmenuji se John Doe." (5 words)
+
+**Question**: Do delays need adjustment? Your answer #7 says no, which is probably fine for teaching scenarios where pacing matters more than read time.
+
+**Verdict**: Accepted, but document that translation should aim for similar brevity.
+
+### Overall Assessment
+
+Your answers show solid understanding of:
+- ✅ Separation of concerns
+- ✅ Pragmatic scope
+- ✅ Future-proof architecture
+- ✅ Minimal viable approach
+
+**Minor adjustments recommended**:
+1. Clarify Alternative 2 implementation (overlay vs keys)
+2. Consider simple `ILanguageService` for reusability
+3. Light AI translation review (optional, quality improvement)
+
+**No blockers identified.** Approach is sound and implementable.
+
+---
+
 ## Session Crash Context
 
 **Note**: This document was created because the session environment is prone to crashes during user responses. If the session crashes, start a new session and refer to this document to continue the brainstorming discussion.
 
-**Status**: Awaiting feedback on questions and approach selection.
+**Status**: ✅ Questions answered, critical review complete, implementation plan created.
+
+**Next**: See SCENARIO_LOCALIZATION_IMPLEMENTATION_PLAN.md for detailed implementation steps.
 
 **Next Session Should**:
 - Review this document
