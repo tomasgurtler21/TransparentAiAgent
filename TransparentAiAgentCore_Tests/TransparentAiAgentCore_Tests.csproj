@@ -26,4 +26,11 @@
     <ProjectReference Include="..\TransparentAiAgentCore\TransparentAiAgentCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Anthropic.Client">
+      <HintPath>..\lib\Anthropic.Client\Anthropic.Client.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
 </Project>

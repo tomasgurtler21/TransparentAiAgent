@@ -194,7 +194,7 @@ public class ConversationUIService : IConversationUIService
             var buffer = new MarkdownStreamingBuffer();
             var contentBuilder = new System.Text.StringBuilder();
             var lastUpdate = DateTime.UtcNow;
-            const int ThrottleMilliseconds = 50; // Max 20 updates/second
+            const int ThrottleMilliseconds = 30; // ~33 updates/second for smooth streaming
 
             // Process streaming response
             await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(content)))
@@ -226,6 +226,13 @@ public class ConversationUIService : IConversationUIService
                         }
                         lastUpdate = now;
                     }
+                }
+
+                // Handle status changes - refresh messages when tools are being executed
+                if (chunk.Status == StreamingStatus.ExecutingTools)
+                {
+                    // Refresh messages to show tool calls that were just added to conversation
+                    RefreshMessages();
                 }
 
                 if (chunk.IsComplete)
