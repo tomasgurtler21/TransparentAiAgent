@@ -135,6 +135,25 @@ public class LLMProviderFactory : ILLMProviderFactory
                               bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
         }
 
+        // Validate: Throw exception if deployment name suggests reasoning model but IsReasoningModel not set
+        if (!isReasoningModel)
+        {
+            var nameIndicatesReasoning =
+                deploymentName.Contains("o1", StringComparison.OrdinalIgnoreCase) ||
+                deploymentName.Contains("o3", StringComparison.OrdinalIgnoreCase) ||
+                deploymentName.Contains("o4-mini", StringComparison.OrdinalIgnoreCase) ||
+                deploymentName.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
+
+            if (nameIndicatesReasoning)
+            {
+                throw new ConfigurationException(
+                    $"Deployment '{deploymentName}' appears to be a reasoning model (o1/o3/o4-mini/gpt-5), " +
+                    $"but 'IsReasoningModel' is not set to true in configuration. " +
+                    $"Reasoning models require 'max_completion_tokens' instead of 'max_tokens'. " +
+                    $"Add \"IsReasoningModel\": true to your provider parameters.");
+            }
+        }
+
         // Create a temporary AppConfiguration with AzureOpenAI config
         var tempConfig = new AppConfiguration
         {
@@ -175,6 +194,25 @@ public class LLMProviderFactory : ILLMProviderFactory
             // Support both boolean and string representations (from JSON deserialization)
             isReasoningModel = reasoningObj is bool boolValue ? boolValue :
                               bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+        }
+
+        // Validate: Throw exception if model name suggests reasoning model but IsReasoningModel not set
+        if (!isReasoningModel)
+        {
+            var nameIndicatesReasoning =
+                model.Contains("o1", StringComparison.OrdinalIgnoreCase) ||
+                model.Contains("o3", StringComparison.OrdinalIgnoreCase) ||
+                model.Contains("o4-mini", StringComparison.OrdinalIgnoreCase) ||
+                model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
+
+            if (nameIndicatesReasoning)
+            {
+                throw new ConfigurationException(
+                    $"Model '{model}' appears to be a reasoning model (o1/o3/o4-mini/gpt-5), " +
+                    $"but 'IsReasoningModel' is not set to true in configuration. " +
+                    $"Reasoning models require 'max_completion_tokens' instead of 'max_tokens'. " +
+                    $"Add \"IsReasoningModel\": true to your provider parameters.");
+            }
         }
 
         // Create a temporary AppConfiguration with OpenAI config
