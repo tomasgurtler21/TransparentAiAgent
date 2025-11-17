@@ -360,7 +360,7 @@ For complete JSON schema documentation, see:
 **Open Questions to Explore During Implementation:**
 - **Restoration Timing**: Should message limits auto-restore after model confusion, or require user action to see correct message status icons first?
 - **System Prompt Hints**: How explicit should the "you're in a scenario" hint be? Too explicit = less genuine. Too subtle = model might not teach correctly.
-- **User Control**: Should users be able to pause/resume/skip scenario steps?
+- **User Control**: ✅ **IMPLEMENTED** - Pause/resume functionality has been implemented. Users can pause scenarios manually via UI button, and scenarios can pause themselves with `pause_for_user` step type. See `SCENARIO_PAUSE_RESUME_DESIGN.md` for details.
 - **Failure Handling**: What if model doesn't respond as expected? Timeout and fallback? Let user manually trigger next step?
 
 These questions will be resolved through experimentation, which the flexible JSON schema enables.

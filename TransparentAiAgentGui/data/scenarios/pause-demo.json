@@ -1,0 +1,72 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "pause-demo",
+  "version": "1.0",
+  "nameKey": "scenarios.pause-demo.name",
+  "name": "Pause/Resume Demo",
+  "descriptionKey": "scenarios.pause-demo.description",
+  "description": "Interactive demonstration of scenario pause and resume functionality",
+  "category": "features",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 120,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.pause-demo.step0.content",
+      "content": "Hi! I'd like to learn about scenario pause/resume.",
+      "annotationKey": "scenarios.pause-demo.step0.annotation",
+      "annotation": "Starting the pause/resume demo scenario.",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "pauseMessageKey": "scenarios.pause-demo.step2.pauseMessage",
+      "pauseMessage": "Notice the Pause/Resume buttons in the scenario indicator above. This scenario will now pause to let you examine them. Click Resume when ready to continue.",
+      "annotationKey": "scenarios.pause-demo.step2.annotation",
+      "annotation": "First pause - showing user the pause/resume UI"
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.pause-demo.step3.content",
+      "content": "Great! Now I understand the buttons. What else can you show me?",
+      "annotationKey": "scenarios.pause-demo.step3.annotation",
+      "annotation": "User resumed - continuing the scenario.",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.pause-demo.step5.content",
+      "content": "That's interesting! Tell me more about transparency.",
+      "annotationKey": "scenarios.pause-demo.step5.annotation",
+      "annotation": "Moving to more complex discussion.",
+      "delay": 1500
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "pauseMessageKey": "scenarios.pause-demo.step7.pauseMessage",
+      "pauseMessage": "Take your time to read the explanation above. You can also try clicking the Pause button manually during a running scenario. Click Resume when you're ready to complete this demo.",
+      "annotationKey": "scenarios.pause-demo.step7.annotation",
+      "annotation": "Second pause - encouraging user to explore manual pause"
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.pause-demo.step8.content",
+      "content": "Thank you for the demo! This pause feature is very helpful.",
+      "annotationKey": "scenarios.pause-demo.step8.annotation",
+      "annotation": "Wrapping up the scenario.",
+      "delay": 1000
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}
