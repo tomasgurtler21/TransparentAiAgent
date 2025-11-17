@@ -218,6 +218,9 @@ try
                 // Get tool schema validator service (Phase 9b - Tool Execution Safety)
                 var validator = sp.GetRequiredService<ToolSchemaValidator>();
 
+                // Get app mode service for mode-aware tool filtering (Phase 9 - Teaching Mode)
+                var appModeService = sp.GetRequiredService<IAppModeService>();
+
                 // Build list of executors (UI Control + Knowledge + Memory always available)
                 var executors = new List<IToolExecutor> { uiControlExecutor, knowledgeExecutor, memoryExecutor };
 
@@ -238,13 +241,15 @@ try
                     Console.WriteLine("✓ Tool system enabled with UI control tools + knowledge library tools + long-term memory tools (no MCP servers configured)");
                 }
 
-                // Create Tool Manager with all available executors
+                // Create Tool Manager with all available executors and mode service for filtering
+                // Note: UI control and knowledge library tools are only visible in Teaching mode
                 var toolManager = new ToolManager(
                     toolRegistry,
                     executors,
                     transparencyService,
                     statistics,
-                    validator);
+                    validator,
+                    appModeService);
 
                 return toolManager;
             }
