@@ -111,6 +111,7 @@ public enum ScenarioExecutionState
 private ScenarioExecutionState _state = ScenarioExecutionState.NotRunning;
 private SemaphoreSlim _pauseSemaphore = new SemaphoreSlim(0);
 private readonly object _pauseLock = new object();
+private string? _pauseMessage = null;
 
 public ScenarioExecutionState State { get; private set; }
 public bool IsPaused => State == ScenarioExecutionState.Paused;
@@ -118,17 +119,19 @@ public bool IsPaused => State == ScenarioExecutionState.Paused;
 
 ### 2. Pause Mechanism
 
-**Two Ways to Pause:**
+**Single Pause Mechanism with Two Triggers:**
 
-#### A. User-Initiated Pause
+The pause mechanism is the same regardless of how it's triggered. The only difference is whether a pause message is provided.
+
+#### A. User-Initiated Pause (via UI Button)
 New method on `IScenarioExecutor`:
 ```csharp
-void PauseScenario();
+void PauseScenario(string? message = null);
 ```
 
 Implementation:
 ```csharp
-public void PauseScenario()
+public void PauseScenario(string? message = null)
 {
     lock (_pauseLock)
     {
@@ -136,12 +139,13 @@ public void PauseScenario()
             return; // Can only pause if running
 
         State = ScenarioExecutionState.Paused;
-        ScenarioPaused?.Invoke(this, new ScenarioExecutionEventArgs(CurrentScenario!));
+        _pauseMessage = message;
+        ScenarioPaused?.Invoke(this, new ScenarioPausedEventArgs(CurrentScenario!, message));
     }
 }
 ```
 
-#### B. Scenario-Initiated Pause
+#### B. Scenario-Initiated Pause (via PauseForUser Step)
 New step type: `PauseForUser`
 
 **ScenarioStepType enum addition:**
@@ -156,19 +160,28 @@ PauseForUser
 ```csharp
 /// <summary>
 /// Message to display to user explaining why scenario is paused.
-/// Used in PauseForUser steps.
+/// Used in PauseForUser steps. Supports localization.
 /// </summary>
 public string? PauseMessage { get; }
+
+/// <summary>
+/// Localization key for pause message.
+/// Used in PauseForUser steps.
+/// </summary>
+public string? PauseMessageKey { get; }
 ```
 
 **JSON Schema:**
 ```json
 {
   "type": "pause_for_user",
+  "pauseMessageKey": "scenarios.demo.step5.pauseMessage",
   "pauseMessage": "Take a moment to examine the context indicator in the top right. Click Resume when ready.",
   "annotation": "Pausing to let user explore the UI"
 }
 ```
+
+**Note:** Both `pauseMessageKey` (for localization) and `pauseMessage` (fallback) supported, consistent with other scenario content.
 
 ### 3. Resume Mechanism
 
@@ -267,30 +280,22 @@ Add to `ExecuteStepAsync` switch statement:
 
 ```csharp
 case ScenarioStepType.PauseForUser:
-    await ExecutePauseForUserStepAsync(step, cancellationToken);
+    ExecutePauseForUserStep(step);
     break;
 ```
 
 Implementation:
 ```csharp
-private async Task ExecutePauseForUserStepAsync(ScenarioStep step, CancellationToken cancellationToken)
+private void ExecutePauseForUserStep(ScenarioStep step)
 {
-    // Set pause state
-    lock (_pauseLock)
-    {
-        State = ScenarioExecutionState.Paused;
-    }
-
-    // Fire pause event with message
-    ScenarioPaused?.Invoke(this, new ScenarioPausedEventArgs(
-        CurrentScenario!,
-        step.PauseMessage ?? "Scenario paused. Click Resume to continue.",
-        isUserInitiated: false));
-
-    // Wait for resume (happens in main loop after this method returns)
-    // No need to wait here, the main loop will handle it
+    // The step itself pauses the scenario with the provided message
+    // Pause happens AFTER this step completes (in the main execution loop)
+    var message = step.PauseMessage ?? "Scenario paused. Click Resume to continue.";
+    PauseScenario(message);
 }
 ```
+
+**Note:** The pause message is displayed to the UI, then the scenario pauses. The pause check happens in the main execution loop after the step completes.
 
 ### 6. Event System
 
@@ -298,7 +303,7 @@ New events on `IScenarioExecutor`:
 
 ```csharp
 /// <summary>
-/// Event fired when scenario is paused (user-initiated or scenario-initiated).
+/// Event fired when scenario is paused.
 /// </summary>
 event EventHandler<ScenarioPausedEventArgs>? ScenarioPaused;
 
@@ -313,17 +318,14 @@ New event args class:
 public class ScenarioPausedEventArgs : EventArgs
 {
     public ScenarioDefinition Scenario { get; }
-    public string PauseMessage { get; }
-    public bool IsUserInitiated { get; }
+    public string? PauseMessage { get; }
 
     public ScenarioPausedEventArgs(
         ScenarioDefinition scenario,
-        string pauseMessage,
-        bool isUserInitiated)
+        string? pauseMessage)
     {
         Scenario = scenario;
         PauseMessage = pauseMessage;
-        IsUserInitiated = isUserInitiated;
     }
 }
 ```
@@ -480,7 +482,7 @@ public class ScenarioPausedEventArgs : EventArgs
     gap: 0.5rem;
     margin-top: 0.5rem;
     padding: 0.5rem;
-    background-color: #fff3cd;
+    background-color: rgba(255, 255, 255, 0.2);
     border-radius: 0.25rem;
     font-size: 0.9rem;
 }
@@ -490,124 +492,403 @@ public class ScenarioPausedEventArgs : EventArgs
 }
 ```
 
+**CSS fix for step number visibility:**
+```css
+/* Fix: Make step numbers fully visible against gradient background */
+.indicator-info .text-muted {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 1); /* Changed from 0.8 to 1 for full opacity */
+    font-weight: 500; /* Add slight weight for better readability */
+}
+```
+
 ---
 
-## Implementation Plan
+## Implementation Plan (TDD Approach)
 
-### Phase 1: Core Pause/Resume Logic (ScenarioExecutor)
+Each phase follows the TDD cycle: RED → GREEN → REFACTOR. Each phase can be executed independently in a new session, assuming previous phases are complete.
+
+### Phase 1: ScenarioExecutionState Enum (Domain)
+
+**Goal:** Add state tracking for scenario execution lifecycle.
+
+**Prerequisites:** None
+
+**Files to Create/Modify:**
+- Create: `TransparentAiAgentCore/Domain/Scenarios/ScenarioExecutionState.cs`
+- Test: `TransparentAiAgentCore_Tests/Domain/Scenarios/ScenarioExecutionStateTests.cs`
+
+**TDD Steps:**
+
+1. **RED:** Write tests for enum values
+   ```csharp
+   [TestMethod]
+   public void ScenarioExecutionState_HasRequiredValues()
+   {
+       var values = Enum.GetValues<ScenarioExecutionState>();
+       CollectionAssert.Contains(values.ToArray(), ScenarioExecutionState.NotRunning);
+       CollectionAssert.Contains(values.ToArray(), ScenarioExecutionState.Running);
+       CollectionAssert.Contains(values.ToArray(), ScenarioExecutionState.Paused);
+       CollectionAssert.Contains(values.ToArray(), ScenarioExecutionState.Completed);
+       CollectionAssert.Contains(values.ToArray(), ScenarioExecutionState.Failed);
+   }
+   ```
+
+2. **GREEN:** Create enum
+   ```csharp
+   public enum ScenarioExecutionState
+   {
+       NotRunning,
+       Running,
+       Paused,
+       Completed,
+       Failed
+   }
+   ```
+
+3. **REFACTOR:** Add XML documentation
+
+**Exit Criteria:** Tests pass, enum is documented
+
+**Estimated Effort:** 15 minutes
+
+---
+
+### Phase 2: Event Args Classes
+
+**Goal:** Create event argument classes for pause/resume events.
+
+**Prerequisites:** Phase 1 complete
 
 **Files to Modify:**
-1. `TransparentAiAgentCore/Application/Scenarios/IScenarioExecutor.cs`
-2. `TransparentAiAgentCore/Application/Scenarios/ScenarioExecutor.cs`
+- Modify: `TransparentAiAgentCore/Application/Scenarios/IScenarioExecutor.cs` (add event args classes)
+- Test: `TransparentAiAgentCore_Tests/Application/Scenarios/ScenarioPausedEventArgsTests.cs`
 
-**Changes:**
-- [ ] Add `ScenarioExecutionState` enum
-- [ ] Add pause/resume state management fields (`_pauseSemaphore`, `State`, etc.)
-- [ ] Add `PauseScenario()` method to interface and implementation
-- [ ] Add `ResumeScenario()` method to interface and implementation
-- [ ] Add `ScenarioPaused` and `ScenarioResumed` events
-- [ ] Create `ScenarioPausedEventArgs` class
-- [ ] Modify `ExecuteScenarioAsync` to check for pause after each step
-- [ ] Update `StopScenario()` to handle paused state properly
-- [ ] Ensure proper cleanup in finally block
+**TDD Steps:**
 
-**Estimated Effort:** 2-3 hours
+1. **RED:** Write tests for ScenarioPausedEventArgs
+   ```csharp
+   [TestMethod]
+   public void ScenarioPausedEventArgs_Constructor_InitializesProperties()
+   {
+       var scenario = new ScenarioDefinition(/* ... */);
+       var message = "Test pause message";
 
-### Phase 2: PauseForUser Step Type
+       var eventArgs = new ScenarioPausedEventArgs(scenario, message);
 
-**Files to Modify:**
-1. `TransparentAiAgentCore/Domain/Scenarios/ScenarioStepType.cs`
-2. `TransparentAiAgentCore/Domain/Scenarios/ScenarioStep.cs`
-3. `TransparentAiAgentCore/Application/Scenarios/ScenarioExecutor.cs`
+       Assert.AreSame(scenario, eventArgs.Scenario);
+       Assert.AreEqual(message, eventArgs.PauseMessage);
+   }
 
-**Changes:**
-- [ ] Add `PauseForUser` to `ScenarioStepType` enum
-- [ ] Add `PauseMessage` property to `ScenarioStep`
-- [ ] Update `ScenarioStep` constructor to accept `pauseMessage` parameter
-- [ ] Add validation for `PauseForUser` step type
-- [ ] Implement `ExecutePauseForUserStepAsync` method
-- [ ] Add case for `PauseForUser` in `ExecuteStepAsync` switch
+   [TestMethod]
+   public void ScenarioPausedEventArgs_Constructor_NullMessage_Allowed()
+   {
+       var scenario = new ScenarioDefinition(/* ... */);
 
-**Estimated Effort:** 1-2 hours
+       var eventArgs = new ScenarioPausedEventArgs(scenario, null);
 
-### Phase 3: UI Component Updates
+       Assert.IsNull(eventArgs.PauseMessage);
+   }
+   ```
 
-**Files to Modify:**
-1. `TransparentAiAgentGui/Components/Scenarios/ScenarioIndicator.razor`
-2. `TransparentAiAgentGui/Components/Scenarios/ScenarioIndicator.razor.css`
+2. **GREEN:** Implement event args class
+3. **REFACTOR:** Add documentation
 
-**Changes:**
-- [ ] Add Pause/Resume buttons to UI
-- [ ] Add pause message display area
-- [ ] Subscribe to `ScenarioPaused` and `ScenarioResumed` events
-- [ ] Implement button click handlers
-- [ ] Update UI state on pause/resume
-- [ ] Add CSS styling for buttons and pause message
-- [ ] Ensure buttons are properly enabled/disabled based on state
-
-**Estimated Effort:** 1-2 hours
-
-### Phase 4: JSON Schema & Loader Updates
-
-**Files to Modify:**
-1. `TransparentAiAgentCore/Infrastructure/Scenarios/JsonScenarioLoader.cs`
-2. `docs/03-concepts/teaching-mode/scenario-schema.md`
-
-**Changes:**
-- [ ] Update JSON loader to deserialize `pauseMessage` field
-- [ ] Update JSON loader to handle `pause_for_user` step type
-- [ ] Add validation for PauseForUser steps
-- [ ] Update schema documentation with new step type
-- [ ] Add examples of pause_for_user in documentation
-
-**Estimated Effort:** 1 hour
-
-### Phase 5: Testing
-
-**Files to Create:**
-1. `TransparentAiAgentCore_Tests/Application/Scenarios/ScenarioExecutorPauseTests.cs`
-
-**Test Cases:**
-- [ ] Test user-initiated pause during scenario execution
-- [ ] Test user-initiated resume after pause
-- [ ] Test scenario-initiated pause via PauseForUser step
-- [ ] Test resume after PauseForUser step
-- [ ] Test stop scenario while paused
-- [ ] Test cancellation while paused
-- [ ] Test pause/resume state transitions
-- [ ] Test pause events are fired correctly
-- [ ] Test pause message is passed correctly
-- [ ] Test multiple pause/resume cycles
-- [ ] Test pause at first step, middle step, last step
-
-**Estimated Effort:** 2-3 hours
-
-### Phase 6: Example Scenario
-
-**Files to Create:**
-1. `TransparentAiAgentGui/data/scenarios/pause-demo.json`
-
-**Content:**
-Create a demo scenario that showcases pause/resume functionality:
-- Auto-plays a few steps
-- Pauses with message asking user to examine something
-- Resumes when user clicks Resume
-- Demonstrates both scenario-initiated and potential user-initiated pauses
+**Exit Criteria:** Tests pass, event args classes documented
 
 **Estimated Effort:** 30 minutes
 
-### Phase 7: Documentation
+---
 
-**Files to Update:**
-1. `docs/03-concepts/teaching-mode/scenario-schema.md`
-2. `docs/04-components/core/scenario-executor.md` (if exists)
+### Phase 3: Core Pause/Resume Methods (Application Layer)
+
+**Goal:** Implement pause/resume logic in ScenarioExecutor.
+
+**Prerequisites:** Phases 1-2 complete
+
+**Files to Modify:**
+- Modify: `TransparentAiAgentCore/Application/Scenarios/IScenarioExecutor.cs`
+- Modify: `TransparentAiAgentCore/Application/Scenarios/ScenarioExecutor.cs`
+- Test: `TransparentAiAgentCore_Tests/Application/Scenarios/ScenarioExecutorPauseResumeTests.cs`
+
+**TDD Steps:**
+
+1. **RED:** Write test for user-initiated pause
+   ```csharp
+   [TestMethod]
+   public void PauseScenario_WhileRunning_ChangesStateToPaused()
+   {
+       // Arrange: Start a scenario
+       var executor = CreateExecutor();
+       var scenario = CreateSimpleScenario();
+       var task = executor.ExecuteScenarioAsync(scenario);
+
+       // Wait for scenario to start
+       await Task.Delay(100);
+
+       // Act: Pause
+       executor.PauseScenario();
+
+       // Assert
+       Assert.AreEqual(ScenarioExecutionState.Paused, executor.State);
+   }
+   ```
+
+2. **GREEN:** Implement PauseScenario() method
+3. **RED:** Write test for resume
+4. **GREEN:** Implement ResumeScenario() method
+5. **RED:** Write test for pause event firing
+6. **GREEN:** Implement event firing
+7. **REFACTOR:** Extract common logic, improve thread safety
+
+**Additional Test Cases:**
+- Pause when not running → no-op
+- Resume when not paused → no-op
+- Pause fires event with correct message
+- Resume fires event
+- Stop while paused → cleanup correctly
+
+**Exit Criteria:** All pause/resume tests pass, events fire correctly
+
+**Estimated Effort:** 2-3 hours
+
+---
+
+### Phase 4: Pause Check in Execution Loop
+
+**Goal:** Make execution loop pause-aware.
+
+**Prerequisites:** Phase 3 complete
+
+**Files to Modify:**
+- Modify: `TransparentAiAgentCore/Application/Scenarios/ScenarioExecutor.cs`
+- Test: Add to `ScenarioExecutorPauseResumeTests.cs`
+
+**TDD Steps:**
+
+1. **RED:** Write test for pause between steps
+   ```csharp
+   [TestMethod]
+   public async Task ExecuteScenario_PausedBetweenSteps_WaitsForResume()
+   {
+       var executor = CreateExecutor();
+       var scenario = CreateScenarioWithMultipleSteps();
+
+       executor.StepExecuted += (s, e) =>
+       {
+           if (e.StepIndex == 1)
+               executor.PauseScenario();
+       };
+
+       var task = executor.ExecuteScenarioAsync(scenario);
+
+       await Task.Delay(500); // Let first two steps execute
+
+       Assert.AreEqual(ScenarioExecutionState.Paused, executor.State);
+       Assert.AreEqual(1, executor.CurrentStepIndex); // Stopped at step 1
+
+       executor.ResumeScenario();
+       await task;
+
+       Assert.AreEqual(ScenarioExecutionState.Completed, executor.State);
+   }
+   ```
+
+2. **GREEN:** Add pause check in execution loop
+3. **REFACTOR:** Ensure clean error handling
+
+**Exit Criteria:** Scenario can pause/resume mid-execution
+
+**Estimated Effort:** 1 hour
+
+---
+
+### Phase 5: PauseForUser Step Type (Domain)
+
+**Goal:** Add PauseForUser step type to domain model.
+
+**Prerequisites:** Phase 1 complete (independent of 2-4 for domain model)
+
+**Files to Modify:**
+- Modify: `TransparentAiAgentCore/Domain/Scenarios/ScenarioStepType.cs`
+- Modify: `TransparentAiAgentCore/Domain/Scenarios/ScenarioStep.cs`
+- Test: `TransparentAiAgentCore_Tests/Domain/Scenarios/ScenarioStepTests.cs`
+
+**TDD Steps:**
+
+1. **RED:** Write test for PauseForUser step creation
+   ```csharp
+   [TestMethod]
+   public void ScenarioStep_PauseForUser_WithMessage_CreatesSuccessfully()
+   {
+       var step = new ScenarioStep(
+           ScenarioStepType.PauseForUser,
+           pauseMessage: "Examine the UI"
+       );
+
+       Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
+       Assert.AreEqual("Examine the UI", step.PauseMessage);
+   }
+
+   [TestMethod]
+   public void ScenarioStep_PauseForUser_WithoutMessage_UsesDefault()
+   {
+       var step = new ScenarioStep(ScenarioStepType.PauseForUser);
+
+       Assert.IsNotNull(step.PauseMessage); // Should have default
+   }
+   ```
+
+2. **GREEN:** Add PauseForUser to enum, add PauseMessage + PauseMessageKey properties
+3. **REFACTOR:** Update validation logic
+
+**Exit Criteria:** PauseForUser step can be created with message
+
+**Estimated Effort:** 45 minutes
+
+---
+
+### Phase 6: PauseForUser Step Execution
+
+**Goal:** Execute PauseForUser steps during scenario execution.
+
+**Prerequisites:** Phases 3, 4, 5 complete
+
+**Files to Modify:**
+- Modify: `TransparentAiAgentCore/Application/Scenarios/ScenarioExecutor.cs`
+- Test: Add to `ScenarioExecutorPauseResumeTests.cs`
+
+**TDD Steps:**
+
+1. **RED:** Write test for PauseForUser execution
+   ```csharp
+   [TestMethod]
+   public async Task ExecuteScenario_PauseForUserStep_PausesWithMessage()
+   {
+       var executor = CreateExecutor();
+       var scenario = new ScenarioDefinition(
+           "test",
+           "Test",
+           null,
+           new[]
+           {
+               new ScenarioStep(ScenarioStepType.PauseForUser, pauseMessage: "Check this out")
+           }
+       );
+
+       string? receivedMessage = null;
+       executor.ScenarioPaused += (s, e) => receivedMessage = e.PauseMessage;
+
+       var task = executor.ExecuteScenarioAsync(scenario);
+       await Task.Delay(100);
+
+       Assert.AreEqual(ScenarioExecutionState.Paused, executor.State);
+       Assert.AreEqual("Check this out", receivedMessage);
+   }
+   ```
+
+2. **GREEN:** Implement ExecutePauseForUserStep method
+3. **REFACTOR:** Ensure message localization support
+
+**Exit Criteria:** PauseForUser step pauses scenario with message
+
+**Estimated Effort:** 45 minutes
+
+---
+
+### Phase 7: UI Component - Pause/Resume Buttons
+
+**Goal:** Add pause/resume buttons to ScenarioIndicator.
+
+**Prerequisites:** Phases 1-6 complete (needs executor functionality)
+
+**Files to Modify:**
+- Modify: `TransparentAiAgentGui/Components/Scenarios/ScenarioIndicator.razor`
+- Modify: `TransparentAiAgentGui/Components/Scenarios/ScenarioIndicator.razor.css`
 
 **Changes:**
-- [ ] Document pause/resume feature in scenario schema
-- [ ] Document PauseForUser step type with examples
-- [ ] Document pause message field
-- [ ] Update component documentation with new methods and events
-- [ ] Add usage examples and best practices
+1. Add button container with conditional rendering
+2. Show Pause button when State == Running
+3. Show Resume button when State == Paused
+4. Wire up click handlers to call PauseScenario()/ResumeScenario()
+5. Subscribe to ScenarioPaused/ScenarioResumed events
+6. Display pause message when paused
+7. **Fix:** Update `.text-muted` CSS for step number visibility
+
+**Testing:** Manual testing in browser
+- Start scenario → Pause button visible
+- Click Pause → Resume button appears, pause message shows
+- Click Resume → Pause button reappears
+- Verify step numbers are clearly visible
+
+**Exit Criteria:** UI buttons work correctly, step numbers visible
+
+**Estimated Effort:** 1-1.5 hours
+
+---
+
+### Phase 8: JSON Loader Updates
+
+**Goal:** Support PauseForUser in JSON scenario files.
+
+**Prerequisites:** Phase 5 complete
+
+**Files to Modify:**
+- Modify: `TransparentAiAgentCore/Infrastructure/Scenarios/JsonScenarioLoader.cs`
+- Test: `TransparentAiAgentCore_Tests/Infrastructure/Scenarios/JsonScenarioLoaderTests.cs`
+
+**TDD Steps:**
+
+1. **RED:** Write test for loading PauseForUser from JSON
+   ```csharp
+   [TestMethod]
+   public void LoadFromJson_PauseForUserStep_LoadsCorrectly()
+   {
+       var json = @"{
+           ""id"": ""test"",
+           ""name"": ""Test"",
+           ""steps"": [
+               {
+                   ""type"": ""pause_for_user"",
+                   ""pauseMessageKey"": ""test.pause"",
+                   ""pauseMessage"": ""Examine this""
+               }
+           ]
+       }";
+
+       var scenario = JsonScenarioLoader.LoadFromJson(json);
+
+       Assert.AreEqual(ScenarioStepType.PauseForUser, scenario.Steps[0].Type);
+       Assert.AreEqual("Examine this", scenario.Steps[0].PauseMessage);
+   }
+   ```
+
+2. **GREEN:** Update JSON deserialization mapping
+3. **REFACTOR:** Add validation
+
+**Exit Criteria:** PauseForUser steps load from JSON correctly
+
+**Estimated Effort:** 45 minutes
+
+---
+
+### Phase 9: Example Scenario & Documentation
+
+**Goal:** Create example scenario and update documentation.
+
+**Prerequisites:** Phases 1-8 complete
+
+**Files to Create/Modify:**
+- Create: `TransparentAiAgentGui/data/scenarios/pause-demo.json`
+- Modify: `docs/03-concepts/teaching-mode/scenario-schema.md`
+
+**Tasks:**
+1. Create pause-demo.json with PauseForUser steps
+2. Test manually in browser
+3. Update scenario-schema.md with PauseForUser documentation
+4. Add examples and best practices
+
+**Exit Criteria:** Example works, documentation complete
 
 **Estimated Effort:** 1 hour
 
@@ -615,10 +896,28 @@ Create a demo scenario that showcases pause/resume functionality:
 
 ## Total Estimated Effort
 
-**Development:** 8-12 hours
-**Testing:** 2-3 hours
+**Development & Testing:** 9-12 hours
 **Documentation:** 1 hour
-**Total:** 11-16 hours (approximately 2-3 development sessions)
+**Total:** 10-13 hours (approximately 2-3 development sessions)
+
+---
+
+## Phase Dependencies
+
+```
+Phase 1 (State Enum)
+    ├─> Phase 2 (Event Args)
+    │       └─> Phase 3 (Pause/Resume Methods)
+    │               └─> Phase 4 (Execution Loop)
+    │                       └─> Phase 6 (Step Execution)
+    │                               └─> Phase 7 (UI)
+    │
+    └─> Phase 5 (Step Type)
+            ├─> Phase 6 (Step Execution)
+            └─> Phase 8 (JSON Loader)
+
+Phase 9 (Examples & Docs) depends on all previous phases
+```
 
 ---
 
@@ -723,87 +1022,59 @@ public void StopScenario()
 
 ---
 
-## Open Questions for Clarification
+## Design Decisions (Confirmed)
 
-Please review and provide guidance on the following:
+The following design questions have been resolved:
 
-### Question 1: Pause Button Visibility
-Should the Pause button be visible:
-- **A.** Always during scenario execution (even during delays and waits)
-- **B.** Only when actively executing a step (not during waits)
-- **C.** Have a setting to enable/disable user-initiated pause per scenario
+### 1. Pause Button Visibility
+**Decision:** ✅ Always visible during scenario execution
 
-**My Recommendation:** Option A for maximum user control
+Pause button is always available when scenario is running, giving users maximum control.
 
 ---
 
-### Question 2: Pause Message Localization
-The PauseForUser step has a `pauseMessage` field. Should this:
-- **A.** Support localization keys like other scenario content (e.g., `pauseMessageKey`)
-- **B.** Be plain text only for v1
-- **C.** Support both key and fallback text
+### 2. Pause Message Localization
+**Decision:** ✅ Support both localization keys and fallback text
 
-**My Recommendation:** Option C - Support both, consistent with existing localization approach
-
-**Implementation:**
-```csharp
-public string? PauseMessage { get; }
-public string? PauseMessageKey { get; } // For localization
-```
+Implementation includes both `pauseMessageKey` (for localization) and `pauseMessage` (fallback), consistent with other scenario content.
 
 ---
 
-### Question 3: Pause State Indicator
-How should the UI indicate scenario is paused? Current design shows:
-- Pause message below scenario name
-- Resume button (green)
-- Pause icon (⏸️)
+### 3. Pause State Indicator
+**Decision:** ✅ Button state alone indicates pause status
 
-**Additional Options:**
-- Change indicator background color when paused
-- Add animation or pulse effect
-- Show time paused counter
-
-**My Recommendation:** Keep it simple for v1 - just message, icon, and button
+- Running → Show "⏸️ Pause" button
+- Paused → Show "▶️ Resume" button
+- Pause message displayed when present
+- No additional visual indicators needed
 
 ---
 
-### Question 4: Resume Confirmation
-Should resuming require confirmation if user has been paused for a long time?
+### 4. Resume Confirmation
+**Decision:** ✅ Immediate resume, no confirmation
 
-**Options:**
-- **A.** Always resume immediately (simple)
-- **B.** Show confirmation if paused > 5 minutes
-- **C.** No confirmation needed
-
-**My Recommendation:** Option A - immediate resume. If user clicked pause, they can click resume.
+User clicks Resume button → scenario resumes immediately. Simple and predictable.
 
 ---
 
-### Question 5: Step Execution During Pause
-When paused at step N, should we show that:
-- **A.** Step N is completed (current step = N+1)
-- **B.** Step N is in progress (current step = N)
+### 5. Step Execution During Pause
+**Decision:** ✅ Pause happens AFTER step completes
 
-**Current Implementation:** Step N is complete when paused.
-
-**Question:** Is this the desired behavior, or should pause happen BEFORE step completion?
-
-**Trade-offs:**
-- Pause after: Cleaner state, step fully executed
-- Pause before: More control, but step state is unclear
-
-**My Recommendation:** Pause AFTER step completion (current design)
+PauseForUser step displays message, then scenario pauses. Cleaner state, step is fully executed before pause.
 
 ---
 
-### Question 6: PauseForUser in Basic vs Advanced Scenarios
-Should `PauseForUser` be:
-- **A.** Available in both basic and advanced scenarios
-- **B.** Advanced scenarios only
-- **C.** Basic scenarios only
+### 6. PauseForUser Availability
+**Decision:** ✅ Available in all scenarios (basic and advanced)
 
-**My Recommendation:** Option A - useful for both. It's a simple step type that doesn't require advanced features like config overlays.
+PauseForUser is a simple step type that doesn't require advanced features, so it's available everywhere.
+
+---
+
+### 7. Pause Trigger Mechanism
+**Decision:** ✅ Single pause mechanism, two triggers
+
+No distinction between user-initiated and scenario-initiated pause. Both use the same `PauseScenario(message)` method. The only difference is whether a message is provided.
 
 ---
 
@@ -832,7 +1103,8 @@ public interface IScenarioExecutor
     /// Pauses the currently executing scenario.
     /// Can only be called when state is Running.
     /// </summary>
-    void PauseScenario();
+    /// <param name="message">Optional message explaining why scenario is paused.</param>
+    void PauseScenario(string? message = null);
 
     /// <summary>
     /// Resumes a paused scenario.
@@ -841,7 +1113,7 @@ public interface IScenarioExecutor
     void ResumeScenario();
 
     /// <summary>
-    /// Event fired when scenario is paused.
+    /// Event fired when scenario is paused (user-initiated or step-initiated).
     /// </summary>
     event EventHandler<ScenarioPausedEventArgs>? ScenarioPaused;
 
@@ -885,15 +1157,19 @@ public enum ScenarioStepType
 public class ScenarioPausedEventArgs : EventArgs
 {
     public ScenarioDefinition Scenario { get; }
-    public string PauseMessage { get; }
-    public bool IsUserInitiated { get; }
+    public string? PauseMessage { get; }
 
     public ScenarioPausedEventArgs(
         ScenarioDefinition scenario,
-        string pauseMessage,
-        bool isUserInitiated);
+        string? pauseMessage)
+    {
+        Scenario = scenario;
+        PauseMessage = pauseMessage;
+    }
 }
 ```
+
+**Note:** `PauseMessage` is null when user clicks Pause button, populated when PauseForUser step executes.
 
 ---
 
