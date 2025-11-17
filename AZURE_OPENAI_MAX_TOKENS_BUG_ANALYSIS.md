@@ -266,44 +266,31 @@ Add `IsReasoningModel: true` to your Azure OpenAI provider config:
 - gpt-5, gpt-5-mini, gpt-5-pro, gpt-5-nano
 
 ### Real Fix (Code Side):
-Add **validation with helpful error message** in `LLMProviderFactory.CreateAzureOpenAIProviderFromConfig()`:
+Make `IsReasoningModel` a **required parameter** - no silent defaults!
 
-**Location**: `TransparentAiAgentCore/Infrastructure/LLM/LLMProviderFactory.cs:129-137`
+**Location**: `TransparentAiAgentCore/Infrastructure/LLM/LLMProviderFactory.cs:129-140`
 
 ```csharp
-// Extract IsReasoningModel parameter (critical for o1/o3/GPT-5 models)
-var isReasoningModel = false;
-if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
+// Extract IsReasoningModel parameter - REQUIRED, no silent defaults
+if (!config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
 {
-    isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+    throw new ConfigurationException(
+        $"AzureOpenAI provider requires 'IsReasoningModel' parameter. " +
+        $"Set to true for reasoning models (o1, o3, o4-mini, gpt-5 series), false for standard models (gpt-4, gpt-4o, etc.). " +
+        $"Add \"IsReasoningModel\": true or false to your provider parameters.");
+}
+
+// Support both boolean and string representations (from JSON deserialization)
+var isReasoningModel = reasoningObj is bool boolValue ? boolValue :
                       bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
-}
-
-// ✅ ADD VALIDATION: Warn if deployment name suggests reasoning model but IsReasoningModel not set
-if (!isReasoningModel)
-{
-    var nameIndicatesReasoning =
-        deploymentName.Contains("o1", StringComparison.OrdinalIgnoreCase) ||
-        deploymentName.Contains("o3", StringComparison.OrdinalIgnoreCase) ||
-        deploymentName.Contains("o4-mini", StringComparison.OrdinalIgnoreCase) ||
-        deploymentName.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
-
-    if (nameIndicatesReasoning)
-    {
-        throw new ConfigurationException(
-            $"Deployment '{deploymentName}' appears to be a reasoning model (o1/o3/o4-mini/gpt-5), " +
-            $"but 'IsReasoningModel' is not set to true in configuration. " +
-            $"Reasoning models require 'max_completion_tokens' instead of 'max_tokens'. " +
-            $"Add \"IsReasoningModel\": true to your provider parameters.");
-    }
-}
 ```
 
-**Why throw exception instead of warning?**
-- User will see the error immediately when starting the app
-- Forces correct configuration before deployment
-- Prevents the cryptic "unsupported_parameter: max_tokens" error from Azure API
-- Same validation should be added to OpenAIProvider too (line 172-178)
+**Why make it required?**
+- No silent defaulting - user must explicitly set it
+- Clear error message tells user exactly what to add
+- User takes responsibility for correct configuration
+- No need to update code when OpenAI releases new models
+- Same validation applied to OpenAIProvider (line 175-186)
 
 ---
 
