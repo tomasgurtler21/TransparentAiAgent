@@ -126,14 +126,18 @@ public class LLMProviderFactory : ILLMProviderFactory
             tenantId = tenantIdObj?.ToString();
         }
 
-        // Extract IsReasoningModel parameter (critical for o1/o3/GPT-5 models)
-        var isReasoningModel = false;
-        if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
+        // Extract IsReasoningModel parameter - REQUIRED, no silent defaults
+        if (!config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
         {
-            // Support both boolean and string representations (from JSON deserialization)
-            isReasoningModel = reasoningObj is bool boolValue ? boolValue :
-                              bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+            throw new ConfigurationException(
+                $"AzureOpenAI provider requires 'IsReasoningModel' parameter. " +
+                $"Set to true for reasoning models (o1, o3, o4-mini, gpt-5 series), false for standard models (gpt-4, gpt-4o, etc.). " +
+                $"Add \"IsReasoningModel\": true or false to your provider parameters.");
         }
+
+        // Support both boolean and string representations (from JSON deserialization)
+        var isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+                              bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
 
         // Create a temporary AppConfiguration with AzureOpenAI config
         var tempConfig = new AppConfiguration
@@ -168,14 +172,18 @@ public class LLMProviderFactory : ILLMProviderFactory
         var model = GetRequiredStringParameter(config, "Model", "OpenAI");
         var apiKey = GetRequiredStringParameter(config, "ApiKey", "OpenAI");
 
-        // Extract IsReasoningModel parameter (critical for o1/o3/o4-mini models)
-        var isReasoningModel = false;
-        if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
+        // Extract IsReasoningModel parameter - REQUIRED, no silent defaults
+        if (!config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
         {
-            // Support both boolean and string representations (from JSON deserialization)
-            isReasoningModel = reasoningObj is bool boolValue ? boolValue :
-                              bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+            throw new ConfigurationException(
+                $"OpenAI provider requires 'IsReasoningModel' parameter. " +
+                $"Set to true for reasoning models (o1, o3, o4-mini, gpt-5 series), false for standard models (gpt-4, gpt-4o, etc.). " +
+                $"Add \"IsReasoningModel\": true or false to your provider parameters.");
         }
+
+        // Support both boolean and string representations (from JSON deserialization)
+        var isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+                              bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
 
         // Create a temporary AppConfiguration with OpenAI config
         var tempConfig = new AppConfiguration
