@@ -8,16 +8,39 @@
 
 ## 🎯 ACTUAL ROOT CAUSE
 
-**The bug is NOT in the code - it's in the configuration!**
+**The bug is in the configuration handling - missing validation!**
 
-The user forgot to set `IsReasoningModel: true` in their config file. When using a reasoning model (o1, o3, GPT-5) but having `IsReasoningModel: false` in config, the code goes down the standard path which sends `max_tokens` instead of `max_completion_tokens`.
+In the multi-provider config refactor, `IsReasoningModel` is an **optional** parameter. When it's missing from the config, `LLMProviderFactory` silently defaults it to `false` (line 130):
 
-**Location**: `TransparentAiAgentGui/appsettings.Development.json:35`
-```json
-"IsReasoningModel": false  // ❌ Should be true for reasoning models!
+```csharp
+// Extract IsReasoningModel parameter (critical for o1/o3/GPT-5 models)
+var isReasoningModel = false;  // ❌ Silent default - no warning!
+if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
+{
+    isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+                      bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+}
 ```
 
-**The Fix Was Already Implemented Correctly** - it just wasn't being triggered because the config was wrong.
+**Why it keeps happening**: When you configure an Azure OpenAI provider for reasoning models (o1, o3, GPT-5) and forget to add `IsReasoningModel: true`, there's:
+- ❌ No validation error
+- ❌ No warning message
+- ❌ No log entry
+
+The provider just silently uses the standard path which sends `max_tokens` → API rejects with 400 error.
+
+**Example of broken config** (missing IsReasoningModel):
+```json
+"my-o1-preview": {
+  "Type": "AzureOpenAI",
+  "Parameters": {
+    "Endpoint": "https://...",
+    "DeploymentName": "o1-preview",
+    "ApiKey": "...",
+    // ❌ IsReasoningModel is missing - silently defaults to false!
+  }
+}
+```
 
 ---
 
@@ -216,45 +239,71 @@ public async IAsyncEnumerable<StreamingLLMChunk> StreamRequestAsync(...)
 
 ---
 
-## ✅ Actual Solution
+## ✅ Solution
 
-**Just set `IsReasoningModel: true` in your config!**
-
-### Immediate Fix:
-Edit `TransparentAiAgentGui/appsettings.Development.json` (or whichever config you're using):
+### Immediate Fix (User Side):
+Add `IsReasoningModel: true` to your Azure OpenAI provider config:
 
 ```json
-"AzureOpenAI": {
-  "Endpoint": "https://your-endpoint.openai.azure.com/",
-  "DeploymentName": "o1-preview",  // or whatever reasoning model you're using
-  "AuthenticationMode": "ApiKey",
-  "ApiVersion": "2024-02-15-preview",
-  "IsReasoningModel": true  // ✅ Set this to true!
+"my-o1-preview": {
+  "Type": "AzureOpenAI",
+  "DisplayName": "Azure o1-preview",
+  "Parameters": {
+    "Endpoint": "https://your-endpoint.openai.azure.com/",
+    "DeploymentName": "o1-preview",
+    "ApiKey": "...",
+    "AuthenticationMode": "ApiKey",
+    "ApiVersion": "2024-02-15-preview",
+    "IsReasoningModel": true  // ✅ ADD THIS!
+  }
 }
 ```
 
-### Why This Works:
-When `IsReasoningModel: true`, the provider:
-- ✅ Routes non-streaming through `SendRequestAsync_ReasoningModel`
-- ✅ Uses direct HTTP with `max_completion_tokens` parameter
-- ✅ Bypasses the buggy SDK that sends `max_tokens`
+**Models that need this**:
+- o1, o1-mini, o1-preview
+- o3, o3-mini, o3-pro
+- o4-mini
+- gpt-5, gpt-5-mini, gpt-5-pro, gpt-5-nano
 
-### Long-Term Improvement (Optional):
-Add validation that warns/errors if model name looks like a reasoning model but `IsReasoningModel: false`:
+### Real Fix (Code Side):
+Add **validation with helpful error message** in `LLMProviderFactory.CreateAzureOpenAIProviderFromConfig()`:
+
+**Location**: `TransparentAiAgentCore/Infrastructure/LLM/LLMProviderFactory.cs:129-137`
 
 ```csharp
-if (deploymentName.Contains("o1") || deploymentName.Contains("o3") ||
-    deploymentName.StartsWith("gpt-5") || deploymentName.Contains("o4-mini"))
+// Extract IsReasoningModel parameter (critical for o1/o3/GPT-5 models)
+var isReasoningModel = false;
+if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
 {
-    if (!isReasoningModel)
+    isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+                      bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+}
+
+// ✅ ADD VALIDATION: Warn if deployment name suggests reasoning model but IsReasoningModel not set
+if (!isReasoningModel)
+{
+    var nameIndicatesReasoning =
+        deploymentName.Contains("o1", StringComparison.OrdinalIgnoreCase) ||
+        deploymentName.Contains("o3", StringComparison.OrdinalIgnoreCase) ||
+        deploymentName.Contains("o4-mini", StringComparison.OrdinalIgnoreCase) ||
+        deploymentName.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
+
+    if (nameIndicatesReasoning)
     {
-        _logger.LogWarning(
-            "Deployment '{DeploymentName}' looks like a reasoning model, " +
-            "but IsReasoningModel is false. Set IsReasoningModel: true in config.",
-            deploymentName);
+        throw new ConfigurationException(
+            $"Deployment '{deploymentName}' appears to be a reasoning model (o1/o3/o4-mini/gpt-5), " +
+            $"but 'IsReasoningModel' is not set to true in configuration. " +
+            $"Reasoning models require 'max_completion_tokens' instead of 'max_tokens'. " +
+            $"Add \"IsReasoningModel\": true to your provider parameters.");
     }
 }
 ```
+
+**Why throw exception instead of warning?**
+- User will see the error immediately when starting the app
+- Forces correct configuration before deployment
+- Prevents the cryptic "unsupported_parameter: max_tokens" error from Azure API
+- Same validation should be added to OpenAIProvider too (line 172-178)
 
 ---
 
