@@ -150,7 +150,11 @@ try
         var knowledgeBasePath = Path.Combine(builder.Environment.ContentRootPath, "data", "knowledge");
         return new JsonKnowledgeLibrary(knowledgeBasePath, logger);
     });
-    builder.Services.AddSingleton<BuiltInKnowledgeToolRegistry>();
+    builder.Services.AddSingleton<BuiltInKnowledgeToolRegistry>(sp =>
+    {
+        var knowledgeLibrary = sp.GetRequiredService<IKnowledgeLibrary>();
+        return new BuiltInKnowledgeToolRegistry(knowledgeLibrary);
+    });
     builder.Services.AddScoped<KnowledgeLibraryToolExecutor>();
     builder.Services.AddSingleton<TeachingModePromptBuilder>();
 

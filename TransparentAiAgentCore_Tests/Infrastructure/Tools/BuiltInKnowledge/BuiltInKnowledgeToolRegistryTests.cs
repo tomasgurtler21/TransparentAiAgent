@@ -1,3 +1,4 @@
+using TransparentAiAgentCore.Domain.Knowledge;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInKnowledge;
 
@@ -7,11 +8,41 @@ namespace TransparentAiAgentCore_Tests.Infrastructure.Tools.BuiltInKnowledge;
 public class BuiltInKnowledgeToolRegistryTests
 {
     private BuiltInKnowledgeToolRegistry _registry = null!;
+    private TestKnowledgeLibrary _knowledgeLibrary = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        _registry = new BuiltInKnowledgeToolRegistry();
+        _knowledgeLibrary = new TestKnowledgeLibrary();
+        _registry = new BuiltInKnowledgeToolRegistry(_knowledgeLibrary);
+    }
+
+    private class TestKnowledgeLibrary : IKnowledgeLibrary
+    {
+        private readonly List<KnowledgeEntrySummary> _topics = new()
+        {
+            new KnowledgeEntrySummary(
+                "test-topic-1",
+                "Test Topic 1",
+                "TestCategory",
+                "Test summary",
+                "HIGH",
+                "2024-01-01",
+                "2024-01-01",
+                new List<string> { "test" })
+        };
+
+        public KnowledgeEntry? GetTopic(string topicId) => null;
+        public IReadOnlyList<KnowledgeEntrySummary> GetAllTopics() => _topics.AsReadOnly();
+        public IReadOnlyList<KnowledgeEntrySummary> GetTopicsByCategory(string category) => _topics.AsReadOnly();
+        public IReadOnlyList<string> GetCategories() => new List<string> { "TestCategory" }.AsReadOnly();
+    }
+
+    [TestMethod]
+    public void Constructor_ThrowsArgumentNullException_WhenKnowledgeLibraryIsNull()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentNullException>(() => new BuiltInKnowledgeToolRegistry(null!));
     }
 
     [TestMethod]
