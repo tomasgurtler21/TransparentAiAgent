@@ -213,7 +213,67 @@ Pauses scenario until a condition is met (advanced scenarios).
 
 ---
 
-#### 6. `completion_message`
+#### 6. `pause_for_user`
+
+Pauses scenario execution and waits for user to click Resume button. This allows users to examine the current state at their own pace before the scenario continues.
+
+```json
+{
+  "type": "pause_for_user",
+  "pauseMessageKey": "scenarios.demo.step5.pauseMessage",
+  "pauseMessage": "Take a moment to examine the context indicator in the top right. Click Resume when ready.",
+  "annotation": "Pausing to let user explore the UI"
+}
+```
+
+**Fields:**
+- `pauseMessage` (string, optional): Message displayed to user explaining why scenario is paused (fallback text)
+- `pauseMessageKey` (string, optional): Localization key for pause message (preferred for i18n)
+- `annotation` (string, optional): Internal note about why this pause is happening (not shown to user)
+
+**Behavior:**
+- Scenario pauses after this step completes
+- Pause/Resume buttons appear in the scenario indicator UI
+- Pause message is displayed prominently to the user
+- User must click "Resume" button to continue scenario
+- If no pause message provided, shows default: "Scenario paused. Click Resume to continue."
+
+**Use Cases:**
+- After demonstrating a feature, pause to let user examine UI
+- Before revealing something new, pause to let user read annotations
+- After filling context, pause before showing truncation effects
+- After tool usage, pause to let user examine the tool call details
+
+**Example in Context:**
+```json
+{
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "content": "Hi, my name is Alice.",
+      "annotation": "The model will remember this for now."
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "pauseMessage": "Notice the model remembered the name. Look at the conversation history. Click Resume when ready.",
+      "annotation": "Giving user time to examine current state"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "What was my name?"
+    }
+  ]
+}
+```
+
+**Note:** This step type was implemented and is fully functional. See `SCENARIO_PAUSE_RESUME_DESIGN.md` for technical details.
+
+---
+
+#### 7. `completion_message`
 
 Displays scenario completion message to user.
 
@@ -235,7 +295,7 @@ Displays scenario completion message to user.
 
 ### Advanced Step Types (Config Manipulation)
 
-#### 7. `apply_config_overlay`
+#### 8. `apply_config_overlay`
 
 Temporarily overrides system configuration.
 
@@ -269,7 +329,7 @@ Temporarily overrides system configuration.
 
 ---
 
-#### 8. `restore_config_overlay`
+#### 9. `restore_config_overlay`
 
 Removes the current config overlay, restoring previous configuration.
 
@@ -290,7 +350,7 @@ Removes the current config overlay, restoring previous configuration.
 
 ---
 
-#### 9. `enable_user_input` / `disable_user_input`
+#### 10. `enable_user_input` / `disable_user_input`
 
 Controls whether real user can send messages.
 
@@ -315,7 +375,7 @@ Controls whether real user can send messages.
 
 ### Utility Step Types
 
-#### 10. `delay`
+#### 11. `delay`
 
 Pauses scenario for a specified duration.
 
@@ -333,7 +393,7 @@ Pauses scenario for a specified duration.
 
 ---
 
-#### 11. `ui_control`
+#### 12. `ui_control`
 
 Directly manipulates UI state (e.g., reveal filter controls).
 
