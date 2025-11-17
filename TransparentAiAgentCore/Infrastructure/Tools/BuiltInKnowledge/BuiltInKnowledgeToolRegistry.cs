@@ -1,3 +1,4 @@
+using TransparentAiAgentCore.Domain.Knowledge;
 using TransparentAiAgentCore.Domain.Tools;
 
 namespace TransparentAiAgentCore.Infrastructure.Tools.BuiltInKnowledge;
@@ -10,11 +11,17 @@ public class BuiltInKnowledgeToolRegistry : IToolRegistry
 {
     private readonly IReadOnlyList<ITool> _tools;
 
-    public BuiltInKnowledgeToolRegistry()
+    public BuiltInKnowledgeToolRegistry(IKnowledgeLibrary knowledgeLibrary)
     {
+        if (knowledgeLibrary == null)
+            throw new ArgumentNullException(nameof(knowledgeLibrary));
+
+        // Get available topics from knowledge library to build dynamic tool description
+        var availableTopics = knowledgeLibrary.GetAllTopics();
+
         _tools = new List<ITool>
         {
-            new KnowledgeLibraryTool()
+            new KnowledgeLibraryTool(availableTopics)
         }.AsReadOnly();
     }
 
