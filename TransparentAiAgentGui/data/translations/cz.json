@@ -17,6 +17,7 @@
   "scenarios.context-limits-advanced.step15.content": "Scénář 'Limity kontextu' skončil. Limit zpráv v konverzaci byl snížen na 8 zpráv pro demonstraci zkrácení kontextového okna. Jméno uživatele (John Doe) z dřívější zprávy bylo skutečně odstraněno z tvého kontextu. Prosím:\n1. Vysvětli, co se stalo (zkrácení kontextu)\n2. Použij nástroj ui_control_context_indicators k zvýraznění indikátorů stavu kontextu\n3. Vysvětli, proč systémová zpráva a poslední zprávy zůstávají v kontextu\n4. Nabídni zobrazení konfigurace, kde lze upravit limity zpráv pomocí ui_control_configuration.",
   "scenarios.context-limits-advanced.step17.pauseMessage": "Věnuj čas kontrole indikátorů stavu kontextu u zpráv. Klikni na Pokračovat, až to uděláš, poté bude obnoven původní limit kontextu.",
   "scenarios.context-limits-advanced.step18.annotation": "Limit zpráv obnoven. Model nyní může přistupovat k většímu kontextu a efektivně učit.",
+  "scenarios.context-limits-advanced.stepXYZ.content": "Díky, deaktivuj zatím zvýraznění indikátorů stavu kontextu (nech je viditelné) a čekej na další pokyny.",
 
   "scenarios.coding-limits-question.name": "Proč agent nedodržuje limity délek?",
   "scenarios.coding-limits-question.description": "Otázka ohledně agenta překračujícího limity znaků a délek řádků",
