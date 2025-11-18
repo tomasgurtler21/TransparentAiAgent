@@ -115,7 +115,7 @@ public record UIState
         },
         ContextIndicators = new ContextIndicatorsState
         {
-            Visible = true,
+            Visible = false,
             Highlighted = false
         },
         ConfigurationPage = new ConfigurationPageState

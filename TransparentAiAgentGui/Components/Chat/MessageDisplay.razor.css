@@ -88,3 +88,28 @@
     flex: 1;
     font-style: italic;
 }
+
+/* Context status indicator styling */
+.message-context-status {
+    font-size: 1rem;
+    cursor: help;
+    transition: all 0.3s ease;
+}
+
+.message-context-status.highlighted {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 4px;
+    padding: 2px 6px;
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 16px rgba(255, 193, 7, 0.8);
+    }
+}
