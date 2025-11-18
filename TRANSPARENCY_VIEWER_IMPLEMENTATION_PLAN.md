@@ -21,122 +21,229 @@ This document provides a detailed implementation plan for three improvements to 
 
 ---
 
+## Code Investigation Results
+
+### File Structure (VERIFIED)
+
+**Project Names:**
+- Core: `TransparentAiAgentCore`
+- GUI: `TransparentAiAgentGui` (NOT WebUI)
+- Core Tests: `TransparentAiAgentCore_Tests`
+- GUI Tests: `TransparentAiAgentGui_Tests`
+
+**Key Files:**
+- Event Type Enum: `/TransparentAiAgentCore/Domain/Transparency/TransparencyEventType.cs` (30 types defined)
+- Viewer Component: `/TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor`
+- Service: `/TransparentAiAgentCore/Infrastructure/Transparency/TransparencyService.cs`
+- JavaScript: `/TransparentAiAgentGui/wwwroot/js/site.js`
+- Viewer Tests: `/TransparentAiAgentGui_Tests/Components/Transparency/TransparencyViewerTests.cs`
+- Service Tests: `/TransparentAiAgentCore_Tests/Infrastructure/Transparency/TransparencyServiceTests.cs`
+
+**Note:** There's also an OLD enum at `/TransparentAiAgentCore/Domain/Enums/TransparencyEventType.cs` with only 8 types. This appears to be deprecated/unused. Investigation needed to determine if it should be deleted.
+
+### Event Type Usage (VERIFIED)
+
+**Total defined**: 30 types in `Domain/Transparency/TransparencyEventType.cs`
+
+**Actually USED in production code (12 types):**
+1. SystemState (14 uses)
+2. Error (9 uses)
+3. RawLLMResponse (7 uses)
+4. RawLLMRequest (4 uses)
+5. AssistantResponse (2 uses)
+6. ToolStreamingDataCorrupted (1 use)
+7. ToolResult (1 use)
+8. ToolCall (1 use)
+9. ToolArgumentValidationFailed (1 use)
+10. MessageParsingError (1 use)
+11. Info (1 use)
+12. ContextChange (1 use)
+
+**Used ONLY in tests (3 types):**
+- UserInput (TransparencyViewerTests.cs, TransparencyServiceTests.cs)
+- ToolCallCompleted (TransparencyViewerTests.cs line 161)
+- UIControlAction (appears in test expectations but not actually logged)
+
+**UNUSED - Never referenced (15 types):**
+- ConfigurationChange
+- Warning
+- Debug
+- ToolDiscoveryStarted
+- ToolDiscoveryCompleted
+- ToolDiscoveryFailed
+- ToolRegistered
+- ToolCallStarted
+- ToolCallFailed
+- ToolCallTimeout
+- MCPServerConnecting
+- MCPServerConnected
+- MCPServerDisconnected
+- MCPServerConnectionFailed
+
+**Decision needed**: Should we keep the 3 test-only types (UserInput, ToolCallCompleted, UIControlAction)? Or remove them too?
+
+### Current Component State (VERIFIED)
+
+**TransparencyViewer.razor:**
+- Line 8: Already has `@inject IJSRuntime JSRuntime`
+- Lines 26-32: Single dropdown filter (`SelectedEventType`)
+- Lines 83-87: Has UI state filter logic that discussion doc says to remove
+- Line 104: Loads only 1000 recent events
+- Filter logic: Lines 76-99 (computed property `FilteredEvents`)
+
+**TransparencyService.cs:**
+- Has `GetEvents()` - returns ALL events (line 26-32)
+- Has `GetRecentEvents(int count)` - returns limited events (line 34-40)
+- NO `ExportToJson()` method exists
+- Already thread-safe with locks
+
+**site.js:**
+- Has `scrollToBottom` function
+- Has `overlayResize` functionality
+- NO `downloadFile` function
+
+---
+
 ## Step 1: Event Type Cleanup
 
-**Goal**: Remove 17 unused event types from TransparencyEventType enum
+**Goal**: Remove unused event types from TransparencyEventType enum
 
-**Can be completed in**: Single session (~30-45 minutes)
+**Can be completed in**: Single session (~45-60 minutes)
 
 **Prerequisites**: None
 
-### Phase 1.1: Update Tests (RED → GREEN)
+### Phase 1.1: Decide on Test-Only Types
 
-**RED Phase:**
+**Question for implementer**: Should we keep types that are only used in tests?
 
-1. **Identify all test files** that reference unused event types:
-   ```bash
-   # Search for test usage of unused types
-   grep -r "ToolDiscoveryStarted\|ToolCallStarted\|MCPServerConnecting" TransparentAiAgentCore_Tests/
-   ```
+**Option A - Keep test-only types (3 types):**
+- UserInput
+- ToolCallCompleted
+- UIControlAction
 
-2. **Review each test** to understand what it's testing:
-   - If testing meaningful behavior → rewrite to use existing event type
-   - If testing trivial enum value → delete the test (Lean TDD principle)
+Rationale: Tests might be preparing for future features, or testing filter behavior
 
-3. **Expected test failures**: Tests referencing removed types won't compile (setup phase)
+**Option B - Remove test-only types:**
 
-**GREEN Phase:**
+Rationale: Lean TDD says don't keep unused code. If needed later, add back when implementing feature.
 
-4. **Fix or delete tests** identified above
-5. **Run all tests** - ensure they pass:
-   ```bash
-   dotnet test TransparentAiAgentCore_Tests
-   ```
+**RECOMMENDATION**: Option A (keep test-only types for now)
+- UserInput is a logical event type that might be used soon
+- Tests would need significant updates to remove these
+- Low cost to keep them (only 3 types)
 
-**Validation**: All existing tests pass with no compilation errors
+**After decision, proceed with removal count:**
+- **If Option A**: Remove 15 unused types
+- **If Option B**: Remove 18 unused types (15 + 3 test-only)
 
-### Phase 1.2: Remove Unused Event Types (RED → GREEN)
+### Phase 1.2: Investigate Duplicate Enum File
 
-**RED Phase:**
+**Files:**
+- `/TransparentAiAgentCore/Domain/Enums/TransparencyEventType.cs` (8 types - old?)
+- `/TransparentAiAgentCore/Domain/Transparency/TransparencyEventType.cs` (30 types - current)
 
-1. **Remove 17 unused event types** from `TransparencyEventType.cs`:
+**Task:**
+1. Search entire solution for references to `Domain.Enums.TransparencyEventType`
+2. If no references found → DELETE the old file
+3. If references found → Migrate to new namespace first, then delete
 
-   **Types to REMOVE:**
-   - UserInput
-   - ConfigurationChange
-   - Warning
-   - Debug
-   - ToolDiscoveryStarted
-   - ToolDiscoveryCompleted
-   - ToolDiscoveryFailed
-   - ToolRegistered
-   - ToolCallStarted
-   - ToolCallCompleted
-   - ToolCallFailed
-   - ToolCallTimeout
-   - MCPServerConnecting
-   - MCPServerConnected
-   - MCPServerDisconnected
-   - MCPServerConnectionFailed
+**Command to check:**
+```bash
+grep -r "Domain.Enums.TransparencyEventType" . --include="*.cs"
+grep -r "using.*Domain.Enums" . --include="*.cs"
+```
 
-   **Types to KEEP (13 currently used):**
-   - ToolCall
-   - ToolResult
-   - Error
-   - SystemState
-   - ContextChange
-   - AssistantResponse
-   - RawLLMRequest
-   - RawLLMResponse
-   - MessageParsingError
-   - ToolArgumentValidationFailed
-   - ToolStreamingDataCorrupted
-   - Info
-   - UIControlAction
+### Phase 1.3: Update Tests for Removed Types
 
-2. **Expected failures**: Any production code referencing removed types won't compile
+**If Option A (keep test-only types):**
 
-**GREEN Phase:**
+No test changes needed - UserInput, ToolCallCompleted, UIControlAction stay
 
-3. **Search for production code usage**:
-   ```bash
-   # Check each removed type
-   grep -r "TransparencyEventType.UserInput" TransparentAiAgentCore/
-   grep -r "TransparencyEventType.ToolDiscoveryStarted" TransparentAiAgentCore/
-   # ... (repeat for all removed types)
-   ```
+**If Option B (remove test-only types):**
 
-4. **Fix any references** found (unlikely based on earlier analysis)
+**Files to update:**
+- `TransparentAiAgentCore_Tests/Infrastructure/Transparency/TransparencyServiceTests.cs`
+  - Lines 21, 36, 59, 80, 96, 98, 104, 118, 120, 122, 141, 167: Replace `UserInput` with `SystemState` or `Info`
 
-5. **Verify UI still works**:
-   - Open TransparencyViewer.razor
-   - Check that dropdown event filter still renders correctly
-   - Verify icon mapping in TransparencyEventDisplay.razor handles all remaining types
+- `TransparentAiAgentGui_Tests/Components/Transparency/TransparencyViewerTests.cs`
+  - Line 96: Replace `UserInput` with `SystemState`
+  - Line 161: Replace `ToolCallCompleted` with different event type (e.g., `ToolCall`)
 
-6. **Run all tests**:
-   ```bash
-   dotnet test TransparentAiAgentCore_Tests
-   ```
+**Run tests after changes:**
+```bash
+dotnet test TransparentAiAgentCore_Tests
+dotnet test TransparentAiAgentGui_Tests
+```
 
-**Validation**:
-- All tests pass
-- Application compiles without errors
-- TransparencyViewer dropdown shows only 13 event types
+### Phase 1.4: Remove Unused Event Types
 
-### Phase 1.3: Cleanup UI Mappings
+**File**: `TransparentAiAgentCore/Domain/Transparency/TransparencyEventType.cs`
 
-**Files to check:**
-- `TransparencyEventDisplay.razor` - Remove icon mappings for deleted types
-- `TransparencyViewer.razor` - Verify dropdown generation works with fewer types
+**Types to REMOVE (15 types if Option A, 18 if Option B):**
 
-**No tests needed**: UI mappings are presentation logic without business rules (Lean TDD principle)
+Remove these lines from enum:
+```csharp
+ConfigurationChange,    // Line 10 - REMOVE
+Warning,                // Line 13 - REMOVE
+Debug,                  // Line 14 - REMOVE
+
+// Tool discovery events (Phase 5)
+ToolDiscoveryStarted,        // Line 18 - REMOVE
+ToolDiscoveryCompleted,      // Line 19 - REMOVE
+ToolDiscoveryFailed,         // Line 20 - REMOVE
+ToolRegistered,              // Line 21 - REMOVE
+
+// Tool execution events (Phase 5)
+ToolCallStarted,        // Line 24 - REMOVE
+ToolCallCompleted,      // Line 25 - REMOVE (if Option B)
+ToolCallFailed,         // Line 26 - REMOVE
+ToolCallTimeout,        // Line 27 - REMOVE
+
+// MCP server lifecycle events (Phase 5)
+MCPServerConnecting,         // Line 30 - REMOVE
+MCPServerConnected,          // Line 31 - REMOVE
+MCPServerDisconnected,       // Line 32 - REMOVE
+MCPServerConnectionFailed,   // Line 33 - REMOVE
+
+// UI Control events (Phase 9)
+UIControlAction,        // Line 36 - REMOVE (if Option B)
+
+// If Option B, also remove:
+UserInput,              // Line 5 - REMOVE (if Option B)
+```
+
+**After removal:**
+- Verify file compiles
+- Check line spacing/formatting
+- Keep comments for remaining sections
+
+### Phase 1.5: Run All Tests
+
+```bash
+dotnet build
+dotnet test
+```
+
+**Expected**: All tests pass, no compilation errors
+
+### Phase 1.6: Manual Verification
+
+1. Run the application
+2. Open TransparencyViewer (via UI control or direct navigation)
+3. Click event type dropdown
+4. Verify only used types appear (12-15 types depending on option chosen)
+5. Verify events display correctly
 
 ### Deliverables
 
-- [ ] TransparencyEventType.cs contains only 13 used event types
+- [ ] Duplicate enum file investigated (deleted if unused)
+- [ ] Decision made on test-only types (Option A or B)
+- [ ] Tests updated if needed
+- [ ] TransparencyEventType.cs cleaned up
 - [ ] All tests pass
-- [ ] No compilation errors in production code
-- [ ] TransparencyViewer UI displays correctly with reduced event types
+- [ ] No compilation errors
+- [ ] TransparencyViewer UI dropdown shows correct types
+- [ ] Events display correctly in viewer
 
 ---
 
@@ -148,14 +255,14 @@ This document provides a detailed implementation plan for three improvements to 
 
 **Prerequisites**: Step 1 completed (optional but recommended)
 
-### Phase 2.1: Add JavaScript Download Function
+### Phase 2.1: Add JavaScript Download Function (TDD - Manual Verification)
 
-**Location**: `wwwroot/js/site.js`
+**File**: `TransparentAiAgentGui/wwwroot/js/site.js`
 
-**Implementation** (no tests needed - JavaScript not testable in MSTest):
+**Implementation** (add after existing functions):
 
 ```javascript
-// Add to existing site.js file
+// File export utility for Transparency Viewer
 window.downloadFile = function(filename, content) {
     const blob = new Blob([content], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -167,44 +274,71 @@ window.downloadFile = function(filename, content) {
 };
 ```
 
-**Validation**: Visual inspection only (will be tested in Phase 2.3)
+**No automated tests** (JavaScript not testable in MSTest, Lean TDD principle)
 
-### Phase 2.2: Create Export Service Logic (TDD)
+**Manual verification**: Will test in Phase 2.4
 
-**Goal**: Test JSON serialization of transparency events
+### Phase 2.2: Create Export Service Method (TDD)
+
+**Goal**: Add `ExportToJson()` method to TransparencyService with tests
 
 **File**: `TransparentAiAgentCore/Infrastructure/Transparency/TransparencyService.cs`
 
 **RED Phase:**
 
-1. **Create test file**: `TransparentAiAgentCore_Tests/Infrastructure/Transparency/TransparencyServiceExportTests.cs`
-
-2. **Write first test** - Export creates valid JSON structure:
+1. **Create test** in `TransparentAiAgentCore_Tests/Infrastructure/Transparency/TransparencyServiceTests.cs`:
 
 ```csharp
-[TestClass]
-public class TransparencyServiceExportTests
+[TestMethod]
+public void ExportToJson_WithEvents_ReturnsValidJsonStructure()
 {
-    [TestMethod]
-    public void ExportToJson_WithEvents_ReturnsValidJsonStructure()
-    {
-        // Arrange
-        var service = new TransparencyService();
-        service.LogEvent(TransparencyEventType.Info, "test data", "additional");
+    // Arrange
+    _service.LogEvent(new TransparencyEvent(TransparencyEventType.Info, "test data", "additional"));
+    _service.LogEvent(new TransparencyEvent(TransparencyEventType.Error, "error data", null));
 
-        // Act
-        var json = service.ExportToJson();
+    // Act
+    var json = _service.ExportToJson();
 
-        // Assert
-        Assert.IsNotNull(json);
-        Assert.IsTrue(json.Contains("\"exportedAt\""));
-        Assert.IsTrue(json.Contains("\"events\""));
-        Assert.IsTrue(json.Contains("\"eventType\""));
-    }
+    // Assert
+    Assert.IsNotNull(json);
+    Assert.IsTrue(json.Contains("\"exportedAt\""));
+    Assert.IsTrue(json.Contains("\"events\""));
+    Assert.IsTrue(json.Contains("\"eventType\""));
+    Assert.IsTrue(json.Contains("\"Info\""));
+    Assert.IsTrue(json.Contains("\"Error\""));
+}
+
+[TestMethod]
+public void ExportToJson_NoEvents_ReturnsEmptyEventsArray()
+{
+    // Arrange - no events logged
+
+    // Act
+    var json = _service.ExportToJson();
+
+    // Assert
+    Assert.IsNotNull(json);
+    Assert.IsTrue(json.Contains("\"exportedAt\""));
+    Assert.IsTrue(json.Contains("\"events\""));
+    // Should have empty array (may be "events":[] or "events": [])
+    Assert.IsTrue(json.Contains("\"events\": []") || json.Contains("\"events\":[]"));
+}
+
+[TestMethod]
+public void ExportToJson_ReturnsIndentedJson()
+{
+    // Arrange
+    _service.LogEvent(new TransparencyEvent(TransparencyEventType.Info, "test"));
+
+    // Act
+    var json = _service.ExportToJson();
+
+    // Assert - indented JSON has newlines
+    Assert.IsTrue(json.Contains("\n") || json.Contains(Environment.NewLine));
 }
 ```
 
-3. **Add minimal stub** to TransparencyService.cs:
+2. **Add minimal stub** to TransparencyService.cs:
 
 ```csharp
 public string ExportToJson()
@@ -213,101 +347,109 @@ public string ExportToJson()
 }
 ```
 
-4. **Run test** - should fail with NotImplementedException
+3. **Run test** - should fail with NotImplementedException:
+```bash
+dotnet test TransparentAiAgentCore_Tests --filter "ExportToJson"
+```
+
+**Expected**: 3 tests fail with NotImplementedException
 
 **GREEN Phase:**
 
-5. **Implement ExportToJson**:
+4. **Implement ExportToJson** in TransparencyService.cs:
 
 ```csharp
+using System.Text.Json;
+
+// Add to TransparencyService class:
 public string ExportToJson()
 {
-    var export = new
+    lock (_lock)
     {
-        exportedAt = DateTime.UtcNow,
-        events = GetEvents() // Uses existing method that returns ALL events
-    };
+        var export = new
+        {
+            exportedAt = DateTime.UtcNow,
+            events = _events.ToList()
+        };
 
-    return JsonSerializer.Serialize(export, new JsonSerializerOptions
-    {
-        WriteIndented = true
-    });
+        return JsonSerializer.Serialize(export, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+    }
 }
 ```
 
-6. **Run test** - should pass
+5. **Add using directive** at top of file:
+```csharp
+using System.Text.Json;
+```
+
+6. **Run tests** - should pass:
+```bash
+dotnet test TransparentAiAgentCore_Tests --filter "ExportToJson"
+```
+
+**Expected**: All 3 tests pass
 
 **REFACTOR Phase:**
 
-7. **Add more tests** for edge cases:
+7. **Review implementation**:
+   - Thread-safe? ✅ (uses existing `_lock`)
+   - Returns ALL events? ✅ (uses `_events.ToList()`, not limited)
+   - Pretty JSON? ✅ (WriteIndented = true)
+   - Includes timestamp? ✅ (exportedAt)
 
-```csharp
-[TestMethod]
-public void ExportToJson_NoEvents_ReturnsEmptyEventsArray()
-{
-    // Arrange
-    var service = new TransparencyService();
-
-    // Act
-    var json = service.ExportToJson();
-
-    // Assert
-    Assert.IsTrue(json.Contains("\"events\": []"));
-}
-
-[TestMethod]
-public void ExportToJson_ContainsExportTimestamp()
-{
-    // Arrange
-    var service = new TransparencyService();
-    var beforeExport = DateTime.UtcNow;
-
-    // Act
-    var json = service.ExportToJson();
-    var afterExport = DateTime.UtcNow;
-
-    // Assert - timestamp should be between before and after
-    Assert.IsTrue(json.Contains("\"exportedAt\""));
-    // Note: Not testing exact timestamp value (fragile test)
-}
+8. **Run all service tests**:
+```bash
+dotnet test TransparentAiAgentCore_Tests/Infrastructure/Transparency/TransparencyServiceTests.cs
 ```
 
-8. **Run all tests** - should pass
-
-**Validation**: All export tests pass
+**Expected**: All tests pass (existing + new)
 
 ### Phase 2.3: Add UI Components (Manual Testing)
 
-**File**: `TransparentAiAgentCore.WebUI/Components/Transparency/TransparencyViewer.razor`
+**File**: `TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor`
 
-**Implementation Steps:**
+**Step 2.3.1: Add Save button to UI**
 
-1. **Add IJSRuntime injection** at top of file:
-
-```razor
-@inject IJSRuntime JSRuntime
-```
-
-2. **Add Save button** to controls section (around line 12-15):
+Find the viewer controls section (lines 19-42) and add Save button:
 
 ```razor
-<div class="transparency-controls">
-    <input type="text" @bind="SearchQuery" @bind:event="oninput"
-           placeholder="Search events..." class="search-box" />
+<div class="viewer-controls">
+    <input type="text"
+           class="search-input"
+           placeholder="Search events..."
+           @bind="SearchQuery"
+           @bind:event="oninput" />
 
-    <select @bind="SelectedEventType" class="filter-select">
-        <option value="">All Event Types</option>
-        @foreach (var eventType in Enum.GetValues<TransparencyEventType>())
+    <select class="filter-select" @bind="SelectedEventType">
+        <option value="">All Events</option>
+        @foreach (TransparencyEventType eventType in Enum.GetValues<TransparencyEventType>())
         {
-            <option value="@eventType.ToString()">@eventType</option>
+            <option value="@eventType">@eventType</option>
         }
     </select>
 
-    <button @onclick="HandleExportClick" class="btn-save">Save</button>
+    <label class="auto-scroll-label">
+        <input type="checkbox" @bind="AutoScroll" />
+        Auto-scroll
+    </label>
+
+    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearEvents">
+        Clear
+    </button>
+
+    <!-- ADD THIS BUTTON -->
+    <button class="btn btn-sm btn-primary" @onclick="HandleExportClick">
+        Save
+    </button>
 </div>
 ```
 
-3. **Add export handler** in @code block:
+**Step 2.3.2: Add export handlers in @code block**
+
+Add these methods to the @code section (after line 175):
 
 ```csharp
 private async Task HandleExportClick()
@@ -323,55 +465,79 @@ private async Task HandleExportClick()
 
 private async Task ExportToJson()
 {
-    var json = TransparencyService.ExportToJson();
-    var filename = $"transparency-events-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.json";
-    await JSRuntime.InvokeVoidAsync("downloadFile", filename, json);
+    try
+    {
+        var json = TransparencyService.ExportToJson();
+        var filename = $"transparency-events-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.json";
+        await JSRuntime.InvokeVoidAsync("downloadFile", filename, json);
+    }
+    catch (Exception ex)
+    {
+        // Log error but don't crash UI
+        Console.WriteLine($"Export failed: {ex.Message}");
+    }
 }
 ```
 
-4. **Add CSS styling** to `TransparencyViewer.razor.css`:
+**Note**: ITransparencyService interface needs ExportToJson() method signature
 
-```css
-.btn-save {
-    padding: 8px 16px;
-    background-color: #0066cc;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-}
+**Step 2.3.3: Update ITransparencyService interface**
 
-.btn-save:hover {
-    background-color: #0052a3;
+**File**: Find ITransparencyService interface file:
+```bash
+find . -name "ITransparencyService.cs"
+```
+
+Add method signature:
+```csharp
+string ExportToJson();
+```
+
+### Phase 2.4: Manual Validation
+
+**Run the application** and test:
+
+1. **Open TransparencyViewer**
+2. **Log some events** (interact with the app)
+3. **Click "Save" button**
+4. **Verify confirmation dialog appears** with message: "Logs contain all message content. Ensure no sensitive information before exporting. Continue?"
+5. **Click "Cancel"** → nothing happens (good)
+6. **Click "Save" again**, then **"OK"** → browser download dialog appears
+7. **Save the file** to disk
+8. **Open JSON file** → verify structure:
+
+```json
+{
+  "exportedAt": "2025-11-18T10:30:45.123Z",
+  "events": [
+    {
+      "id": "guid-here",
+      "timestamp": "2025-11-18T10:30:00.123Z",
+      "eventType": "SystemState",
+      "data": "...",
+      "additionalInfo": "..."
+    },
+    ...
+  ]
 }
 ```
 
-**Manual Validation:**
-
-1. Run the application
-2. Navigate to TransparencyViewer
-3. Click "Save" button
-4. Verify confirmation dialog appears with privacy warning
-5. Click "Yes" → verify browser download dialog opens
-6. Open downloaded JSON file → verify structure:
-   ```json
-   {
-     "exportedAt": "2025-11-18T10:30:45Z",
-     "events": [...]
-   }
-   ```
-
-**No automated UI tests**: Blazor component rendering and JS interop not tested (Lean TDD - would be integration tests, out of scope)
+9. **Verify ALL events exported** (not limited to 1000 visible in UI)
+   - Log >1000 events if possible, or check count in JSON vs UI count
+10. **Test with empty events** → should export empty array
 
 ### Deliverables
 
-- [ ] TransparencyService.ExportToJson() method implemented with tests
-- [ ] JavaScript downloadFile() function added to site.js
+- [ ] downloadFile() JavaScript function added to site.js
+- [ ] TransparencyService.ExportToJson() implemented with tests passing
+- [ ] ITransparencyService interface updated
 - [ ] Save button added to TransparencyViewer UI
-- [ ] Privacy confirmation dialog works
-- [ ] JSON export downloads successfully with correct structure
-- [ ] All tests pass
+- [ ] Privacy confirmation dialog works correctly
+- [ ] JSON export downloads successfully
+- [ ] JSON file has correct structure (exportedAt + events array)
+- [ ] ALL events exported (not limited to visible 1000)
+- [ ] Pretty-printed JSON (indented, readable)
+- [ ] All automated tests pass
 
 ---
 
@@ -383,138 +549,101 @@ private async Task ExportToJson()
 
 **Prerequisites**: Step 1 completed (recommended for cleaner event type list)
 
-### Phase 3.1: Update Component State and Logic (TDD)
+### Phase 3.1: Remove UI State Filter Logic
 
-**File**: `TransparentAiAgentCore.WebUI/Components/Transparency/TransparencyViewer.razor`
+**File**: `TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor`
 
-**RED Phase:**
+**Current code (lines 83-87):**
+```csharp
+// Apply UI state event type filters if any
+if (_uiState.TransparencyViewer.EventTypeFilters.Any())
+{
+    filtered = filtered.Where(e =>
+        _uiState.TransparencyViewer.EventTypeFilters.Contains(e.EventType.ToString()));
+}
+```
 
-1. **Plan the logic change**:
-   - Current: `SelectedEventType` (string) - single filter
-   - New: `SelectedEventTypes` (List<string>) - multiple filters
-   - Filter logic: Show events matching ANY selected type (OR logic)
+**Action**: DELETE these 5 lines
 
-2. **Write test** for filtering logic in `TransparencyViewerTests.cs`:
+**Rationale**: Per discussion doc, UI state filters are for chat component, not TransparencyViewer
 
-   **NOTE**: If TransparencyViewerTests.cs doesn't exist, check if filtering logic should be in a separate service. If logic is complex enough, extract to testable service class. If simple UI logic, skip tests (Lean TDD - UI component tests often not worth the complexity).
+**Verification**:
+1. Remove the lines
+2. Build the project
+3. If compilation errors occur → investigate what depends on this
+4. If chat component tests fail → revert and investigate further
+5. Run all tests to ensure nothing breaks
 
-   **Decision point**: Check if `TransparencyViewer.razor` has complex filtering logic worth testing. Based on TRANSPARENCY_IMPROVEMENTS_DISCUSSION.md lines 119-131, it's moderately complex.
+**IMPORTANT**: Only remove if chat component doesn't actually use this. Verify first!
 
-   **Option A - Extract to Service (Recommended if logic grows):**
+```bash
+# Check if TransparencyViewerState.EventTypeFilters is used elsewhere
+grep -r "EventTypeFilters" TransparentAiAgentCore/ TransparentAiAgentGui/ --include="*.cs"
+```
 
-   Create `TransparencyFilterService` with testable methods:
+### Phase 3.2: Update Component State (No Tests - UI Logic)
 
-   ```csharp
-   // Test
-   [TestClass]
-   public class TransparencyFilterServiceTests
-   {
-       [TestMethod]
-       public void ApplyEventTypeFilters_MultipleTypes_ReturnsEventsMatchingAny()
-       {
-           // Arrange
-           var events = new[]
-           {
-               new TransparencyEvent(Guid.NewGuid(), DateTime.UtcNow,
-                   TransparencyEventType.Info, "info data", null),
-               new TransparencyEvent(Guid.NewGuid(), DateTime.UtcNow,
-                   TransparencyEventType.Error, "error data", null),
-               new TransparencyEvent(Guid.NewGuid(), DateTime.UtcNow,
-                   TransparencyEventType.ToolCall, "tool data", null)
-           };
-           var filters = new List<string> { "Info", "Error" };
-           var service = new TransparencyFilterService();
+**File**: `TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor`
 
-           // Act
-           var result = service.ApplyEventTypeFilters(events, filters);
+**Current state (line 72):**
+```csharp
+private string SelectedEventType { get; set; } = string.Empty;
+```
 
-           // Assert
-           Assert.AreEqual(2, result.Count());
-           Assert.IsTrue(result.Any(e => e.EventType == TransparencyEventType.Info));
-           Assert.IsTrue(result.Any(e => e.EventType == TransparencyEventType.Error));
-           Assert.IsFalse(result.Any(e => e.EventType == TransparencyEventType.ToolCall));
-       }
+**Replace with:**
+```csharp
+private List<EventTypeFilter> EventTypeFilters { get; set; } = new()
+{
+    new EventTypeFilter() // Start with one empty filter
+};
 
-       [TestMethod]
-       public void ApplyEventTypeFilters_EmptyFilters_ReturnsAllEvents()
-       {
-           // Arrange
-           var events = new[]
-           {
-               new TransparencyEvent(Guid.NewGuid(), DateTime.UtcNow,
-                   TransparencyEventType.Info, "info", null),
-               new TransparencyEvent(Guid.NewGuid(), DateTime.UtcNow,
-                   TransparencyEventType.Error, "error", null)
-           };
-           var filters = new List<string>();
-           var service = new TransparencyFilterService();
+private class EventTypeFilter
+{
+    public string SelectedType { get; set; } = string.Empty;
+}
+```
 
-           // Act
-           var result = service.ApplyEventTypeFilters(events, filters);
+### Phase 3.3: Update Filtering Logic (No Tests - Simple OR Logic)
 
-           // Assert
-           Assert.AreEqual(2, result.Count());
-       }
-   }
-   ```
+**File**: `TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor`
 
-   **Option B - Keep in Component (Simpler):**
+**Current filtering logic (lines 89-95):**
+```csharp
+// Apply user search/filter
+filtered = filtered.Where(e =>
+    (string.IsNullOrEmpty(SelectedEventType) || e.EventType.ToString() == SelectedEventType) &&
+    (string.IsNullOrEmpty(SearchQuery) ||
+     e.EventType.ToString().Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+     e.AdditionalInfo?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true ||
+     e.Data?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true));
+```
 
-   Skip automated tests, rely on manual testing (Lean TDD - simple UI logic doesn't need tests if manually verifiable).
+**Replace with:**
+```csharp
+// Apply multi-filter (OR logic)
+var selectedTypes = EventTypeFilters
+    .Where(f => !string.IsNullOrEmpty(f.SelectedType))
+    .Select(f => f.SelectedType)
+    .ToList();
 
-   **RECOMMENDATION**: Use Option B for this implementation (simpler, faster). The filtering logic is straightforward OR logic.
+if (selectedTypes.Any())
+{
+    filtered = filtered.Where(e => selectedTypes.Contains(e.EventType.ToString()));
+}
 
-**GREEN Phase:**
+// Apply search filter
+filtered = filtered.Where(e =>
+    string.IsNullOrEmpty(SearchQuery) ||
+    e.EventType.ToString().Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+    e.AdditionalInfo?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true ||
+    e.Data?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true);
+```
 
-3. **Update TransparencyViewer.razor state** (no test needed):
+### Phase 3.4: Add Filter Management Methods
 
-   Replace:
-   ```csharp
-   private string SelectedEventType { get; set; } = string.Empty;
-   ```
+**File**: `TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor`
 
-   With:
-   ```csharp
-   private List<EventTypeFilter> EventTypeFilters { get; set; } = new()
-   {
-       new EventTypeFilter() // Start with one empty filter
-   };
-
-   private class EventTypeFilter
-   {
-       public string SelectedType { get; set; } = string.Empty;
-   }
-   ```
-
-4. **Update filtering logic** in FilteredEvents computed property:
-
-   Replace existing event type filter logic with:
-   ```csharp
-   // Apply multi-filter (OR logic)
-   var selectedTypes = EventTypeFilters
-       .Where(f => !string.IsNullOrEmpty(f.SelectedType))
-       .Select(f => f.SelectedType)
-       .ToList();
-
-   if (selectedTypes.Any())
-   {
-       filtered = filtered.Where(e => selectedTypes.Contains(e.EventType.ToString()));
-   }
-   ```
-
-5. **Remove UI state filter logic** (lines 83-87 based on discussion doc):
-   ```csharp
-   // DELETE THIS BLOCK:
-   if (_uiState.TransparencyViewer.EventTypeFilters.Any())
-   {
-       filtered = filtered.Where(e =>
-           _uiState.TransparencyViewer.EventTypeFilters.Contains(e.EventType.ToString()));
-   }
-   ```
-
-**REFACTOR Phase:**
-
-6. **Add filter management methods**:
+Add these methods to @code section:
 
 ```csharp
 private void AddFilter()
@@ -531,55 +660,60 @@ private void RemoveFilter(EventTypeFilter filter)
 }
 ```
 
-### Phase 3.2: Update UI Markup
+### Phase 3.5: Update UI Markup
 
-**File**: `TransparentAiAgentCore.WebUI/Components/Transparency/TransparencyViewer.razor`
+**File**: `TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor`
 
-**Implementation:**
-
-1. **Replace single dropdown** with multi-filter UI:
-
+**Current dropdown (lines 26-32):**
 ```razor
-<div class="transparency-controls">
-    <input type="text" @bind="SearchQuery" @bind:event="oninput"
-           placeholder="Search events..." class="search-box" />
-
-    <div class="event-filters">
-        @foreach (var filter in EventTypeFilters)
-        {
-            <div class="filter-item">
-                <select @bind="filter.SelectedType" class="filter-select">
-                    <option value="">All Event Types</option>
-                    @foreach (var eventType in Enum.GetValues<TransparencyEventType>())
-                    {
-                        <option value="@eventType.ToString()">@eventType</option>
-                    }
-                </select>
-
-                @if (EventTypeFilters.Count > 1)
-                {
-                    <button @onclick="() => RemoveFilter(filter)"
-                            class="btn-remove-filter"
-                            title="Remove filter">✕</button>
-                }
-            </div>
-        }
-
-        <button @onclick="AddFilter" class="btn-add-filter">+ Add Filter</button>
-    </div>
-
-    @if (/* Export button from Step 2 exists */)
+<select class="filter-select" @bind="SelectedEventType">
+    <option value="">All Events</option>
+    @foreach (TransparencyEventType eventType in Enum.GetValues<TransparencyEventType>())
     {
-        <button @onclick="HandleExportClick" class="btn-save">Save</button>
+        <option value="@eventType">@eventType</option>
     }
+</select>
+```
+
+**Replace with:**
+```razor
+<div class="event-filters">
+    @foreach (var filter in EventTypeFilters)
+    {
+        <div class="filter-item">
+            <select @bind="filter.SelectedType" class="filter-select">
+                <option value="">All Events</option>
+                @foreach (TransparencyEventType eventType in Enum.GetValues<TransparencyEventType>())
+                {
+                    <option value="@eventType">@eventType</option>
+                }
+            </select>
+
+            @if (EventTypeFilters.Count > 1)
+            {
+                <button @onclick="() => RemoveFilter(filter)"
+                        class="btn-remove-filter"
+                        title="Remove filter">✕</button>
+            }
+        </div>
+    }
+
+    <button @onclick="AddFilter" class="btn-add-filter">
+        + Add Filter
+    </button>
 </div>
 ```
 
-### Phase 3.3: Add CSS Styling
+### Phase 3.6: Add CSS Styling
 
-**File**: `TransparentAiAgentCore.WebUI/Components/Transparency/TransparencyViewer.razor.css`
+**File**: `TransparentAiAgentGui/Components/Transparency/TransparencyViewer.razor.css`
 
-**Implementation:**
+Check if this file exists:
+```bash
+find . -name "TransparencyViewer.razor.css"
+```
+
+**If file exists**, add these styles:
 
 ```css
 .event-filters {
@@ -593,14 +727,6 @@ private void RemoveFilter(EventTypeFilter filter)
     display: flex;
     align-items: center;
     gap: 4px;
-}
-
-.filter-select {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    background-color: white;
 }
 
 .btn-remove-filter {
@@ -633,29 +759,112 @@ private void RemoveFilter(EventTypeFilter filter)
 }
 ```
 
-### Manual Validation
+**If file doesn't exist**, create it in the same directory as TransparencyViewer.razor
 
-1. **Run the application**
-2. **Test default state**: One filter dropdown visible
-3. **Test adding filters**: Click "+ Add Filter" → new dropdown appears
-4. **Test removing filters**: Click ✕ → filter disappears (can't remove last one)
-5. **Test OR logic**:
-   - Filter 1: Select "Info"
-   - Filter 2: Select "Error"
-   - Verify events shown include BOTH Info AND Error types
-6. **Test empty filters**: Set filter to "All Event Types" → should be ignored
-7. **Test with search**: Combine filters with search box → both should work together
+### Phase 3.7: Update Existing Tests
+
+**File**: `TransparentAiAgentGui_Tests/Components/Transparency/TransparencyViewerTests.cs`
+
+**Test that needs updating**: Line 155-185 - `TransparencyViewer_WithEventTypeFilters_FiltersEvents`
+
+This test currently tests UI state filters which we removed. Options:
+
+**Option A - Update test to verify new multi-filter UI:**
+
+Replace test with:
+```csharp
+[TestMethod]
+public void TransparencyViewer_WithMultipleFilters_ShowsEventsMatchingAny()
+{
+    // This test would be complex because it requires Blazor component interaction
+    // Lean TDD principle: Skip complex UI tests, use manual testing instead
+    // Mark test as Inconclusive or delete
+}
+```
+
+**Option B - Delete the test:**
+
+Delete lines 152-185
+
+**RECOMMENDATION**: Option B (delete test)
+- Lean TDD: Don't test complex UI interaction
+- Multi-filter is simple OR logic, manual testing sufficient
+- Test was testing UI state filters which we removed
+
+### Phase 3.8: Manual Validation
+
+**Run the application** and thoroughly test:
+
+**Test 1: Default State**
+- [ ] TransparencyViewer opens
+- [ ] One filter dropdown visible
+- [ ] "+ Add Filter" button visible
+- [ ] No remove (✕) button on single filter
+
+**Test 2: Adding Filters**
+- [ ] Click "+ Add Filter"
+- [ ] Second dropdown appears
+- [ ] Both dropdowns now have remove (✕) button
+- [ ] Click "+ Add Filter" again
+- [ ] Third dropdown appears
+- [ ] All three have remove button
+
+**Test 3: Removing Filters**
+- [ ] Click ✕ on second filter → it disappears
+- [ ] Two filters remain
+- [ ] Click ✕ on first filter → it disappears
+- [ ] One filter remains
+- [ ] Remove button disappears (can't remove last filter)
+- [ ] Click "+ Add Filter" → can add again
+
+**Test 4: OR Logic (Most Important)**
+- [ ] Log events of multiple types (e.g., Info, Error, SystemState)
+- [ ] Filter 1: Select "Info"
+- [ ] Verify ONLY Info events shown
+- [ ] Click "+ Add Filter"
+- [ ] Filter 2: Select "Error"
+- [ ] Verify BOTH Info AND Error events shown (OR logic)
+- [ ] Filter 3: Add and select "SystemState"
+- [ ] Verify Info, Error, AND SystemState events shown
+
+**Test 5: Empty Filters Ignored**
+- [ ] Filter 1: Select "Info"
+- [ ] Filter 2: Leave as "All Events"
+- [ ] Verify ONLY Info events shown (empty filter ignored)
+
+**Test 6: All Filters Empty**
+- [ ] Set all filters to "All Events"
+- [ ] Verify ALL events shown
+
+**Test 7: Search Box Interaction**
+- [ ] Filter 1: Select "Info"
+- [ ] Type text in search box
+- [ ] Verify filters AND search both apply (Info events matching search text)
+- [ ] Clear search
+- [ ] Verify filter still works
+
+**Test 8: Event Stats**
+- [ ] Verify "Total" count shows all events
+- [ ] Verify "Filtered" count updates correctly with filters
+- [ ] Add/remove filters → counts update correctly
+
+**Test 9: UI State Filters Removed**
+- [ ] Verify chat component still works (if it exists)
+- [ ] Verify no errors in browser console
+- [ ] Verify EventTypeFilters removal didn't break anything
 
 ### Deliverables
 
-- [ ] Multiple event type filters can be added/removed dynamically
-- [ ] OR logic: Events matching ANY selected filter are shown
-- [ ] Empty/"All Event Types" filters are ignored
-- [ ] At least one filter always remains
-- [ ] UI is clean and intuitive
-- [ ] Filters work correctly with search box
-- [ ] UI state filter logic removed from component
-- [ ] Manual testing confirms all scenarios work
+- [ ] UI state filter logic removed (if safe to do so)
+- [ ] Component state updated to multi-filter structure
+- [ ] Filtering logic implements OR (show events matching ANY filter)
+- [ ] Add/remove filter methods implemented
+- [ ] UI markup updated with dynamic filters
+- [ ] CSS styling added
+- [ ] Old test deleted or updated
+- [ ] All automated tests pass
+- [ ] Manual testing confirms all scenarios work correctly
+- [ ] No regressions in existing functionality
 
 ---
 
@@ -663,142 +872,194 @@ private void RemoveFilter(EventTypeFilter filter)
 
 ### Automated Tests (Following Lean TDD)
 
-**Test meaningful behavior only:**
+**What to test:**
+- ✅ Step 2: JSON serialization logic (business rule)
+- ❌ Step 1: No new logic to test (deletion only)
+- ❌ Step 3: Skip UI interaction tests (too complex, manually verifiable)
 
-✅ **Step 1**: No new tests needed (only deletion)
-✅ **Step 2**: Test JSON serialization logic (business rule)
-❌ **Step 3**: Skip UI filter tests (simple OR logic, manually verifiable)
-
-**Why skip some tests?**
-- UI component rendering → Not meaningful behavior (framework feature)
-- Simple OR filtering → No complex business rules to test
-- JavaScript interop → Can't test in MSTest
+**What NOT to test:**
+- UI component rendering → Framework feature
+- Simple OR filtering → No complex business rules
+- JavaScript download → Can't test in MSTest
 - CSS styling → Visual, not logical
+- Blazor data binding → Framework feature
 
-### Manual Testing Checklist
+### Manual Testing Priority
 
-After each step:
-
-**Step 1 Validation:**
-- [ ] Application compiles
-- [ ] TransparencyViewer opens without errors
-- [ ] Event type dropdown shows only 13 types
-- [ ] All existing events display correctly
-
-**Step 2 Validation:**
-- [ ] Save button appears in UI
-- [ ] Clicking Save shows confirmation dialog
-- [ ] Privacy warning text is clear
-- [ ] Clicking Yes downloads JSON file
-- [ ] JSON file structure is correct
-- [ ] All events included in export (not just visible 1000)
-
-**Step 3 Validation:**
-- [ ] One filter dropdown visible by default
-- [ ] Add Filter button works
-- [ ] Remove filter (✕) works
-- [ ] Can't remove last filter
-- [ ] OR logic: Multiple types shown simultaneously
-- [ ] Empty filters ignored
-- [ ] Works with search box
+Each step has critical manual testing:
+- **Step 1**: Verify dropdown shows correct types
+- **Step 2**: Test entire export flow (button → dialog → download → JSON structure)
+- **Step 3**: Extensive multi-filter testing (9 test scenarios)
 
 ---
 
-## Risk Assessment & Mitigation
+## Implementation Notes
 
-### Step 1 Risks
-- **Risk**: Accidentally removing used event type
-- **Mitigation**: Double-check grep results before deleting
-- **Mitigation**: Run full test suite after deletion
+### Thread Safety
 
-### Step 2 Risks
-- **Risk**: Large exports (>10MB) slow or crash browser
-- **Mitigation**: Document known limitation, acceptable for MVP
-- **Risk**: JavaScript not loaded when Save clicked
-- **Mitigation**: Blazor ensures JS loaded before interaction possible
+All steps preserve existing thread safety:
+- TransparencyService uses locks
+- UI updates on UI thread (Blazor handles this)
+- Export creates snapshot within lock
 
-### Step 3 Risks
-- **Risk**: Complex filter state management introduces bugs
-- **Mitigation**: Keep logic simple (List<EventTypeFilter>, basic OR)
-- **Mitigation**: Thorough manual testing of all scenarios
-- **Risk**: Removing UI state filter logic breaks chat component
-- **Mitigation**: Verify chat component doesn't actually use this logic (per discussion doc)
+### Performance Considerations
+
+**Step 2 - Export:**
+- Large exports (>10MB) might be slow
+- Acceptable for MVP (transparency logs rarely this large)
+- Could add progress indicator in future
+
+**Step 3 - Multi-Filter:**
+- Filtering recalculated on each state change
+- Current implementation efficient (simple LINQ)
+- No performance concerns for typical event counts (<10K)
+
+### Browser Compatibility
+
+**Step 2 - JavaScript Download:**
+- Blob API supported in all modern browsers
+- Object URL creation standard
+- Browser must have JavaScript enabled (Blazor requires this anyway)
+
+### Known Limitations
+
+1. **Export size**: No chunking for very large exports
+2. **Multi-filter UI**: No drag-to-reorder filters
+3. **No filter presets**: Can't save common filter combinations
+
+All acceptable for MVP, can enhance later if needed.
+
+---
+
+## Risk Assessment
+
+### Step 1: Event Type Cleanup
+
+**Risks:**
+- Low: Accidentally removing used type
+- Low: Breaking external code that references removed types
+
+**Mitigation:**
+- Verified usage with grep searches
+- All tests pass before committing
+- Compilation catches references
+
+### Step 2: Export to JSON
+
+**Risks:**
+- Medium: Large exports crash browser
+- Low: Privacy - user exports sensitive data
+- Low: JavaScript not loaded when clicked
+
+**Mitigation:**
+- Document limitation (acceptable for MVP)
+- Privacy warning dialog
+- Blazor ensures JS loaded before interaction
+
+### Step 3: Multi-Filter UI
+
+**Risks:**
+- Medium: Complex state management introduces bugs
+- Medium: Removing UI state filters breaks chat component
+- Low: Performance with many filters
+
+**Mitigation:**
+- Keep logic simple (basic List, simple OR)
+- Thorough manual testing
+- Verify chat component before removing
+- LINQ efficient for typical event counts
 
 ---
 
 ## Session Boundaries
 
-Each step is designed for independent sessions:
+Each step designed for independent sessions:
 
 ### Session 1: Event Type Cleanup
-- **Time**: 30-45 minutes
-- **Deliverable**: Cleaner enum with only used types
-- **Blocking issues**: None (can be done anytime)
+**Time**: 45-60 minutes
+**Deliverable**: Cleaner enum with only used types
+**Blocking**: None (independent)
+**Risk**: Low
 
 ### Session 2: Export to JSON
-- **Time**: 1-2 hours
-- **Deliverable**: Working Save button with JSON export
-- **Blocking issues**: None (independent feature)
-- **Optional dependency**: Step 1 (cleaner event types in export)
+**Time**: 1-2 hours
+**Deliverable**: Working Save button with JSON export
+**Blocking**: None (independent feature)
+**Risk**: Low-Medium
+**Note**: Step 1 recommended first (cleaner event types in export)
 
 ### Session 3: Multi-Filter UI
-- **Time**: 2-3 hours
-- **Deliverable**: Dynamic multi-filter UI with OR logic
-- **Blocking issues**: None
-- **Recommended dependency**: Step 1 (fewer event types = cleaner UI)
+**Time**: 2-3 hours
+**Deliverable**: Dynamic multi-filter UI with OR logic
+**Blocking**: None
+**Risk**: Medium
+**Note**: Step 1 recommended first (fewer event types = cleaner UI, easier testing)
 
-**Total estimated time**: 4-6 hours across 3 sessions
+**Total estimated time**: 4.5-6.5 hours across 3 sessions
 
 ---
 
 ## Success Criteria
 
-**Step 1 Success:**
-- ✅ Only 13 event types remain in enum
-- ✅ All tests pass
-- ✅ No compilation errors
-- ✅ UI dropdown shows correct types
+### Step 1: Event Type Cleanup
 
-**Step 2 Success:**
-- ✅ Save button functional in UI
-- ✅ Privacy warning displays correctly
-- ✅ JSON export downloads with correct structure
-- ✅ All events exported (not limited to visible 1000)
-- ✅ Export tests pass
+- [ ] Duplicate enum file investigated and handled
+- [ ] Decision made on test-only types
+- [ ] 15-18 unused types removed from enum
+- [ ] All tests pass
+- [ ] No compilation errors
+- [ ] UI dropdown shows only used types
+- [ ] No regressions
 
-**Step 3 Success:**
-- ✅ Multiple filters can be added/removed
-- ✅ OR logic works correctly
-- ✅ UI is intuitive and clean
-- ✅ No regressions in search functionality
-- ✅ UI state filter logic removed
+### Step 2: Export to JSON
 
-**Overall Success:**
-- ✅ All automated tests pass
-- ✅ Manual testing confirms all features work
-- ✅ No breaking changes to existing functionality
-- ✅ Code follows Lean TDD principles
-- ✅ Documentation updated (this plan + discussion doc)
+- [ ] JavaScript downloadFile() function works
+- [ ] TransparencyService.ExportToJson() implemented
+- [ ] All export tests pass (3 new tests)
+- [ ] Save button appears in UI
+- [ ] Privacy warning dialog works
+- [ ] JSON downloads with correct structure
+- [ ] ALL events exported (not limited to 1000)
+- [ ] Pretty-printed JSON
+- [ ] No exceptions during export
+
+### Step 3: Multi-Filter UI
+
+- [ ] UI state filter logic safely removed
+- [ ] Multiple filters can be added/removed
+- [ ] OR logic works correctly (events matching ANY filter shown)
+- [ ] At least one filter always remains
+- [ ] Empty filters ignored
+- [ ] Works correctly with search box
+- [ ] Event counts update correctly
+- [ ] UI is clean and intuitive
+- [ ] CSS styling applied
+- [ ] All automated tests pass
+- [ ] All 9 manual test scenarios pass
+- [ ] No regressions
 
 ---
 
-## Notes
+## Open Questions for Implementer
 
-- **TDD Approach**: Follow Red-Green-Refactor where applicable
-- **Lean Testing**: Only test meaningful behavior, skip trivial tests
-- **Manual Testing**: UI changes require thorough manual validation
-- **Git Operations**: Not included (handled separately by implementer)
-- **Environment**: Prone to crashes - save work frequently
+1. **Step 1.1**: Keep test-only types (Option A) or remove them (Option B)?
+2. **Step 1.2**: Should duplicate enum file in Domain/Enums/ be deleted?
+3. **Step 3.1**: Is UI state filter logic actually used by chat component? Verify before removing!
+4. **Step 3.7**: Delete old test or mark inconclusive?
 
 ---
 
 ## Related Documentation
 
-- [TRANSPARENCY_IMPROVEMENTS_DISCUSSION.md](TRANSPARENCY_IMPROVEMENTS_DISCUSSION.md) - Full context and decisions
+- [TRANSPARENCY_IMPROVEMENTS_DISCUSSION.md](TRANSPARENCY_IMPROVEMENTS_DISCUSSION.md) - Full context
 - [.claude/skills/tdd/SKILL.md](.claude/skills/tdd/SKILL.md) - TDD workflow
-- [docs/04-components/infrastructure/transparency-service.md](docs/04-components/infrastructure/transparency-service.md) - Component docs
-- [docs/04-components/ui/transparency-viewer.md](docs/04-components/ui/transparency-viewer.md) - UI component docs
+- [docs/04-components/infrastructure/transparency-service.md](docs/04-components/infrastructure/transparency-service.md) - Component docs (if exists)
+- [docs/04-components/ui/transparency-viewer.md](docs/04-components/ui/transparency-viewer.md) - UI docs (if exists)
 
 ---
 
-**Ready for implementation!** Each step can be tackled independently in separate sessions.
+**Plan Status**: ✅ Verified against actual codebase
+
+**Code Investigation Date**: 2025-11-18
+
+**Confidence Level**: High - All file paths, line numbers, and code references verified against actual source code
