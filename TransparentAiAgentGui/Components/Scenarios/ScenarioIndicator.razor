@@ -3,7 +3,7 @@
 @inject IScenarioExecutor ScenarioExecutor
 @implements IDisposable
 
-@if (ScenarioExecutor.IsExecuting && ScenarioExecutor.CurrentScenario != null)
+@if (ScenarioExecutor.IsExecuting && ScenarioExecutor.CurrentScenario != null && ScenarioExecutor.State != ScenarioExecutionState.Completed && ScenarioExecutor.State != ScenarioExecutionState.Failed)
 {
     <div class="scenario-indicator">
         <div class="indicator-content">
@@ -52,6 +52,7 @@
         ScenarioExecutor.ScenarioStarted += OnScenarioStarted;
         ScenarioExecutor.StepExecuted += OnStepExecuted;
         ScenarioExecutor.ScenarioCompleted += OnScenarioCompleted;
+        ScenarioExecutor.ScenarioFailed += OnScenarioFailed;
         ScenarioExecutor.ScenarioPaused += OnScenarioPaused;
         ScenarioExecutor.ScenarioResumed += OnScenarioResumed;
 
@@ -72,6 +73,12 @@
     }
 
     private void OnScenarioCompleted(object? sender, ScenarioExecutionEventArgs e)
+    {
+        UpdateStepInfo();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnScenarioFailed(object? sender, ScenarioExecutionEventArgs e)
     {
         UpdateStepInfo();
         InvokeAsync(StateHasChanged);
@@ -125,6 +132,7 @@
             ScenarioExecutor.ScenarioStarted -= OnScenarioStarted;
             ScenarioExecutor.StepExecuted -= OnStepExecuted;
             ScenarioExecutor.ScenarioCompleted -= OnScenarioCompleted;
+            ScenarioExecutor.ScenarioFailed -= OnScenarioFailed;
             ScenarioExecutor.ScenarioPaused -= OnScenarioPaused;
             ScenarioExecutor.ScenarioResumed -= OnScenarioResumed;
         }

@@ -6,6 +6,7 @@ using TransparentAiAgentCore.Application.Conversation;
 using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Models;
+using Microsoft.Extensions.Logging;
 
 namespace TransparentAiAgentCore_Tests.Application.Scenarios;
 
@@ -16,6 +17,7 @@ public class ScenarioExecutorTests
     private Mock<IConfigurationOverlay> _mockConfigOverlay = null!;
     private Mock<IConversationManager> _mockConversationManager = null!;
     private Mock<IConditionEvaluator> _mockConditionEvaluator = null!;
+    private Mock<ILogger<ScenarioExecutor>> _mockLogger = null!;
 
     [TestInitialize]
     public void Setup()
@@ -24,6 +26,7 @@ public class ScenarioExecutorTests
         _mockConfigOverlay = new Mock<IConfigurationOverlay>();
         _mockConversationManager = new Mock<IConversationManager>();
         _mockConditionEvaluator = new Mock<IConditionEvaluator>();
+        _mockLogger = new Mock<ILogger<ScenarioExecutor>>();
 
         // Setup orchestrator to return conversation manager
         _mockOrchestrator.Setup(o => o.ConversationManager).Returns(_mockConversationManager.Object);
@@ -52,7 +55,8 @@ public class ScenarioExecutorTests
         return new ScenarioExecutor(
             _mockOrchestrator.Object,
             _mockConfigOverlay.Object,
-            _mockConditionEvaluator.Object);
+            _mockConditionEvaluator.Object,
+            _mockLogger.Object);
     }
 
     [TestMethod]
