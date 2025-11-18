@@ -18,9 +18,9 @@
   "scenarios.context-limits-advanced.step17.pauseMessage": "Nimm dir Zeit, um die Kontextstatusindikatoren bei den Nachrichten zu überprüfen. Klicke auf Fortsetzen, wenn du das getan hast, dann wird das ursprüngliche Kontextlimit wiederhergestellt.",
   "scenarios.context-limits-advanced.step18.annotation": "Nachrichtenlimit wiederhergestellt. Das Modell kann jetzt auf mehr Kontext zugreifen und effektiv lehren.",
 
-  "scenarios.coding-guidelines-faq.name": "Coding-Richtlinien FAQ",
-  "scenarios.coding-guidelines-faq.description": "Schnelle Antwort zum Befolgen von Programmierstandards und Zeichenlimits",
-  "scenarios.coding-guidelines-faq.step0.content": "Warum kann der Agent meine Programmierrichtlinien nicht befolgen? Ich habe Zeichenlimits für bestimmte Namen, und der Agent überschreitet sie ständig! Außerdem überschreitet er häufig die Zeilenlängenlimits!",
+  "scenarios.coding-limits-question.name": "Warum folgt der Agent nicht den Längenlimits?",
+  "scenarios.coding-limits-question.description": "Frage zu Agent, der Zeichen- und Zeilenlängenlimits überschreitet",
+  "scenarios.coding-limits-question.step0.content": "Warum kann der Agent meine Programmierrichtlinien nicht befolgen? Ich habe Zeichenlimits für bestimmte Namen, und der Agent überschreitet sie ständig! Außerdem überschreitet er häufig die Zeilenlängenlimits!",
 
   "scenarios.get-started.name": "Erste Schritte",
   "scenarios.get-started.description": "Einführung in den Transparent AI Agent und seine Fähigkeiten",

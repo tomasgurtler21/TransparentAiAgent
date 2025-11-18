@@ -18,9 +18,9 @@
   "scenarios.context-limits-advanced.step17.pauseMessage": "Věnuj čas kontrole indikátorů stavu kontextu u zpráv. Klikni na Pokračovat, až to uděláš, poté bude obnoven původní limit kontextu.",
   "scenarios.context-limits-advanced.step18.annotation": "Limit zpráv obnoven. Model nyní může přistupovat k většímu kontextu a efektivně učit.",
 
-  "scenarios.coding-guidelines-faq.name": "FAQ k programovacím směrnicím",
-  "scenarios.coding-guidelines-faq.description": "Rychlá odpověď o dodržování programovacích standardů a limitů znaků",
-  "scenarios.coding-guidelines-faq.step0.content": "Proč agent nedokáže dodržovat mé programovací směrnice? Mám limity znaků pro určitá jména a agent je neustále překračuje! Také často překračuje limity délky řádků!",
+  "scenarios.coding-limits-question.name": "Proč agent nedodržuje limity délek?",
+  "scenarios.coding-limits-question.description": "Otázka ohledně agenta překračujícího limity znaků a délek řádků",
+  "scenarios.coding-limits-question.step0.content": "Proč agent nedokáže dodržovat mé programovací směrnice? Mám limity znaků pro určitá jména a agent je neustále překračuje! Také často překračuje limity délky řádků!",
 
   "scenarios.get-started.name": "Začínáme",
   "scenarios.get-started.description": "Úvod do Transparent AI Agent a jeho schopností",
