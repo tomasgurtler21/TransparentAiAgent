@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Infrastructure.Scenarios;
@@ -29,8 +31,10 @@ public class ScenarioRegistryTests
     {
         var languageService = new LanguageService();
         var translationService = new MockTranslationService();
-        var loader = new JsonScenarioLoader(translationService);
-        return new ScenarioRegistry(loader, languageService, translationService, TestScenariosPath);
+        var loaderLogger = NullLogger<JsonScenarioLoader>.Instance;
+        var registryLogger = NullLogger<ScenarioRegistry>.Instance;
+        var loader = new JsonScenarioLoader(translationService, loaderLogger);
+        return new ScenarioRegistry(loader, languageService, translationService, registryLogger, TestScenariosPath);
     }
 
     [TestMethod]

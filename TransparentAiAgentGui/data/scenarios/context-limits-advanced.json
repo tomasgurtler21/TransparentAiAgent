@@ -102,10 +102,8 @@
     },
     {
       "type": "pause_for_user",
-      "pauseMessageKey": "scenarios.context-limits-advanced.stepX.pauseMessage",
-      "pauseMessage": "Take your time to check context status indicators at messages. Click Resume when you have done so, original context limit is going to be be restored then.",
-      "annotationKey": "scenarios.context-limits-advanced.stepX.annotation",
-      "annotation": ""
+      "contentKey": "scenarios.context-limits-advanced.stepX.content",
+      "content": "Take your time to check context status indicators at messages. Click Resume when you have done so, original context limit is going to be restored then."
     },
     {
       "type": "restore_config_overlay",

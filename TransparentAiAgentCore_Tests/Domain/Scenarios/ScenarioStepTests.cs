@@ -246,46 +246,45 @@ public class ScenarioStepTests
         // Act
         var step = new ScenarioStep(
             ScenarioStepType.PauseForUser,
-            pauseMessage: "Examine the UI and click Resume when ready");
+            content: "Examine the UI and click Resume when ready");
 
         // Assert
         Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
-        Assert.AreEqual("Examine the UI and click Resume when ready", step.PauseMessage);
+        Assert.AreEqual("Examine the UI and click Resume when ready", step.Content);
     }
 
     [TestMethod]
     public void ScenarioStep_PauseForUser_WithoutMessage_CreatesSuccessfully()
     {
-        // Act
-        var step = new ScenarioStep(ScenarioStepType.PauseForUser);
-
-        // Assert
-        Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
-        Assert.IsNull(step.PauseMessage); // PauseMessage is optional
-    }
-
-    [TestMethod]
-    public void ScenarioStep_PauseForUser_WithMessageKey_SetsProperty()
-    {
-        // Act
+        // Act - PauseForUser requires content now (since we removed PauseMessage)
         var step = new ScenarioStep(
             ScenarioStepType.PauseForUser,
-            pauseMessageKey: "scenarios.demo.step5.pauseMessage",
-            pauseMessage: "Fallback message");
+            content: "Default pause message");
 
         // Assert
-        Assert.AreEqual("scenarios.demo.step5.pauseMessage", step.PauseMessageKey);
-        Assert.AreEqual("Fallback message", step.PauseMessage);
+        Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
+        Assert.AreEqual("Default pause message", step.Content);
     }
 
     [TestMethod]
-    public void ScenarioStep_PauseForUser_AllowsNullContent()
+    public void ScenarioStep_PauseForUser_WithContentKey_SetsProperty()
     {
-        // Act - PauseForUser should not require content
-        var step = new ScenarioStep(ScenarioStepType.PauseForUser);
+        // Act
+        // Note: Translation would happen in JsonScenarioLoader, not in domain model
+        var step = new ScenarioStep(
+            ScenarioStepType.PauseForUser,
+            content: "Fallback message");
 
-        // Assert - Should not throw, content is not required for PauseForUser
-        Assert.AreEqual(ScenarioStepType.PauseForUser, step.Type);
+        // Assert
+        Assert.AreEqual("Fallback message", step.Content);
+    }
+
+    [TestMethod]
+    [ExpectedException(typeof(ArgumentException))]
+    public void ScenarioStep_PauseForUser_RequiresContent()
+    {
+        // Act & Assert - PauseForUser now requires content, should throw
+        var step = new ScenarioStep(ScenarioStepType.PauseForUser);
         Assert.IsNull(step.Content);
     }
 }
