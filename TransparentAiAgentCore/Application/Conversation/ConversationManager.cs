@@ -3,6 +3,7 @@ using TransparentAiAgentCore.Domain.Enums;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Domain.Transparency;
 using TransparentAiAgentCore.Domain.Configuration;
+using TransparentAiAgentCore.Infrastructure.Configuration;
 
 namespace TransparentAiAgentCore.Application.Conversation;
 
@@ -11,6 +12,8 @@ namespace TransparentAiAgentCore.Application.Conversation;
 /// </summary>
 public class ConversationManager : IConversationManager
 {
+    private const string ConfigKey_MessageLimit = "messageLimit";
+
     private readonly List<IMessage> _messages = new();
     private readonly object _lock = new();
     private readonly ITransparencyService _transparencyService;
@@ -41,6 +44,13 @@ public class ConversationManager : IConversationManager
         ContextWindowSize = contextWindowSize;
 
         LogEvent("ConversationStarted", $"Conversation {ConversationId} started with context window size {contextWindowSize}");
+
+        // Subscribe to overlay changes
+        if (_configurationOverlay != null)
+        {
+            _configurationOverlay.OverlayChanged += OnConfigurationOverlayChanged;
+            LogEvent("OverlaySubscribed", "Subscribed to configuration overlay changes");
+        }
     }
 
     public void AddMessage(IMessage message)
@@ -164,8 +174,8 @@ public class ConversationManager : IConversationManager
     }
 
     /// <summary>
-    /// Truncate oldest messages if we exceed context window size.
-    /// Strategy: Remove oldest InContext messages first, keeping system messages if possible.
+    /// Re-evaluates context window truncation based on current effective limit.
+    /// Truncates messages when count exceeds limit, restores when count is below limit.
     /// </summary>
     private void TruncateIfNeeded()
     {
@@ -173,10 +183,10 @@ public class ConversationManager : IConversationManager
         var effectiveWindowSize = ContextWindowSize;
         if (_configurationOverlay != null)
         {
-            effectiveWindowSize = _configurationOverlay.GetValue("messageLimit", ContextWindowSize);
+            effectiveWindowSize = _configurationOverlay.GetValue(ConfigKey_MessageLimit, ContextWindowSize);
             if (effectiveWindowSize != ContextWindowSize)
             {
-                LogEvent("EffectiveContextWindowSize", $"Using overlay messageLimit: {effectiveWindowSize} (base: {ContextWindowSize})");
+                LogEvent("EffectiveContextWindowSize", $"Using overlay {ConfigKey_MessageLimit}: {effectiveWindowSize} (base: {ContextWindowSize})");
             }
         }
 
@@ -184,33 +194,74 @@ public class ConversationManager : IConversationManager
             .Where(m => m.ContextStatus == MessageContextStatus.InContext)
             .ToList();
 
-        if (inContextMessages.Count <= effectiveWindowSize)
-            return; // No truncation needed
+        var currentCount = inContextMessages.Count;
 
-        // How many messages to truncate
-        int toTruncate = inContextMessages.Count - effectiveWindowSize;
-
-        // Get messages to truncate (oldest first, but prefer non-system messages)
-        var messagesToTruncate = inContextMessages
-            .OrderBy(m => m.Role == MessageRole.System ? 1 : 0) // System messages last priority for truncation
-            .ThenBy(m => m.Timestamp) // Oldest first
-            .Take(toTruncate)
-            .ToList();
-
-        foreach (var message in messagesToTruncate)
+        // CASE 1: Too many messages - need to truncate
+        if (currentCount > effectiveWindowSize)
         {
-            var oldStatus = message.ContextStatus;
-            message.ContextStatus = MessageContextStatus.TruncatedFromContext;
+            int toTruncate = currentCount - effectiveWindowSize;
 
-            // Raise event
-            ContextStatusChanged?.Invoke(
-                this,
-                new ContextStatusChangedEventArgs(message.Id, oldStatus, message.ContextStatus));
+            var messagesToTruncate = inContextMessages
+                .OrderBy(m => m.Role == MessageRole.System ? 1 : 0) // System messages last
+                .ThenBy(m => m.Timestamp) // Oldest first
+                .Take(toTruncate)
+                .ToList();
 
-            LogEvent("MessageTruncated", $"Message {message.Id} truncated from context");
+            foreach (var message in messagesToTruncate)
+            {
+                var oldStatus = message.ContextStatus;
+                message.ContextStatus = MessageContextStatus.TruncatedFromContext;
+
+                ContextStatusChanged?.Invoke(this,
+                    new ContextStatusChangedEventArgs(message.Id, oldStatus, message.ContextStatus));
+
+                LogEvent("MessageTruncated", $"Message {message.Id} truncated from context");
+            }
+
+            LogEvent("ContextTruncated",
+                $"Truncated {toTruncate} message(s). Current: {InContextMessageCount}/{effectiveWindowSize} in context");
         }
+        // CASE 2: Room for more messages - restore truncated ones
+        else if (currentCount < effectiveWindowSize)
+        {
+            int toRestore = effectiveWindowSize - currentCount;
 
-        LogEvent("ContextTruncated", $"{toTruncate} messages truncated. In context: {InContextMessageCount}/{effectiveWindowSize}");
+            var truncatedMessages = _messages
+                .Where(m => m.ContextStatus == MessageContextStatus.TruncatedFromContext)
+                .OrderBy(m => m.Timestamp) // Restore oldest first (FIFO)
+                .Take(toRestore)
+                .ToList();
+
+            if (truncatedMessages.Count > 0)
+            {
+                foreach (var message in truncatedMessages)
+                {
+                    var oldStatus = message.ContextStatus;
+                    message.ContextStatus = MessageContextStatus.InContext;
+
+                    ContextStatusChanged?.Invoke(this,
+                        new ContextStatusChangedEventArgs(message.Id, oldStatus, message.ContextStatus));
+
+                    LogEvent("MessageRestored", $"Message {message.Id} restored to context");
+                }
+
+                LogEvent("ContextRestored",
+                    $"Restored {truncatedMessages.Count} message(s). Current: {InContextMessageCount}/{effectiveWindowSize} in context");
+            }
+        }
+        // CASE 3: Perfect fit - no action needed
+    }
+
+    private void OnConfigurationOverlayChanged(object? sender, ConfigurationChangedEventArgs e)
+    {
+        lock (_lock)
+        {
+            LogEvent("ConfigurationOverlayChanged",
+                $"Change type: {e.Type}, Re-evaluating truncation");
+
+            // Re-evaluate truncation with new overlay values
+            TruncateIfNeeded();
+        }
     }
 
     private void LogEvent(string eventType, string details)
@@ -220,5 +271,13 @@ public class ConversationManager : IConversationManager
                 Domain.Transparency.TransparencyEventType.ContextChange,
                 System.Text.Json.JsonSerializer.Serialize(new { ConversationId, EventType = eventType }),
                 details));
+    }
+
+    public void Dispose()
+    {
+        if (_configurationOverlay != null)
+        {
+            _configurationOverlay.OverlayChanged -= OnConfigurationOverlayChanged;
+        }
     }
 }

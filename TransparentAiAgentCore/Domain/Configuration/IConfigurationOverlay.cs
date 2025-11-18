@@ -1,3 +1,5 @@
+using TransparentAiAgentCore.Infrastructure.Configuration;
+
 namespace TransparentAiAgentCore.Domain.Configuration;
 
 /// <summary>
@@ -7,6 +9,11 @@ namespace TransparentAiAgentCore.Domain.Configuration;
 /// </summary>
 public interface IConfigurationOverlay
 {
+    /// <summary>
+    /// Fired when configuration overlay changes (push, pop, or clear).
+    /// Subscribers should re-evaluate their configuration-dependent behavior.
+    /// </summary>
+    event EventHandler<ConfigurationChangedEventArgs>? OverlayChanged;
     /// <summary>
     /// Pushes a configuration overlay onto the stack.
     /// Values in this overlay will take precedence over base configuration

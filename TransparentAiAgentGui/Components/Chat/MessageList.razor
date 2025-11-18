@@ -77,9 +77,19 @@
         if (!showByRole)
             return false;
 
-        // Check tool-based filters
+        // Check tool-based filters with SMART LOGIC
+        // Only hide tool call messages if they have NO content to display
         if (message.IsToolCall && !filter.ShowToolCalls)
-            return false;
+        {
+            // Hide only if message has no visible content (no text, no thinking)
+            bool hasContent = !string.IsNullOrWhiteSpace(message.Content);
+            bool hasThinking = !string.IsNullOrWhiteSpace(message.Thinking);
+
+            if (!hasContent && !hasThinking)
+                return false;  // Hide empty tool call messages
+
+            // Otherwise, show the message (MessageDisplay will handle hiding tool call details)
+        }
 
         if (message.IsToolResult && !filter.ShowToolResults)
             return false;

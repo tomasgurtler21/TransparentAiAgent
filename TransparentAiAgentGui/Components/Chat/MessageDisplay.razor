@@ -50,16 +50,19 @@
                     </div>
                 }
 
-                @* Display all tool calls *@
-                @foreach (var toolCall in Message.ToolCalls)
+                @* CONDITIONALLY display tool call details based on filter *@
+                @if (_uiState.ChatFilter.ShowToolCalls)
                 {
-                    <div class="tool-call">
-                        <div class="tool-name">Tool: <strong>@toolCall.Name</strong></div>
-                        @if (!string.IsNullOrWhiteSpace(toolCall.Arguments))
-                        {
-                            <JsonDisplay Content="@toolCall.Arguments" Title="Arguments" InitiallyExpanded="false" />
-                        }
-                    </div>
+                    @foreach (var toolCall in Message.ToolCalls)
+                    {
+                        <div class="tool-call">
+                            <div class="tool-name">Tool: <strong>@toolCall.Name</strong></div>
+                            @if (!string.IsNullOrWhiteSpace(toolCall.Arguments))
+                            {
+                                <JsonDisplay Content="@toolCall.Arguments" Title="Arguments" InitiallyExpanded="false" />
+                            }
+                        </div>
+                    }
                 }
             </div>
         }
@@ -125,8 +128,16 @@
 
     private string GetRoleDisplayName()
     {
-        if (Message.IsToolCall) return "Tool Call";
+        // For tool calls, show different label based on filter state
+        if (Message.IsToolCall)
+        {
+            // When tool calls are hidden, show "Assistant" (less confusing for users)
+            // When tool calls are visible, show "Tool Call" (accurate label)
+            return _uiState.ChatFilter.ShowToolCalls ? "Tool Call" : "Assistant";
+        }
+
         if (Message.IsToolResult) return "Tool Result";
+
         return Message.Role.ToString();
     }
 

@@ -109,6 +109,11 @@
       "type": "restore_config_overlay",
       "annotationKey": "scenarios.context-limits-advanced.step17.annotation",
       "annotation": "Message limit restored. Model can now access more context and teach effectively."
-    }
+    },
+	{
+	  "type": "scenario_user_message",
+	  "contentKey": "scenarios.context-limits-advanced.stepXYZ.content",
+	  "content": "Thanks, disable the context status indicator highlights for now (keep them visible) and wait for further instructions."
+	}
   ]
 }

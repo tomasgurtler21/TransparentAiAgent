@@ -5,7 +5,7 @@ namespace TransparentAiAgentCore.Application.Conversation;
 /// <summary>
 /// Manages conversation history and context window
 /// </summary>
-public interface IConversationManager
+public interface IConversationManager : IDisposable
 {
     /// <summary>
     /// Add a message to conversation history

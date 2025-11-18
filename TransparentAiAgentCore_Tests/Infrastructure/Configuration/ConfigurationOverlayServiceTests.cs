@@ -240,4 +240,69 @@ public class ConfigurationOverlayServiceTests
         // Assert
         Assert.IsNull(result);
     }
+
+    // ===== Event System Tests (Step 1: RED Phase) =====
+
+    [TestMethod]
+    public void PushOverlay_WithValidOverlay_FiresOverlayChangedEvent()
+    {
+        // Arrange
+        var service = CreateService();
+        bool eventFired = false;
+        service.OverlayChanged += (sender, args) => eventFired = true;
+
+        // Act
+        service.PushOverlay(new Dictionary<string, object> { { "test", "value" } });
+
+        // Assert
+        Assert.IsTrue(eventFired, "OverlayChanged event should fire when overlay is pushed");
+    }
+
+    [TestMethod]
+    public void PopOverlay_WithExistingOverlay_FiresOverlayChangedEvent()
+    {
+        // Arrange
+        var service = CreateService();
+        service.PushOverlay(new Dictionary<string, object> { { "test", "value" } });
+        bool eventFired = false;
+        service.OverlayChanged += (sender, args) => eventFired = true;
+
+        // Act
+        service.PopOverlay();
+
+        // Assert
+        Assert.IsTrue(eventFired, "OverlayChanged event should fire when overlay is popped");
+    }
+
+    [TestMethod]
+    public void PushOverlay_EventArgs_ContainsPushChangeType()
+    {
+        // Arrange
+        var service = CreateService();
+        ConfigurationChangedEventArgs? capturedArgs = null;
+        service.OverlayChanged += (sender, args) => capturedArgs = args;
+
+        // Act
+        service.PushOverlay(new Dictionary<string, object> { { "test", "value" } });
+
+        // Assert
+        Assert.IsNotNull(capturedArgs, "Event args should not be null");
+        Assert.AreEqual(ChangeType.Push, capturedArgs.Type, "Change type should be Push");
+    }
+
+    [TestMethod]
+    public void PushOverlay_MultipleSubscribers_AllReceiveEvent()
+    {
+        // Arrange
+        var service = CreateService();
+        int callCount = 0;
+        service.OverlayChanged += (sender, args) => callCount++;
+        service.OverlayChanged += (sender, args) => callCount++;
+
+        // Act
+        service.PushOverlay(new Dictionary<string, object> { { "test", "value" } });
+
+        // Assert
+        Assert.AreEqual(2, callCount, "Both subscribers should receive event");
+    }
 }

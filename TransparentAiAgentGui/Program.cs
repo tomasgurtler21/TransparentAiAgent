@@ -453,8 +453,18 @@ try
 
     builder.Services.AddScoped<IConfigurationOverlay>(sp =>
     {
-        // Initialize with empty base configuration - could be expanded to load from appsettings if needed
-        var baseConfig = new Dictionary<string, object>();
+        var appConfig = sp.GetRequiredService<AppConfiguration>();
+
+        // Populate base configuration with values from appsettings.json
+        var baseConfig = new Dictionary<string, object>
+        {
+            { "messageLimit", appConfig.Agent.ContextWindowSize },
+            { "systemPrompt", appConfig.Agent.SystemPrompt ?? string.Empty },
+            { "enableTools", appConfig.Agent.EnableTools },
+            { "toolExecutionMode", appConfig.Agent.ToolExecutionMode.ToString() },
+            // Future-proof: Add other config values as needed
+        };
+
         return new ConfigurationOverlayService(baseConfig);
     });
     builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();

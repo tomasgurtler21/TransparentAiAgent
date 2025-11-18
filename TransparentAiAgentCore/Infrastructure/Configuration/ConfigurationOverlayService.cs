@@ -14,6 +14,9 @@ public class ConfigurationOverlayService : IConfigurationOverlay
     private readonly Stack<Dictionary<string, object>> _overlayStack;
     private readonly object _lock = new();
 
+    /// <inheritdoc />
+    public event EventHandler<ConfigurationChangedEventArgs>? OverlayChanged;
+
     /// <summary>
     /// Initializes a new instance of ConfigurationOverlayService.
     /// </summary>
@@ -35,6 +38,11 @@ public class ConfigurationOverlayService : IConfigurationOverlay
             // Create a mutable copy for the stack
             var overlay = new Dictionary<string, object>(overlayValues);
             _overlayStack.Push(overlay);
+
+            // Fire event AFTER pushing
+            OverlayChanged?.Invoke(this, new ConfigurationChangedEventArgs(
+                ChangeType.Push,
+                overlayValues));
         }
     }
 
@@ -46,7 +54,12 @@ public class ConfigurationOverlayService : IConfigurationOverlay
             if (_overlayStack.Count == 0)
                 throw new InvalidOperationException("No configuration overlays to pop.");
 
-            _overlayStack.Pop();
+            var popped = _overlayStack.Pop();
+
+            // Fire event AFTER popping
+            OverlayChanged?.Invoke(this, new ConfigurationChangedEventArgs(
+                ChangeType.Pop,
+                popped));
         }
     }
 
@@ -132,6 +145,11 @@ public class ConfigurationOverlayService : IConfigurationOverlay
         lock (_lock)
         {
             _overlayStack.Clear();
+
+            // Fire event AFTER clearing
+            OverlayChanged?.Invoke(this, new ConfigurationChangedEventArgs(
+                ChangeType.Clear,
+                null));
         }
     }
 
