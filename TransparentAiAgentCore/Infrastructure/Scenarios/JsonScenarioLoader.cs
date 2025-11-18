@@ -224,12 +224,6 @@ public class JsonScenarioLoader
         [JsonPropertyName("arguments")]
         public Dictionary<string, object>? Arguments { get; set; }
 
-        [JsonPropertyName("pauseMessage")]
-        public string? PauseMessage { get; set; }
-
-        [JsonPropertyName("pauseMessageKey")]
-        public string? PauseMessageKey { get; set; }
-
         public ScenarioStep ToScenarioStep(ITranslationService translationService)
         {
             // Resolve content using translation key
@@ -241,20 +235,6 @@ public class JsonScenarioLoader
             var resolvedAnnotation = AnnotationKey != null
                 ? translationService.GetTranslation(AnnotationKey) ?? Annotation
                 : Annotation;
-
-            // For PauseForUser steps, support both pauseMessage/pauseMessageKey (deprecated)
-            // and content/contentKey (preferred). If pauseMessage is provided, use it as content.
-            var finalContent = resolvedContent;
-            if (Type?.ToLowerInvariant() == "pause_for_user")
-            {
-                // Resolve pause message using translation key (deprecated fields)
-                var resolvedPauseMessage = PauseMessageKey != null
-                    ? translationService.GetTranslation(PauseMessageKey) ?? PauseMessage
-                    : PauseMessage;
-
-                // Use pauseMessage if content is not provided (backwards compatibility)
-                finalContent = resolvedContent ?? resolvedPauseMessage;
-            }
 
             // Map JSON string to enum
             var stepType = Type?.ToLowerInvariant() switch
@@ -296,7 +276,7 @@ public class JsonScenarioLoader
 
             return new ScenarioStep(
                 type: stepType,
-                content: finalContent,
+                content: resolvedContent,
                 delayMs: delayMsValue,
                 configOverlay: configOverlayValue,
                 annotation: resolvedAnnotation,
