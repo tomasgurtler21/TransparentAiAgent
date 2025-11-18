@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Application.Localization;
 using TransparentAiAgentCore.Infrastructure.Localization;
@@ -15,17 +16,20 @@ public class ScenarioRegistry : IScenarioRegistry
     private readonly JsonScenarioLoader _loader;
     private readonly ILanguageService _languageService;
     private readonly ITranslationService _translationService;
+    private readonly ILogger<ScenarioRegistry> _logger;
     private readonly string _scenariosPath;
 
     public ScenarioRegistry(
         JsonScenarioLoader loader,
         ILanguageService languageService,
         ITranslationService translationService,
+        ILogger<ScenarioRegistry> logger,
         string scenariosPath)
     {
         _loader = loader ?? throw new ArgumentNullException(nameof(loader));
         _languageService = languageService ?? throw new ArgumentNullException(nameof(languageService));
         _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _scenariosPath = scenariosPath ?? throw new ArgumentNullException(nameof(scenariosPath));
 
         // Subscribe to language changes
@@ -47,6 +51,7 @@ public class ScenarioRegistry : IScenarioRegistry
     {
         try
         {
+            _logger.LogInformation("Loading scenarios from {ScenarioPath}", _scenariosPath);
             var scenarios = await _loader.LoadAllFromDirectoryAsync(_scenariosPath);
 
             lock (_lock)
@@ -60,11 +65,15 @@ public class ScenarioRegistry : IScenarioRegistry
                     _scenarios[scenario.Id] = scenario;
                 }
             }
+
+            _logger.LogInformation("Loaded {Count} scenario(s) successfully", scenarios.Count);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Log error but don't throw - graceful degradation
             // Existing scenarios remain in registry
+            _logger.LogError(ex, "Failed to load scenarios from {ScenarioPath}. Error: {ErrorMessage}",
+                _scenariosPath, ex.Message);
         }
     }
 

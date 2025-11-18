@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Infrastructure.Localization;
 
@@ -12,6 +13,7 @@ namespace TransparentAiAgentCore.Infrastructure.Scenarios;
 public class JsonScenarioLoader
 {
     private readonly ITranslationService _translationService;
+    private readonly ILogger<JsonScenarioLoader> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -20,9 +22,10 @@ public class JsonScenarioLoader
         AllowTrailingCommas = true
     };
 
-    public JsonScenarioLoader(ITranslationService translationService)
+    public JsonScenarioLoader(ITranslationService translationService, ILogger<JsonScenarioLoader> logger)
     {
         _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -84,11 +87,15 @@ public class JsonScenarioLoader
             {
                 var scenario = await LoadFromFileAsync(filePath);
                 scenarios.Add(scenario);
+                _logger.LogInformation("Successfully loaded scenario '{ScenarioId}' from {FilePath}", scenario.Id, filePath);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Skip files that fail to load (invalid JSON, missing fields, etc.)
+                // Log the error with details but continue loading other scenarios
                 // This allows the system to be resilient to malformed scenario files
+                _logger.LogError(ex,
+                    "Failed to load scenario from {FilePath}. Error: {ErrorMessage}",
+                    filePath, ex.Message);
                 continue;
             }
         }
@@ -217,6 +224,12 @@ public class JsonScenarioLoader
         [JsonPropertyName("arguments")]
         public Dictionary<string, object>? Arguments { get; set; }
 
+        [JsonPropertyName("pauseMessage")]
+        public string? PauseMessage { get; set; }
+
+        [JsonPropertyName("pauseMessageKey")]
+        public string? PauseMessageKey { get; set; }
+
         public ScenarioStep ToScenarioStep(ITranslationService translationService)
         {
             // Resolve content using translation key
@@ -228,6 +241,20 @@ public class JsonScenarioLoader
             var resolvedAnnotation = AnnotationKey != null
                 ? translationService.GetTranslation(AnnotationKey) ?? Annotation
                 : Annotation;
+
+            // For PauseForUser steps, support both pauseMessage/pauseMessageKey (deprecated)
+            // and content/contentKey (preferred). If pauseMessage is provided, use it as content.
+            var finalContent = resolvedContent;
+            if (Type?.ToLowerInvariant() == "pause_for_user")
+            {
+                // Resolve pause message using translation key (deprecated fields)
+                var resolvedPauseMessage = PauseMessageKey != null
+                    ? translationService.GetTranslation(PauseMessageKey) ?? PauseMessage
+                    : PauseMessage;
+
+                // Use pauseMessage if content is not provided (backwards compatibility)
+                finalContent = resolvedContent ?? resolvedPauseMessage;
+            }
 
             // Map JSON string to enum
             var stepType = Type?.ToLowerInvariant() switch
@@ -244,6 +271,7 @@ public class JsonScenarioLoader
                 "enable_user_input" => ScenarioStepType.EnableUserInput,
                 "delay" => ScenarioStepType.Delay,
                 "ui_control" => ScenarioStepType.UIControl,
+                "pause_for_user" => ScenarioStepType.PauseForUser,
                 _ => throw new ArgumentException($"Unknown scenario step type: {Type}")
             };
 
@@ -268,7 +296,7 @@ public class JsonScenarioLoader
 
             return new ScenarioStep(
                 type: stepType,
-                content: resolvedContent,
+                content: finalContent,
                 delayMs: delayMsValue,
                 configOverlay: configOverlayValue,
                 annotation: resolvedAnnotation,

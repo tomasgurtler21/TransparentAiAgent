@@ -432,7 +432,8 @@ try
     builder.Services.AddSingleton<JsonScenarioLoader>(sp =>
     {
         var translationService = sp.GetRequiredService<ITranslationService>();
-        return new JsonScenarioLoader(translationService);
+        var logger = sp.GetRequiredService<ILogger<JsonScenarioLoader>>();
+        return new JsonScenarioLoader(translationService, logger);
     });
 
     // Register ScenarioRegistry with automatic scenario loading and language change handling
@@ -441,8 +442,9 @@ try
         var loader = sp.GetRequiredService<JsonScenarioLoader>();
         var languageService = sp.GetRequiredService<ILanguageService>();
         var translationService = sp.GetRequiredService<ITranslationService>();
+        var logger = sp.GetRequiredService<ILogger<ScenarioRegistry>>();
         var scenariosPath = Path.Combine(builder.Environment.ContentRootPath, "data", "scenarios");
-        return new ScenarioRegistry(loader, languageService, translationService, scenariosPath);
+        return new ScenarioRegistry(loader, languageService, translationService, logger, scenariosPath);
     });
 
     builder.Services.AddScoped<IConfigurationOverlay>(sp =>

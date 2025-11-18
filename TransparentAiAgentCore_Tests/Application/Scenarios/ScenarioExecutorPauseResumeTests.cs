@@ -301,7 +301,7 @@ public class ScenarioExecutorPauseResumeTests
             new[]
             {
                 new ScenarioStep(ScenarioStepType.ScenarioUserMessage, "First step"),
-                new ScenarioStep(ScenarioStepType.PauseForUser, pauseMessage: "Check the UI state now"),
+                new ScenarioStep(ScenarioStepType.PauseForUser, content: "Check the UI state now"),
                 new ScenarioStep(ScenarioStepType.ScenarioUserMessage, "Last step")
             });
 
@@ -328,7 +328,7 @@ public class ScenarioExecutorPauseResumeTests
     }
 
     [TestMethod]
-    public async Task ExecuteScenario_PauseForUserStepWithoutMessage_Pauses()
+    public async Task ExecuteScenario_PauseForUserStepWithMessage_Pauses()
     {
         // Arrange
         var executor = CreateExecutor();
@@ -338,7 +338,7 @@ public class ScenarioExecutorPauseResumeTests
             null,
             new[]
             {
-                new ScenarioStep(ScenarioStepType.PauseForUser) // No message
+                new ScenarioStep(ScenarioStepType.PauseForUser, content: "Scenario paused")
             });
 
         bool pausedEventFired = false;
@@ -374,9 +374,9 @@ public class ScenarioExecutorPauseResumeTests
             new[]
             {
                 new ScenarioStep(ScenarioStepType.ScenarioUserMessage, "Step 1"),
-                new ScenarioStep(ScenarioStepType.PauseForUser, pauseMessage: "First pause"),
+                new ScenarioStep(ScenarioStepType.PauseForUser, content: "First pause"),
                 new ScenarioStep(ScenarioStepType.ScenarioUserMessage, "Step 2"),
-                new ScenarioStep(ScenarioStepType.PauseForUser, pauseMessage: "Second pause"),
+                new ScenarioStep(ScenarioStepType.PauseForUser, content: "Second pause"),
                 new ScenarioStep(ScenarioStepType.ScenarioUserMessage, "Step 3")
             });
 

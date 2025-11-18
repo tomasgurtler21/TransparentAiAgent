@@ -56,18 +56,6 @@ public class ScenarioStep
     /// </summary>
     public IReadOnlyDictionary<string, object>? UIControlArguments { get; }
 
-    /// <summary>
-    /// Message to display to user explaining why scenario is paused.
-    /// Used in PauseForUser steps. Supports localization via PauseMessageKey.
-    /// </summary>
-    public string? PauseMessage { get; }
-
-    /// <summary>
-    /// Localization key for pause message.
-    /// Used in PauseForUser steps.
-    /// </summary>
-    public string? PauseMessageKey { get; }
-
     public ScenarioStep(
         ScenarioStepType type,
         string? content = null,
@@ -79,9 +67,7 @@ public class ScenarioStep
         IReadOnlyDictionary<string, object>? conditionParameters = null,
         string? onTimeout = null,
         string? uiControlTool = null,
-        IReadOnlyDictionary<string, object>? uiControlArguments = null,
-        string? pauseMessage = null,
-        string? pauseMessageKey = null)
+        IReadOnlyDictionary<string, object>? uiControlArguments = null)
     {
         // Validate content for step types that require it
         if (RequiresContent(type) && string.IsNullOrWhiteSpace(content))
@@ -113,8 +99,6 @@ public class ScenarioStep
         OnTimeout = onTimeout ?? "continue";
         UIControlTool = uiControlTool;
         UIControlArguments = uiControlArguments;
-        PauseMessage = pauseMessage;
-        PauseMessageKey = pauseMessageKey;
     }
 
     private static bool RequiresContent(ScenarioStepType type)
@@ -126,8 +110,7 @@ public class ScenarioStep
             && type != ScenarioStepType.EnableUserInput
             && type != ScenarioStepType.DisableUserInput
             && type != ScenarioStepType.Delay
-            && type != ScenarioStepType.UIControl
-            && type != ScenarioStepType.PauseForUser;
+            && type != ScenarioStepType.UIControl;
     }
 
     private static void ValidateAdvancedStep(ScenarioStepType type, string? condition, string? uiControlTool)

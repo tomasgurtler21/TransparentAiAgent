@@ -448,9 +448,9 @@ public class ScenarioExecutor : IScenarioExecutor
 
     private void ExecutePauseForUserStep(ScenarioStep step)
     {
-        // Pause the scenario with the provided message
+        // Pause the scenario with the provided message (from Content field)
         // The pause will occur after this step completes (in the main execution loop)
-        var message = step.PauseMessage;
+        var message = step.Content ?? "Scenario paused. Click Resume to continue.";
         PauseScenario(message);
     }
 }
