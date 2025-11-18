@@ -1,0 +1,28 @@
+{
+  "scenarios.context-limits-advanced.name": "Limity kontextu (Pokročilé)",
+  "scenarios.context-limits-advanced.description": "Zažij skutečné zkrácení kontextového okna",
+  "scenarios.context-limits-advanced.step0.annotation": "Limit zpráv snížen na 10 pro demonstraci zkrácení.",
+  "scenarios.context-limits-advanced.step1.content": "Ahoj, jmenuji se John Doe.",
+  "scenarios.context-limits-advanced.step1.annotation": "Model si toto jméno zapamatuje... prozatím.",
+  "scenarios.context-limits-advanced.step3.content": "Jaké je moje jméno?",
+  "scenarios.context-limits-advanced.step3.annotation": "Ověření, zda model má jméno stále v kontextu.",
+  "scenarios.context-limits-advanced.step5.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.step5.annotation": "Plnění kontextu k vynucení zkrácení...",
+  "scenarios.context-limits-advanced.step7.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.step9.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.step11.content": "Kolik demo zpráv jsem ti poslal?",
+  "scenarios.context-limits-advanced.step11.annotation": "Test, zda model sledoval počet.",
+  "scenarios.context-limits-advanced.step13.content": "Jaké je moje jméno?",
+  "scenarios.context-limits-advanced.step13.annotation": "Jméno by mělo být nyní zkráceno. Model to opravdu neví.",
+  "scenarios.context-limits-advanced.step15.content": "Scénář 'Limity kontextu' skončil. Limit zpráv v konverzaci byl snížen na 8 zpráv pro demonstraci zkrácení kontextového okna. Jméno uživatele (John Doe) z dřívější zprávy bylo skutečně odstraněno z tvého kontextu. Prosím:\n1. Vysvětli, co se stalo (zkrácení kontextu)\n2. Použij nástroj ui_control_context_indicators k zvýraznění indikátorů stavu kontextu\n3. Vysvětli, proč systémová zpráva a poslední zprávy zůstávají v kontextu\n4. Nabídni zobrazení konfigurace, kde lze upravit limity zpráv pomocí ui_control_configuration.",
+  "scenarios.context-limits-advanced.step17.pauseMessage": "Věnuj čas kontrole indikátorů stavu kontextu u zpráv. Klikni na Pokračovat, až to uděláš, poté bude obnoven původní limit kontextu.",
+  "scenarios.context-limits-advanced.step18.annotation": "Limit zpráv obnoven. Model nyní může přistupovat k většímu kontextu a efektivně učit.",
+
+  "scenarios.coding-guidelines-faq.name": "FAQ k programovacím směrnicím",
+  "scenarios.coding-guidelines-faq.description": "Rychlá odpověď o dodržování programovacích standardů a limitů znaků",
+  "scenarios.coding-guidelines-faq.step0.content": "Proč agent nedokáže dodržovat mé programovací směrnice? Mám limity znaků pro určitá jména a agent je neustále překračuje! Také často překračuje limity délky řádků!",
+
+  "scenarios.get-started.name": "Začínáme",
+  "scenarios.get-started.description": "Úvod do Transparent AI Agent a jeho schopností",
+  "scenarios.get-started.step0.content": "Prosím představ uživateli aplikaci Transparent AI Agent. Vysvětli její účel - učinit chování AI agentů transparentní a srozumitelné. Popiš na vysoké úrovni, co umí (zobrazení rozhodnutí agenta, použití nástrojů, správa kontextu) bez zacházení do technických detailů - uživatelé by je měli objevit průzkumem. Zdůrazni důležitost dlouhodobé paměti pro efektivní výuku a navrhni její aktivaci. Poté proveď stručný dotazník s otázkami na jejich zázemí (vývojář, student, zvědavý uživatel atd.) a na to, co by se chtěli dozvědět o AI agentech. Tyto informace ti pomohou přizpůsobit budoucí interakce jejich potřebám. Buď přátelský a konverzační."
+}

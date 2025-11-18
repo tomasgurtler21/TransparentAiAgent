@@ -1,0 +1,28 @@
+{
+  "scenarios.context-limits-advanced.name": "Kontextgrenzen (Fortgeschritten)",
+  "scenarios.context-limits-advanced.description": "Erlebe echte Kontextfenster-Kürzung",
+  "scenarios.context-limits-advanced.step0.annotation": "Nachrichtenlimit auf 10 reduziert, um Kürzung zu demonstrieren.",
+  "scenarios.context-limits-advanced.step1.content": "Hallo, mein Name ist John Doe.",
+  "scenarios.context-limits-advanced.step1.annotation": "Das Modell wird sich diesen Namen merken... vorerst.",
+  "scenarios.context-limits-advanced.step3.content": "Wie ist mein Name?",
+  "scenarios.context-limits-advanced.step3.annotation": "Überprüfung, ob das Modell den Namen noch im Kontext hat.",
+  "scenarios.context-limits-advanced.step5.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.step5.annotation": "Fülle den Kontext, um Kürzung zu erzwingen...",
+  "scenarios.context-limits-advanced.step7.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.step9.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.step11.content": "Wie viele Demo-Nachrichten habe ich dir geschickt?",
+  "scenarios.context-limits-advanced.step11.annotation": "Teste, ob das Modell die Anzahl verfolgt hat.",
+  "scenarios.context-limits-advanced.step13.content": "Wie ist mein Name?",
+  "scenarios.context-limits-advanced.step13.annotation": "Der Name sollte jetzt gekürzt sein. Das Modell weiß es wirklich nicht.",
+  "scenarios.context-limits-advanced.step15.content": "Das Szenario 'Kontextgrenzen' ist beendet. Das Konversations-Nachrichtenlimit wurde auf 8 Nachrichten reduziert, um die Kürzung des Kontextfensters zu demonstrieren. Der Name des Benutzers (John Doe) aus einer früheren Nachricht wurde tatsächlich aus deinem Kontext entfernt. Bitte:\n1. Erkläre, was passiert ist (Kontextkürzung)\n2. Verwende das ui_control_context_indicators-Tool, um die Kontextstatusindikatoren hervorzuheben\n3. Erkläre, warum die Systemnachricht und die letzten Nachrichten im Kontext bleiben\n4. Biete an, die Konfiguration zu zeigen, wo Nachrichtenlimits angepasst werden können, indem du ui_control_configuration verwendest.",
+  "scenarios.context-limits-advanced.step17.pauseMessage": "Nimm dir Zeit, um die Kontextstatusindikatoren bei den Nachrichten zu überprüfen. Klicke auf Fortsetzen, wenn du das getan hast, dann wird das ursprüngliche Kontextlimit wiederhergestellt.",
+  "scenarios.context-limits-advanced.step18.annotation": "Nachrichtenlimit wiederhergestellt. Das Modell kann jetzt auf mehr Kontext zugreifen und effektiv lehren.",
+
+  "scenarios.coding-guidelines-faq.name": "Coding-Richtlinien FAQ",
+  "scenarios.coding-guidelines-faq.description": "Schnelle Antwort zum Befolgen von Programmierstandards und Zeichenlimits",
+  "scenarios.coding-guidelines-faq.step0.content": "Warum kann der Agent meine Programmierrichtlinien nicht befolgen? Ich habe Zeichenlimits für bestimmte Namen, und der Agent überschreitet sie ständig! Außerdem überschreitet er häufig die Zeilenlängenlimits!",
+
+  "scenarios.get-started.name": "Erste Schritte",
+  "scenarios.get-started.description": "Einführung in den Transparent AI Agent und seine Fähigkeiten",
+  "scenarios.get-started.step0.content": "Bitte führe den Benutzer in die Transparent AI Agent-Anwendung ein. Erkläre ihren Zweck - das Verhalten von KI-Agenten transparent und verständlich zu machen. Beschreibe auf hoher Ebene, was sie kann (Anzeigen von Agententscheidungen, Werkzeugnutzung, Kontextverwaltung), ohne auf technische Details einzugehen - Benutzer sollten diese durch Erkundung entdecken. Betone die Bedeutung des Langzeitgedächtnisses für effektives Lehren und schlage vor, es zu aktivieren. Führe dann eine kurze Befragung durch, in der du nach dem Hintergrund (Entwickler, Student, neugieriger Benutzer usw.) und danach fragst, was sie über KI-Agenten lernen möchten. Diese Informationen helfen dir, zukünftige Interaktionen auf ihre Bedürfnisse zuzuschneiden. Halte es freundlich und gesprächig."
+}

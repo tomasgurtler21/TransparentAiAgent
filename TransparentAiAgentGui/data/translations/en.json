@@ -1,0 +1,28 @@
+{
+  "scenarios.context-limits-advanced.name": "Context Limits (Advanced)",
+  "scenarios.context-limits-advanced.description": "Experience genuine context window truncation",
+  "scenarios.context-limits-advanced.step0.annotation": "Message limit reduced to 10 to demonstrate truncation.",
+  "scenarios.context-limits-advanced.step1.content": "Hi, my name is John Doe.",
+  "scenarios.context-limits-advanced.step1.annotation": "The model will remember this name... for now.",
+  "scenarios.context-limits-advanced.step3.content": "What is my name?",
+  "scenarios.context-limits-advanced.step3.annotation": "Verifying the model still has the name in context.",
+  "scenarios.context-limits-advanced.step5.content": "Demo message, just respond 'Confirmed'.",
+  "scenarios.context-limits-advanced.step5.annotation": "Filling context to force truncation...",
+  "scenarios.context-limits-advanced.step7.content": "Demo message, just respond 'Confirmed'.",
+  "scenarios.context-limits-advanced.step9.content": "Demo message, just respond 'Confirmed'.",
+  "scenarios.context-limits-advanced.step11.content": "How many demo messages did I send you?",
+  "scenarios.context-limits-advanced.step11.annotation": "Testing if model tracked the count.",
+  "scenarios.context-limits-advanced.step13.content": "What is my name?",
+  "scenarios.context-limits-advanced.step13.annotation": "The name should now be truncated. Model genuinely won't know.",
+  "scenarios.context-limits-advanced.step15.content": "Scenario 'Context Limits' has ended. The conversation message limit is reduced to 8 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration.",
+  "scenarios.context-limits-advanced.step17.pauseMessage": "Take your time to check context status indicators at messages. Click Resume when you have done so, original context limit is going to be restored then.",
+  "scenarios.context-limits-advanced.step18.annotation": "Message limit restored. Model can now access more context and teach effectively.",
+
+  "scenarios.coding-guidelines-faq.name": "Coding Guidelines FAQ",
+  "scenarios.coding-guidelines-faq.description": "Quick answer about following coding standards and character limits",
+  "scenarios.coding-guidelines-faq.step0.content": "Why is the agent unable to follow my coding guidelines? I have character limits for certain names, and the agent keeps exceeding them! Also, it exceeds line length limits frequently!",
+
+  "scenarios.get-started.name": "Get Started",
+  "scenarios.get-started.description": "Introduction to the Transparent AI Agent and its capabilities",
+  "scenarios.get-started.step0.content": "Please introduce the user to the Transparent AI Agent application. Explain its purpose - making AI agent behavior transparent and understandable. Describe what it can do at a high level (showing agent decisions, tool usage, context management) without going into technical details - users should discover those through exploration. Emphasize the importance of long-term memory for effective teaching and suggest activating it. Then conduct a brief questionnaire asking about their background (developer, student, curious user, etc.) and what they'd like to learn about AI agents. This information will help you tailor future interactions to their needs. Keep it friendly and conversational."
+}

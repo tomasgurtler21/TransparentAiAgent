@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "coding-guidelines-faq",
+  "version": "1.0",
+  "nameKey": "scenarios.coding-guidelines-faq.name",
+  "name": "Coding Guidelines FAQ",
+  "descriptionKey": "scenarios.coding-guidelines-faq.description",
+  "description": "Quick answer about following coding standards and character limits",
+  "category": "best-practices",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.coding-guidelines-faq.step0.content",
+      "content": "Why is the agent unable to follow my coding guidelines? I have character limits for certain names, and the agent keeps exceeding them! Also, it exceeds line length limits frequently!",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}
