@@ -112,7 +112,7 @@
     },
 	{
 	  "type": "scenario_user_message",
-	  "contentKey": "scenarios.context-limits-advanced.stepXYZ.content",
+	  "contentKey": "scenarios.context-limits-advanced.step19.content",
 	  "content": "Thanks, disable the context status indicator highlights for now (keep them visible) and wait for further instructions."
 	}
   ]
