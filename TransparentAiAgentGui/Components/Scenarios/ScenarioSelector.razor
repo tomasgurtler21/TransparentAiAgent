@@ -102,6 +102,9 @@
         // Subscribe to UI state changes
         UIControlService.UIStateChanged += OnUIStateChanged;
         _uiState = UIControlService.GetCurrentState();
+
+        // Subscribe to scenario completion to auto-close selector
+        ScenarioExecutor.ScenarioCompleted += OnScenarioCompleted;
     }
 
     private void OnUIStateChanged(object? sender, UIState newState)
@@ -111,6 +114,12 @@
             _uiState = newState;
             StateHasChanged();
         });
+    }
+
+    private void OnScenarioCompleted(object? sender, ScenarioExecutionEventArgs e)
+    {
+        // Auto-close the selector when scenario completes
+        _ = HandleClose();
     }
 
     private void LoadScenarios()
@@ -210,5 +219,6 @@
     public void Dispose()
     {
         UIControlService.UIStateChanged -= OnUIStateChanged;
+        ScenarioExecutor.ScenarioCompleted -= OnScenarioCompleted;
     }
 }

@@ -22,6 +22,7 @@ public class ScenarioExecutor : IScenarioExecutor
     private readonly SemaphoreSlim _pauseSemaphore = new(0);
     private readonly object _pauseLock = new();
     private string? _pauseMessage = null;
+    private int _initialOverlayCount = 0;
 
     public ScenarioDefinition? CurrentScenario { get; private set; }
     public bool IsExecuting { get; private set; }
@@ -63,6 +64,8 @@ public class ScenarioExecutor : IScenarioExecutor
             CurrentScenario = scenario;
             CurrentStepIndex = -1;
             _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            // Store initial overlay count to ensure cleanup
+            _initialOverlayCount = _configurationOverlay.OverlayCount;
         }
 
         try
@@ -135,6 +138,13 @@ public class ScenarioExecutor : IScenarioExecutor
         }
         finally
         {
+            // Ensure configuration overlays are cleaned up
+            // Pop any overlays that were pushed during the scenario
+            while (_configurationOverlay.OverlayCount > _initialOverlayCount)
+            {
+                _configurationOverlay.PopOverlay();
+            }
+
             lock (_lock)
             {
                 IsExecuting = false;
