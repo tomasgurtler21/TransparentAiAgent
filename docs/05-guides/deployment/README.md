@@ -1,6 +1,6 @@
 # Deployment Guides
 
-**Last Updated**: 2025-11-16
+**Last Updated**: 2025-11-18
 **Status**: Active
 
 ---
@@ -54,12 +54,26 @@ Step-by-step installation guide for end users:
 - Upgrading and uninstallation
 
 #### [configuration-guide.md](configuration-guide.md)
-How to configure the TransparentAiAgent application:
-- Configuration files and structure
-- LLM provider configuration
-- MCP server setup
-- Environment variables
-- Advanced settings
+**⚠️ Archived** - Legacy single-provider configuration guide.
+Use [llm-provider-selector.md](llm-provider-selector.md) instead for current multi-provider configuration.
+
+#### [llm-provider-selector.md](llm-provider-selector.md)
+**✅ Current** - Multi-provider LLM configuration:
+- Configuring multiple LLM providers
+- Switching providers via UI
+- Parameter inheritance and overrides
+- Azure OpenAI OAuth authentication
+- Reasoning models configuration
+- Troubleshooting provider configuration
+
+#### [data-storage.md](data-storage.md)
+**✅ New** - User data storage and management:
+- Data storage locations (AppData)
+- User settings vs application configuration
+- Finding and backing up your data
+- Migrating between installations
+- Resetting user data
+- Privacy and security considerations
 
 ### Troubleshooting
 
