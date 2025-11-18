@@ -95,12 +95,11 @@ Added missing case mapping in JsonScenarioLoader:
 
 1. ✅ **ScenarioStep.cs**: Removed `PauseMessage` and `PauseMessageKey` properties
 2. ✅ **ScenarioStep.cs**: Removed PauseForUser from RequiresContent() exclusion list (now requires content)
-3. ✅ **JsonScenarioLoader.cs**: Added backward compatibility for pauseMessage/pauseMessageKey
-4. ✅ **JsonScenarioLoader.cs**: Maps old pauseMessage fields to Content for PauseForUser steps
-5. ✅ **ScenarioExecutor.cs**: Changed to use `step.Content` instead of `step.PauseMessage`
-6. ✅ **context-limits-advanced.json**: Changed `pauseMessage`/`pauseMessageKey` to `content`/`contentKey`
-7. ✅ **context-limits-advanced.json**: Removed redundant annotation field from pause step
-8. ✅ **Tests**: Updated all tests to use `content` parameter instead of `pauseMessage`
+3. ✅ **JsonScenarioLoader.cs**: Removed pauseMessage/pauseMessageKey DTO properties completely
+4. ✅ **ScenarioExecutor.cs**: Changed to use `step.Content` instead of `step.PauseMessage`
+5. ✅ **context-limits-advanced.json**: Changed `pauseMessage`/`pauseMessageKey` to `content`/`contentKey`
+6. ✅ **context-limits-advanced.json**: Removed redundant annotation field from pause step
+7. ✅ **Tests**: Updated all tests to use `content` parameter instead of `pauseMessage`
 
 **Files changed**:
 - TransparentAiAgentCore/Domain/Scenarios/ScenarioStep.cs
@@ -118,11 +117,7 @@ Added missing case mapping in JsonScenarioLoader:
 3. **Inconsistent API** - PauseForUser now uses `content`/`contentKey` like other step types
 4. **Redundant fields** - Removed annotation from pause steps (it was useless)
 5. **Broken scenario** - context-limits-advanced.json now loads successfully
-
-### Backward Compatibility:
-- Old scenarios using `pauseMessage`/`pauseMessageKey` will still work
-- The JSON loader automatically maps them to `content` for PauseForUser steps
-- New scenarios should use `content`/`contentKey` for consistency
+6. **Clean code** - No backward compatibility code, single consistent approach
 
 ## Testing
 
