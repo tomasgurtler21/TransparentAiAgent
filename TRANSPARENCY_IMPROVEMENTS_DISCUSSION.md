@@ -183,10 +183,10 @@ User wants "fancy multi-filter" where:
    - User chooses Yes/No
 3. **If Yes:**
    - File explorer opens (browser download dialog)
-   - Exports ALL events (ignores current filters)
+   - Exports viewer's events (max 1000, what user sees)
    - Format: JSON
 4. **No import needed** (export only)
-5. **No DTO needed?** - Direct serialization of events to JSON
+5. **No DTO needed** - Direct serialization of viewer's event list
 
 ### Current Event Structure
 
@@ -207,17 +207,19 @@ public class TransparencyEvent
 **Direct serialization with minimal metadata, browser download dialog**
 
 **Key Points:**
-- **Serialization**: Direct - serialize events directly to JSON (no DTO needed)
+- **Serialization**: Direct - serialize viewer's event list to JSON (no DTO needed)
 - **Format**: Pretty-printed JSON (indented, readable)
-- **Metadata**: ONLY export date/time in wrapper object
-- **Source**: Export ALL events from TransparencyService (not just visible 1000)
+- **Metadata**: Export date/time AND event count in wrapper object
+- **Source**: Export viewer's events (limited to 1000 max) - what user sees in UI
 - **Warning Text**: "Logs contain all message content. Ensure no sensitive information before exporting."
 - **File Naming**: `transparency-events-{timestamp}.json`
+- **Rationale**: Viewer keeps max 1000 events in memory. Exporting what user sees is intuitive, safe, and simpler.
 
 **Export Structure:**
 ```json
 {
   "exportedAt": "2025-11-18T10:30:45Z",
+  "totalEventsInViewer": 1000,
   "events": [
     {
       "id": "guid-here",
@@ -241,8 +243,9 @@ public class TransparencyEvent
 
 **Implementation Notes:**
 - Add "Save" button to TransparencyViewer.razor controls section
-- Use Blazor's built-in confirmation (or custom modal)
-- Export ALL events via `TransparencyService.GetEvents()` (not just the 1000 in viewer)
+- Use JavaScript confirm() dialog for privacy warning
+- Export viewer's local Events list (already limited to 1000 max)
+- No service method needed - simple JSON serialization in viewer component
 - See "Browser Download Implementation Details" section below for technical explanation
 
 ---
@@ -440,8 +443,8 @@ private async Task HandleExportClick()
 | Multi-Filter Logic | OR logic (show events matching ANY filter) | Each event has single type, AND is meaningless | 2025-11-18 |
 | Multi-Filter Approach | Dynamic add/remove dropdowns | User wants "fancy" multi-filter, not too complex | 2025-11-18 |
 | UI State Filters | Ignore/Remove from TransparencyViewer | Those are for chat component, unrelated | 2025-11-18 |
-| Export Format | Pretty-printed JSON with minimal metadata | Readable format, only export date/time | 2025-11-18 |
-| Export Scope | ALL events from TransparencyService | Not limited to visible 1000 in viewer | 2025-11-18 |
+| Export Format | Pretty-printed JSON with metadata | Readable format, export date/time + event count | 2025-11-18 |
+| Export Scope | Viewer's events only (max 1000) | Export what user sees, safer, simpler | 2025-11-18 (revised) |
 | Privacy Warning | Simple text about message content | User must ensure no sensitive data before export | 2025-11-18 |
 | Download Method | JavaScript Interop with browser dialog | Standard Blazor Server approach | 2025-11-18 |
 

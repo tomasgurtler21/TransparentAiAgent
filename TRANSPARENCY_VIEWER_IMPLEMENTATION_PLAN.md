@@ -249,9 +249,9 @@ dotnet test
 
 ## Step 2: Export to JSON
 
-**Goal**: Add "Save" button that exports all transparency events to JSON file with privacy warning
+**Goal**: Add "Save" button that exports viewer's transparency events (max 1000) to JSON file with privacy warning
 
-**Can be completed in**: Single session (~1-2 hours)
+**Can be completed in**: Single session (~1 hour)
 
 **Prerequisites**: Step 1 completed (optional but recommended)
 
@@ -278,134 +278,18 @@ window.downloadFile = function(filename, content) {
 
 **Manual verification**: Will test in Phase 2.4
 
-### Phase 2.2: Create Export Service Method (TDD)
+### Phase 2.2: No Service Method Needed
 
-**Goal**: Add `ExportToJson()` method to TransparencyService with tests
+**Decision**: Export directly from viewer's event list (limited to 1000 events)
 
-**File**: `TransparentAiAgentCore/Infrastructure/Transparency/TransparencyService.cs`
+**Rationale**:
+- Viewer keeps only 1000 events in memory (lines 128-131)
+- User sees only these 1000 events in UI
+- Exporting what user sees is more intuitive
+- No risk of huge exports crashing browser
+- Simpler implementation (no service changes needed)
 
-**RED Phase:**
-
-1. **Create test** in `TransparentAiAgentCore_Tests/Infrastructure/Transparency/TransparencyServiceTests.cs`:
-
-```csharp
-[TestMethod]
-public void ExportToJson_WithEvents_ReturnsValidJsonStructure()
-{
-    // Arrange
-    _service.LogEvent(new TransparencyEvent(TransparencyEventType.Info, "test data", "additional"));
-    _service.LogEvent(new TransparencyEvent(TransparencyEventType.Error, "error data", null));
-
-    // Act
-    var json = _service.ExportToJson();
-
-    // Assert
-    Assert.IsNotNull(json);
-    Assert.IsTrue(json.Contains("\"exportedAt\""));
-    Assert.IsTrue(json.Contains("\"events\""));
-    Assert.IsTrue(json.Contains("\"eventType\""));
-    Assert.IsTrue(json.Contains("\"Info\""));
-    Assert.IsTrue(json.Contains("\"Error\""));
-}
-
-[TestMethod]
-public void ExportToJson_NoEvents_ReturnsEmptyEventsArray()
-{
-    // Arrange - no events logged
-
-    // Act
-    var json = _service.ExportToJson();
-
-    // Assert
-    Assert.IsNotNull(json);
-    Assert.IsTrue(json.Contains("\"exportedAt\""));
-    Assert.IsTrue(json.Contains("\"events\""));
-    // Should have empty array (may be "events":[] or "events": [])
-    Assert.IsTrue(json.Contains("\"events\": []") || json.Contains("\"events\":[]"));
-}
-
-[TestMethod]
-public void ExportToJson_ReturnsIndentedJson()
-{
-    // Arrange
-    _service.LogEvent(new TransparencyEvent(TransparencyEventType.Info, "test"));
-
-    // Act
-    var json = _service.ExportToJson();
-
-    // Assert - indented JSON has newlines
-    Assert.IsTrue(json.Contains("\n") || json.Contains(Environment.NewLine));
-}
-```
-
-2. **Add minimal stub** to TransparencyService.cs:
-
-```csharp
-public string ExportToJson()
-{
-    throw new NotImplementedException();
-}
-```
-
-3. **Run test** - should fail with NotImplementedException:
-```bash
-dotnet test TransparentAiAgentCore_Tests --filter "ExportToJson"
-```
-
-**Expected**: 3 tests fail with NotImplementedException
-
-**GREEN Phase:**
-
-4. **Implement ExportToJson** in TransparencyService.cs:
-
-```csharp
-using System.Text.Json;
-
-// Add to TransparencyService class:
-public string ExportToJson()
-{
-    lock (_lock)
-    {
-        var export = new
-        {
-            exportedAt = DateTime.UtcNow,
-            events = _events.ToList()
-        };
-
-        return JsonSerializer.Serialize(export, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
-    }
-}
-```
-
-5. **Add using directive** at top of file:
-```csharp
-using System.Text.Json;
-```
-
-6. **Run tests** - should pass:
-```bash
-dotnet test TransparentAiAgentCore_Tests --filter "ExportToJson"
-```
-
-**Expected**: All 3 tests pass
-
-**REFACTOR Phase:**
-
-7. **Review implementation**:
-   - Thread-safe? ✅ (uses existing `_lock`)
-   - Returns ALL events? ✅ (uses `_events.ToList()`, not limited)
-   - Pretty JSON? ✅ (WriteIndented = true)
-   - Includes timestamp? ✅ (exportedAt)
-
-8. **Run all service tests**:
-```bash
-dotnet test TransparentAiAgentCore_Tests/Infrastructure/Transparency/TransparencyServiceTests.cs
-```
-
-**Expected**: All tests pass (existing + new)
+**No tests needed**: Export logic will be simple JSON serialization in the viewer component (Lean TDD - UI logic, manually verified)
 
 ### Phase 2.3: Add UI Components (Manual Testing)
 
@@ -467,7 +351,19 @@ private async Task ExportToJson()
 {
     try
     {
-        var json = TransparencyService.ExportToJson();
+        // Export the viewer's current event list (limited to 1000)
+        var export = new
+        {
+            exportedAt = DateTime.UtcNow,
+            totalEventsInViewer = Events.Count,
+            events = Events
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(export, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
         var filename = $"transparency-events-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.json";
         await JSRuntime.InvokeVoidAsync("downloadFile", filename, json);
     }
@@ -479,19 +375,7 @@ private async Task ExportToJson()
 }
 ```
 
-**Note**: ITransparencyService interface needs ExportToJson() method signature
-
-**Step 2.3.3: Update ITransparencyService interface**
-
-**File**: Find ITransparencyService interface file:
-```bash
-find . -name "ITransparencyService.cs"
-```
-
-Add method signature:
-```csharp
-string ExportToJson();
-```
+**Note**: No service changes needed - exports viewer's local event list directly
 
 ### Phase 2.4: Manual Validation
 
@@ -509,6 +393,7 @@ string ExportToJson();
 ```json
 {
   "exportedAt": "2025-11-18T10:30:45.123Z",
+  "totalEventsInViewer": 1000,
   "events": [
     {
       "id": "guid-here",
@@ -522,22 +407,22 @@ string ExportToJson();
 }
 ```
 
-9. **Verify ALL events exported** (not limited to 1000 visible in UI)
-   - Log >1000 events if possible, or check count in JSON vs UI count
+9. **Verify viewer's events exported** (limited to 1000 max)
+   - Check "totalEventsInViewer" field in JSON matches count shown in UI
+   - If viewer has 1000 events, JSON should have 1000 events
 10. **Test with empty events** → should export empty array
 
 ### Deliverables
 
 - [ ] downloadFile() JavaScript function added to site.js
-- [ ] TransparencyService.ExportToJson() implemented with tests passing
-- [ ] ITransparencyService interface updated
+- [ ] Export logic implemented in TransparencyViewer component
 - [ ] Save button added to TransparencyViewer UI
 - [ ] Privacy confirmation dialog works correctly
 - [ ] JSON export downloads successfully
-- [ ] JSON file has correct structure (exportedAt + events array)
-- [ ] ALL events exported (not limited to visible 1000)
+- [ ] JSON file has correct structure (exportedAt + totalEventsInViewer + events array)
+- [ ] Viewer's events exported (up to 1000 max)
 - [ ] Pretty-printed JSON (indented, readable)
-- [ ] All automated tests pass
+- [ ] No exceptions during export
 
 ---
 
@@ -982,10 +867,10 @@ Each step designed for independent sessions:
 **Risk**: Low
 
 ### Session 2: Export to JSON
-**Time**: 1-2 hours
-**Deliverable**: Working Save button with JSON export
+**Time**: 1 hour
+**Deliverable**: Working Save button with JSON export (viewer's events only, max 1000)
 **Blocking**: None (independent feature)
-**Risk**: Low-Medium
+**Risk**: Low
 **Note**: Step 1 recommended first (cleaner event types in export)
 
 ### Session 3: Multi-Filter UI
@@ -995,7 +880,7 @@ Each step designed for independent sessions:
 **Risk**: Medium
 **Note**: Step 1 recommended first (fewer event types = cleaner UI, easier testing)
 
-**Total estimated time**: 4.5-6.5 hours across 3 sessions
+**Total estimated time**: 3.75-5.5 hours across 3 sessions
 
 ---
 
@@ -1014,14 +899,14 @@ Each step designed for independent sessions:
 ### Step 2: Export to JSON
 
 - [ ] JavaScript downloadFile() function works
-- [ ] TransparencyService.ExportToJson() implemented
-- [ ] All export tests pass (3 new tests)
+- [ ] Export logic implemented in viewer component
 - [ ] Save button appears in UI
 - [ ] Privacy warning dialog works
 - [ ] JSON downloads with correct structure
-- [ ] ALL events exported (not limited to 1000)
+- [ ] Viewer's events exported (up to 1000 max)
 - [ ] Pretty-printed JSON
 - [ ] No exceptions during export
+- [ ] totalEventsInViewer field shows correct count
 
 ### Step 3: Multi-Filter UI
 
