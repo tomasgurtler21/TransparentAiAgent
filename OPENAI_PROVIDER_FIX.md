@@ -159,7 +159,34 @@ The `SafeBinaryDataToString()` method:
 
 This allows the diagnostic logging, tool call accumulation, AND streaming chunk conversion to continue gracefully even when OpenAI sends BinaryData with null internal bytes during streaming.
 
-### All Affected Locations Now Fixed
+### Third Fix (Comprehensive)
+
+**Problem:** After fixing streaming methods, discovered that non-streaming response methods ALSO call `.ToString()` on BinaryData `FunctionArguments` property (not Update). While less likely to have null bytes in completed responses, could still cause the same exception.
+
+**OpenAIProvider.cs - Additional locations fixed:**
+- Line 342: ConvertResponse() - converting tool calls from non-streaming response
+- Lines 465-466: LogNonStreamingResponse() - diagnostic logging of tool calls
+- Line 552: LogRequest() - logging tool calls in request messages
+- Line 591: LogNonStreamingResponse() - logging response tool calls
+
+**AzureOpenAIProvider.cs - Additional locations fixed:**
+- Line 528: SendReasoningModelRequest() - serializing tool calls for HTTP request
+- Line 599: ConvertResponse() - converting tool calls from non-streaming response
+- Lines 723-724: LogNonStreamingResponse() - diagnostic logging of tool calls
+- Line 845: LogRequest() - logging tool calls in request messages
+- Line 884: LogNonStreamingResponse() - logging response tool calls
+
+### All Affected Locations Now Fixed (Streaming + Non-Streaming)
+
+**Streaming paths (FunctionArgumentsUpdate):**
 ✅ StreamRequestAsync - tool call accumulation (both providers)
 ✅ LogStreamingChunk - diagnostic logging (both providers)
 ✅ ConvertStreamingUpdate - streaming chunk conversion (both providers)
+
+**Non-streaming paths (FunctionArguments):**
+✅ ConvertResponse - tool call conversion (both providers)
+✅ LogNonStreamingResponse - diagnostic logging (both providers)
+✅ LogRequest - request message logging (both providers)
+✅ SendReasoningModelRequest - HTTP request serialization (AzureOpenAI only)
+
+**Total locations fixed:** 13 in OpenAI, 14 in AzureOpenAI = 27 locations

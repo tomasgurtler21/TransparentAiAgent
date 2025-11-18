@@ -525,7 +525,7 @@ public class AzureOpenAIProvider : ILLMProvider
                             ["function"] = new JsonObject
                             {
                                 ["name"] = tc.FunctionName,
-                                ["arguments"] = tc.FunctionArguments.ToString()
+                                ["arguments"] = SafeBinaryDataToString(tc.FunctionArguments)
                             }
                         };
                         toolCallsArray.Add(toolCallObj);
@@ -596,7 +596,7 @@ public class AzureOpenAIProvider : ILLMProvider
         if (response.ToolCalls.Count > 0)
         {
             toolCalls = response.ToolCalls
-                .Select(tc => new LLMToolCall(tc.Id, tc.FunctionName, tc.FunctionArguments.ToString()))
+                .Select(tc => new LLMToolCall(tc.Id, tc.FunctionName, SafeBinaryDataToString(tc.FunctionArguments) ?? string.Empty))
                 .ToList();
         }
 
@@ -720,8 +720,8 @@ public class AzureOpenAIProvider : ILLMProvider
                 Kind = tc.Kind.ToString(),
                 FunctionName = tc.FunctionName,
                 FunctionNameIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionName),
-                FunctionArguments = tc.FunctionArguments.ToString(),
-                FunctionArgumentsIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionArguments.ToString())
+                FunctionArguments = SafeBinaryDataToString(tc.FunctionArguments),
+                FunctionArgumentsIsNullOrEmpty = string.IsNullOrEmpty(SafeBinaryDataToString(tc.FunctionArguments))
             }).ToList(),
             FinishReason = response.FinishReason.ToString(),
             Usage = response.Usage != null ? new
@@ -842,7 +842,7 @@ public class AzureOpenAIProvider : ILLMProvider
                     {
                         Id = tc.Id,
                         Name = tc.FunctionName,
-                        Arguments = tc.FunctionArguments.ToString()
+                        Arguments = SafeBinaryDataToString(tc.FunctionArguments)
                     }).ToList()
                     : null,
                 ToolCallId = m is ToolChatMessage toolMsg ? toolMsg.ToolCallId : null
@@ -881,7 +881,7 @@ public class AzureOpenAIProvider : ILLMProvider
                 Function = new
                 {
                     Name = tc.FunctionName,
-                    Arguments = tc.FunctionArguments.ToString()
+                    Arguments = SafeBinaryDataToString(tc.FunctionArguments)
                 }
             }).ToList(),
             FinishReason = response.FinishReason.ToString(),
