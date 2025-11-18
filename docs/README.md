@@ -1,6 +1,6 @@
 # TransparentAiAgent Documentation
 
-**Last Updated**: 2025-11-14
+**Last Updated**: 2025-11-18
 **Project Status**: Phase 9 In Progress (Message Architecture Refactored)
 
 Welcome to the TransparentAiAgent documentation! This is your central navigation hub.
@@ -109,10 +109,11 @@ Historical and session-specific docs
 → [Long-Term Memory Concept](03-concepts/long-term-memory.md) and [Using Long-Term Memory](05-guides/features/using-long-term-memory.md)
 
 **Configure the application**
-→ [Configuration Guide](05-guides/deployment/configuration-guide.md)
+→ [LLM Provider Selector Guide](05-guides/deployment/llm-provider-selector.md) (current)
+→ [Configuration Guide](05-guides/deployment/configuration-guide.md) (archived)
 
-**Configure multiple LLM providers**
-→ [LLM Provider Selector Guide](05-guides/deployment/llm-provider-selector.md)
+**Manage user data and storage**
+→ [Data Storage Guide](05-guides/deployment/data-storage.md)
 
 **Understand a component**
 → [Components](04-components/)

@@ -475,6 +475,112 @@ public void TruncateContext(int maxMessages)
 
 ---
 
+### Issue 9: Can't Find User Data or Settings
+
+**Symptom**: Need to locate conversation history, user settings, or long-term memory files.
+
+**Solutions**:
+
+**A. Find user data directory**:
+
+**Windows**:
+```bash
+# Open Run dialog (Win + R) and enter:
+%AppData%\TransparentAiAgent
+
+# Or in PowerShell:
+explorer "$env:APPDATA\TransparentAiAgent"
+```
+
+**macOS/Linux**:
+```bash
+# Open in terminal:
+open ~/.config/TransparentAiAgent
+
+# Or navigate manually:
+cd ~/.config/TransparentAiAgent
+ls -la
+```
+
+**B. Data directory structure**:
+```
+%AppData%\TransparentAiAgent\
+├── user-settings.json          # User preferences
+├── conversations/              # All conversation history
+├── memory/                     # Long-term memory
+└── logs/                       # Application logs (future)
+```
+
+**C. View/edit user settings**:
+```json
+{
+  "ContextWindowSize": 200,
+  "EnableMemory": false
+}
+```
+
+**See**: [Data Storage Guide](data-storage.md) for complete documentation.
+
+---
+
+### Issue 10: Data Not Persisting After Restart
+
+**Symptom**: Settings or conversations lost after closing application.
+
+**Solutions**:
+
+**A. Check data directory permissions**:
+```bash
+# Windows PowerShell - Check if directory is writable:
+Test-Path -Path "$env:APPDATA\TransparentAiAgent" -PathType Container
+
+# If false, check Windows user permissions
+```
+
+**B. Check application logs for write errors**:
+- Look for exceptions mentioning "access denied"
+- Check if antivirus is blocking file writes
+
+**C. Verify data directory exists**:
+```bash
+# Windows - Create manually if missing:
+mkdir "$env:APPDATA\TransparentAiAgent"
+mkdir "$env:APPDATA\TransparentAiAgent\conversations"
+mkdir "$env:APPDATA\TransparentAiAgent\memory"
+```
+
+**D. Check if running as different user**:
+- Each Windows user has separate AppData directory
+- Ensure running application as same user account
+
+---
+
+### Issue 11: Configuration vs User Settings Confusion
+
+**Symptom**: Not sure whether to edit appsettings.json or user-settings.json.
+
+**Quick Reference**:
+
+| Setting | Location | File | Restart Required? |
+|---------|----------|------|-------------------|
+| **LLM Provider** | App directory | `appsettings.json` | ✅ Yes |
+| **API Keys** | App directory | `appsettings.json` | ✅ Yes |
+| **System Prompt** | App directory | `appsettings.json` | ✅ Yes |
+| **Context Window Size** | User data | `user-settings.json` | ❌ No (future) |
+| **Enable Memory** | User data | `user-settings.json` | ❌ No (future) |
+
+**Application Configuration** (`appsettings.json`):
+- Located in: `TransparentAiAgentGui/appsettings.json`
+- Contains: LLM providers, API keys, deployment settings
+- See: [LLM Provider Selector Guide](llm-provider-selector.md)
+
+**User Settings** (`user-settings.json`):
+- Located in: `%AppData%\TransparentAiAgent\user-settings.json`
+- Contains: User preferences, runtime settings
+- See: [Data Storage Guide](data-storage.md)
+
+---
+
 ## Debugging Tips
 
 ### Enable Verbose Logging
@@ -853,4 +959,4 @@ app.MapHealthChecks("/health");
 
 ---
 
-**Last Updated**: 2025-10-28
+**Last Updated**: 2025-11-18
