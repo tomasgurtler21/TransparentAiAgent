@@ -28,6 +28,14 @@ public class UserSettingsService : IUserSettingsService
         };
 
         _currentSettings = LoadSettings();
+
+        // Ensure settings file exists with defaults
+        var filePath = GetSettingsFilePath();
+        if (!File.Exists(filePath))
+        {
+            SaveSettings(_currentSettings);
+            _logger.LogInformation("Created default user settings file at {FilePath}", filePath);
+        }
     }
 
     private string GetSettingsFilePath()
