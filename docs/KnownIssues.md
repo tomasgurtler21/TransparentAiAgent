@@ -6,17 +6,8 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 
 ---
 
-## Knowledge library tool topic unknown to LLM
-- LLM does not know which topic are avaialable to querry. Available topic should be dynamically added to tool description
-
-## UI Built-in tools available in Normal mode
-- Tools to control UI (or to get its state) are meant for Teaching mode only, should not spam Normal mode context
-
 ## OpenAi LLM Response missing in Transparent events
 - Anthropic LLM responses are shown correctly in events, but OpenAi are not shown at all.
-
-## Configuration overlay in Teaching mode incorrect
-- It shows system prompt from Normal mode, not Teaching mode. Most likely liked directly to appsettings json, but it should use services instead.
 
 ## Transparency overlay
 - It is a mess. Way too many event types, should be reviewed and reduced to used ones only.
@@ -35,6 +26,10 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 ## Missing export of logs
 - Transparent events shoudl have button to save it to json.
 - Do not forget to add warning to user that messages content are part of logs, to respect privacy/security
+
+## Configuration refactor unifinished
+- After create separate UserSetting from AppSettings, long term memory is not available.
+- Configuration overlay in app still writes to main app settings when changing context limit size.
 ---
 
 ## Future Issues

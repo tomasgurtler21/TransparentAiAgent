@@ -34,6 +34,7 @@ using TransparentAiAgentCore.Infrastructure.Memory;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInLongTermMemory;
 using TransparentAiAgentCore.Application.Localization;
 using TransparentAiAgentCore.Infrastructure.Localization;
+using TransparentAiAgentCore.Infrastructure.DataPath;
 
 try
 {
@@ -55,6 +56,8 @@ try
         .AddInteractiveServerComponents();
 
     // Register Core Infrastructure services
+    builder.Services.AddSingleton<IDataPathService, DataPathService>();
+    builder.Services.AddSingleton<IUserSettingsService, UserSettingsService>();
     builder.Services.AddSingleton<ITransparencyService, TransparencyService>();
     builder.Services.AddSingleton<ISerializationService, SerializationService>();
     builder.Services.AddSingleton<IToolUsageStatistics, ToolUsageStatistics>();
@@ -82,8 +85,8 @@ try
     {
         var messageSerializer = sp.GetRequiredService<MessageSerializer>();
         var logger = sp.GetRequiredService<ILogger<JsonConversationRepository>>();
-        var conversationsPath = Path.Combine(builder.Environment.ContentRootPath, "data", "conversations");
-        return new JsonConversationRepository(messageSerializer, logger, conversationsPath);
+        var dataPathService = sp.GetRequiredService<IDataPathService>();
+        return new JsonConversationRepository(messageSerializer, logger, dataPathService);
     });
     builder.Services.AddScoped<IConversationHistoryManager, ConversationHistoryManager>();
 
@@ -419,8 +422,9 @@ try
     builder.Services.AddScoped<ILongTermMemoryService>(sp =>
     {
         var config = sp.GetRequiredService<LongTermMemoryConfiguration>();
+        var dataPathService = sp.GetRequiredService<IDataPathService>();
         var logger = sp.GetRequiredService<ILogger<LongTermMemoryService>>();
-        return new LongTermMemoryService(config, logger);
+        return new LongTermMemoryService(config, dataPathService, logger);
     });
 
     // Register memory tools

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 using TransparentAiAgentCore.Domain.Memory;
 using TransparentAiAgentCore.Domain.UIControl;
+using TransparentAiAgentCore.Infrastructure.DataPath;
 
 namespace TransparentAiAgentCore.Infrastructure.Memory;
 
@@ -11,35 +12,19 @@ namespace TransparentAiAgentCore.Infrastructure.Memory;
 public class LongTermMemoryService : ILongTermMemoryService
 {
     private readonly LongTermMemoryConfiguration _config;
+    private readonly IDataPathService _dataPathService;
     private readonly ILogger<LongTermMemoryService> _logger;
-    private readonly string _storageDirectory;
 
     public LongTermMemoryService(
         LongTermMemoryConfiguration config,
+        IDataPathService dataPathService,
         ILogger<LongTermMemoryService> logger)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
+        _dataPathService = dataPathService ?? throw new ArgumentNullException(nameof(dataPathService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // Resolve storage directory to absolute path
-        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-
-        // Check if configured path is relative
-        var isRelativePath = !Path.IsPathRooted(_config.StorageDirectory);
-
-        _storageDirectory = isRelativePath
-            ? Path.GetFullPath(Path.Combine(baseDir, _config.StorageDirectory))
-            : Path.GetFullPath(_config.StorageDirectory);
-
-        // Security: For relative paths, ensure no directory traversal outside app directory
-        if (isRelativePath && !_storageDirectory.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                $"Storage directory must be within application directory. " +
-                $"Configured: {_config.StorageDirectory}, Resolved: {_storageDirectory}");
-        }
-
-        _logger.LogInformation("Memory storage directory: {Directory}", _storageDirectory);
+        _logger.LogInformation("Memory storage directory: {Directory}", _dataPathService.GetMemoryDirectory());
     }
 
     private string GetMemoryFilePath(AppMode mode)
@@ -50,7 +35,7 @@ public class LongTermMemoryService : ILongTermMemoryService
             AppMode.Teaching => "memory-teaching.md",
             _ => throw new ArgumentException($"Unknown mode: {mode}")
         };
-        return Path.Combine(_storageDirectory, fileName);
+        return Path.Combine(_dataPathService.GetMemoryDirectory(), fileName);
     }
 
     public async Task<string> ReadMemoryAsync(AppMode mode, CancellationToken cancellationToken = default)
@@ -80,7 +65,7 @@ public class LongTermMemoryService : ILongTermMemoryService
             var filePath = GetMemoryFilePath(mode);
 
             // Ensure directory exists
-            Directory.CreateDirectory(_storageDirectory);
+            Directory.CreateDirectory(_dataPathService.GetMemoryDirectory());
 
             // Write with explicit UTF-8 encoding
             await File.WriteAllTextAsync(filePath, content, Encoding.UTF8, cancellationToken);

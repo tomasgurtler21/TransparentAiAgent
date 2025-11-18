@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using TransparentAiAgentCore.Infrastructure.Memory;
+using TransparentAiAgentCore.Infrastructure.DataPath;
 using TransparentAiAgentCore.Domain.Memory;
 using TransparentAiAgentCore.Domain.UIControl;
 
@@ -12,16 +13,18 @@ public class LongTermMemoryServiceTests
 {
     private string _tempDirectory = string.Empty;
     private LongTermMemoryConfiguration _config = new();
+    private Mock<IDataPathService> _mockDataPathService = new();
 
     [TestInitialize]
     public void Setup()
     {
         // Create unique temp directory for each test
         _tempDirectory = Path.Combine(Path.GetTempPath(), $"MemoryServiceTests_{Guid.NewGuid()}");
-        _config = new LongTermMemoryConfiguration
-        {
-            StorageDirectory = _tempDirectory
-        };
+        _config = new LongTermMemoryConfiguration();
+
+        // Setup mock DataPathService
+        _mockDataPathService = new Mock<IDataPathService>();
+        _mockDataPathService.Setup(x => x.GetMemoryDirectory()).Returns(_tempDirectory);
     }
 
     [TestCleanup]
@@ -34,10 +37,13 @@ public class LongTermMemoryServiceTests
         }
     }
 
-    private LongTermMemoryService CreateService(LongTermMemoryConfiguration? config = null)
+    private LongTermMemoryService CreateService(
+        LongTermMemoryConfiguration? config = null,
+        Mock<IDataPathService>? mockDataPathService = null)
     {
         return new LongTermMemoryService(
             config ?? _config,
+            (mockDataPathService ?? _mockDataPathService).Object,
             Mock.Of<ILogger<LongTermMemoryService>>());
     }
 
@@ -212,34 +218,15 @@ public class LongTermMemoryServiceTests
         Assert.AreEqual(content, readBack);
     }
 
-    // Test 2.1.9: File Path Validation (Security)
-    [TestMethod]
-    public void Constructor_DirectoryTraversalAttempt_ThrowsException()
-    {
-        // Arrange
-        var config = new LongTermMemoryConfiguration
-        {
-            StorageDirectory = "../../etc/passwd" // Attempt directory traversal
-        };
-
-        // Act & Assert
-        var ex = Assert.ThrowsException<InvalidOperationException>(() =>
-            CreateService(config));
-
-        Assert.IsTrue(ex.Message.Contains("application directory"));
-    }
-
     // Test 2.1.11: Directory Auto-Creation
     [TestMethod]
     public async Task UpdateMemoryAsync_DirectoryDoesNotExist_CreatesDirectory()
     {
         // Arrange
         var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        var config = new LongTermMemoryConfiguration
-        {
-            StorageDirectory = tempPath
-        };
-        var service = CreateService(config);
+        var mockDataPath = new Mock<IDataPathService>();
+        mockDataPath.Setup(x => x.GetMemoryDirectory()).Returns(tempPath);
+        var service = CreateService(mockDataPathService: mockDataPath);
 
         // Act
         var result = await service.UpdateMemoryAsync(AppMode.Normal, "test");

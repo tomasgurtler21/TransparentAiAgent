@@ -4,6 +4,7 @@ using Moq;
 using TransparentAiAgentCore.Domain.ConversationHistory;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Infrastructure.ConversationHistory;
+using TransparentAiAgentCore.Infrastructure.DataPath;
 using TransparentAiAgentCore.Infrastructure.Serialization;
 
 namespace TransparentAiAgentCore_Tests.Infrastructure.ConversationHistory;
@@ -14,6 +15,7 @@ public class JsonConversationRepositoryTests
     private string _testDirectory = string.Empty;
     private MessageSerializer _messageSerializer = null!;
     private ILogger<JsonConversationRepository> _logger = null!;
+    private Mock<IDataPathService> _mockDataPathService = null!;
     private JsonConversationRepository _repository = null!;
 
     [TestInitialize]
@@ -27,8 +29,12 @@ public class JsonConversationRepositoryTests
         _messageSerializer = new MessageSerializer();
         _logger = new Mock<ILogger<JsonConversationRepository>>().Object;
 
-        // Create repository pointing to test directory
-        _repository = new JsonConversationRepository(_messageSerializer, _logger, _testDirectory);
+        // Setup mock DataPathService
+        _mockDataPathService = new Mock<IDataPathService>();
+        _mockDataPathService.Setup(x => x.GetConversationsDirectory()).Returns(_testDirectory);
+
+        // Create repository
+        _repository = new JsonConversationRepository(_messageSerializer, _logger, _mockDataPathService.Object);
     }
 
     [TestCleanup]
@@ -100,7 +106,9 @@ public class JsonConversationRepositoryTests
     {
         // Arrange
         var nonExistentDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "nested");
-        var repository = new JsonConversationRepository(_messageSerializer, _logger, nonExistentDir);
+        var mockDataPath = new Mock<IDataPathService>();
+        mockDataPath.Setup(x => x.GetConversationsDirectory()).Returns(nonExistentDir);
+        var repository = new JsonConversationRepository(_messageSerializer, _logger, mockDataPath.Object);
         var conversation = CreateTestConversation();
 
         try

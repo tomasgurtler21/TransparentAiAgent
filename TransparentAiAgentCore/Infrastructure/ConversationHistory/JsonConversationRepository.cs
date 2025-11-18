@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using TransparentAiAgentCore.Domain.ConversationHistory;
+using TransparentAiAgentCore.Infrastructure.DataPath;
 using TransparentAiAgentCore.Infrastructure.Serialization;
 
 namespace TransparentAiAgentCore.Infrastructure.ConversationHistory;
@@ -13,16 +14,16 @@ public class JsonConversationRepository : IConversationRepository
 {
     private readonly MessageSerializer _messageSerializer;
     private readonly ILogger<JsonConversationRepository> _logger;
-    private readonly string _storageDirectory;
+    private readonly IDataPathService _dataPathService;
 
     public JsonConversationRepository(
         MessageSerializer messageSerializer,
         ILogger<JsonConversationRepository> logger,
-        string storageDirectory)
+        IDataPathService dataPathService)
     {
         _messageSerializer = messageSerializer ?? throw new ArgumentNullException(nameof(messageSerializer));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _storageDirectory = storageDirectory ?? throw new ArgumentNullException(nameof(storageDirectory));
+        _dataPathService = dataPathService ?? throw new ArgumentNullException(nameof(dataPathService));
     }
 
     public async Task SaveAsync(Conversation conversation)
@@ -34,7 +35,7 @@ public class JsonConversationRepository : IConversationRepository
         conversation.LastModifiedAt = DateTime.UtcNow;
 
         // Ensure directory exists
-        Directory.CreateDirectory(_storageDirectory);
+        Directory.CreateDirectory(_dataPathService.GetConversationsDirectory());
 
         // Generate file path
         var filePath = GetFilePathForConversation(conversation.ConversationId, conversation.Name);
@@ -61,7 +62,7 @@ public class JsonConversationRepository : IConversationRepository
         // Sanitize name for filename
         var sanitizedName = SanitizeFileName(name);
         var fileName = $"{conversationId}_{sanitizedName}.json";
-        return Path.Combine(_storageDirectory, fileName);
+        return Path.Combine(_dataPathService.GetConversationsDirectory(), fileName);
     }
 
     private static string SanitizeFileName(string input)
@@ -96,7 +97,7 @@ public class JsonConversationRepository : IConversationRepository
 
         if (filePath == null)
         {
-            throw new FileNotFoundException($"Conversation {conversationId} not found in {_storageDirectory}");
+            throw new FileNotFoundException($"Conversation {conversationId} not found in {_dataPathService.GetConversationsDirectory()}");
         }
 
         try
@@ -140,13 +141,13 @@ public class JsonConversationRepository : IConversationRepository
     private string? FindConversationFile(Guid conversationId)
     {
         // Ensure directory exists
-        if (!Directory.Exists(_storageDirectory))
+        if (!Directory.Exists(_dataPathService.GetConversationsDirectory()))
         {
             return null;
         }
 
         // Find file starting with conversationId
-        var files = Directory.GetFiles(_storageDirectory, $"{conversationId}_*.json");
+        var files = Directory.GetFiles(_dataPathService.GetConversationsDirectory(), $"{conversationId}_*.json");
 
         return files.FirstOrDefault();
     }
@@ -154,7 +155,7 @@ public class JsonConversationRepository : IConversationRepository
     public async Task<List<ConversationMetadata>> ListAllAsync()
     {
         // Check if directory exists
-        if (!Directory.Exists(_storageDirectory))
+        if (!Directory.Exists(_dataPathService.GetConversationsDirectory()))
         {
             return new List<ConversationMetadata>();
         }
@@ -162,7 +163,7 @@ public class JsonConversationRepository : IConversationRepository
         var metadataList = new List<ConversationMetadata>();
 
         // Get all JSON files
-        var files = Directory.GetFiles(_storageDirectory, "*.json");
+        var files = Directory.GetFiles(_dataPathService.GetConversationsDirectory(), "*.json");
 
         foreach (var filePath in files)
         {
@@ -203,7 +204,7 @@ public class JsonConversationRepository : IConversationRepository
 
         if (filePath == null)
         {
-            throw new FileNotFoundException($"Conversation {conversationId} not found in {_storageDirectory}");
+            throw new FileNotFoundException($"Conversation {conversationId} not found in {_dataPathService.GetConversationsDirectory()}");
         }
 
         File.Delete(filePath);

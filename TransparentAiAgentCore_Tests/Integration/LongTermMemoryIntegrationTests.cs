@@ -11,6 +11,7 @@ using TransparentAiAgentCore.Domain.Memory;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Infrastructure.Memory;
+using TransparentAiAgentCore.Infrastructure.DataPath;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInLongTermMemory;
 
 namespace TransparentAiAgentCore_Tests.Integration;
@@ -50,13 +51,17 @@ public class LongTermMemoryIntegrationTests
         var config = new LongTermMemoryConfiguration
         {
             Enabled = true,
-            StorageDirectory = storageDirectory,
             MaxCharacters = 10000,
             AutoLoadOnStart = true,
             PromptUpdateOnEnd = true,
             UpdatePromptTimeoutSeconds = 30
         };
         services.AddSingleton(config);
+
+        // Register mock DataPathService
+        var mockDataPathService = new Mock<IDataPathService>();
+        mockDataPathService.Setup(x => x.GetMemoryDirectory()).Returns(storageDirectory);
+        services.AddSingleton(mockDataPathService.Object);
 
         // Register mock loggers
         services.AddSingleton(Mock.Of<ILogger<LongTermMemoryService>>());
