@@ -76,7 +76,6 @@ public record UIState
         ConfigurationPage = new ConfigurationPageState
         {
             Visible = false,
-            NavigateRequested = false,
             HighlightedSection = null
         },
         ScenarioSelector = new ScenarioSelectorState
@@ -121,7 +120,6 @@ public record UIState
         ConfigurationPage = new ConfigurationPageState
         {
             Visible = false,
-            NavigateRequested = false,
             HighlightedSection = null
         },
         ScenarioSelector = new ScenarioSelectorState
@@ -181,7 +179,6 @@ public record ContextIndicatorsState
 public record ConfigurationPageState
 {
     public bool Visible { get; init; } = true;
-    public bool NavigateRequested { get; init; } = false;
     public string? HighlightedSection { get; init; } = null;
 }
 

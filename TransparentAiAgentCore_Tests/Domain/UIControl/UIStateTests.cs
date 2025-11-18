@@ -119,13 +119,13 @@ public class UIStateTests
     }
 
     [TestMethod]
-    public void ConfigurationPageState_DefaultConstructor_NoNavigationNoHighlight()
+    public void ConfigurationPageState_DefaultConstructor_DefaultsCorrect()
     {
         // Arrange & Act
         var configPage = new ConfigurationPageState();
 
         // Assert
-        Assert.IsFalse(configPage.NavigateRequested);
+        Assert.IsTrue(configPage.Visible);
         Assert.IsNull(configPage.HighlightedSection);
     }
 
