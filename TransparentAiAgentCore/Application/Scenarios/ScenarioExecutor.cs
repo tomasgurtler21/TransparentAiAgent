@@ -3,6 +3,7 @@ using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Domain.Enums;
 using TransparentAiAgentCore.Application.Agent;
+using Microsoft.Extensions.Logging;
 
 namespace TransparentAiAgentCore.Application.Scenarios;
 
@@ -15,6 +16,7 @@ public class ScenarioExecutor : IScenarioExecutor
     private readonly IAgentOrchestrator _orchestrator;
     private readonly IConfigurationOverlay _configurationOverlay;
     private readonly IConditionEvaluator _conditionEvaluator;
+    private readonly ILogger<ScenarioExecutor> _logger;
     private CancellationTokenSource? _cts;
     private readonly object _lock = new();
     private bool _userInputEnabled = true;
@@ -34,11 +36,13 @@ public class ScenarioExecutor : IScenarioExecutor
     public ScenarioExecutor(
         IAgentOrchestrator orchestrator,
         IConfigurationOverlay configurationOverlay,
-        IConditionEvaluator conditionEvaluator)
+        IConditionEvaluator conditionEvaluator,
+        ILogger<ScenarioExecutor> logger)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _configurationOverlay = configurationOverlay ?? throw new ArgumentNullException(nameof(configurationOverlay));
         _conditionEvaluator = conditionEvaluator ?? throw new ArgumentNullException(nameof(conditionEvaluator));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public event EventHandler<ScenarioExecutionEventArgs>? ScenarioStarted;
@@ -75,6 +79,9 @@ public class ScenarioExecutor : IScenarioExecutor
             {
                 _state = ScenarioExecutionState.Running;
             }
+
+            _logger.LogInformation("Scenario STARTED: '{ScenarioName}' (ID: {ScenarioId}) with {StepCount} steps",
+                scenario.Name, scenario.Id, scenario.Steps.Count);
 
             // Fire started event
             ScenarioStarted?.Invoke(this, new ScenarioExecutionEventArgs(scenario));
@@ -113,6 +120,9 @@ public class ScenarioExecutor : IScenarioExecutor
                 _state = ScenarioExecutionState.Completed;
             }
 
+            _logger.LogInformation("Scenario COMPLETED: '{ScenarioName}' (ID: {ScenarioId}) - All {StepCount} steps executed successfully",
+                scenario.Name, scenario.Id, scenario.Steps.Count);
+
             // Fire completed event
             ScenarioCompleted?.Invoke(this, new ScenarioExecutionEventArgs(scenario));
         }
@@ -123,6 +133,9 @@ public class ScenarioExecutor : IScenarioExecutor
             {
                 _state = ScenarioExecutionState.NotRunning;
             }
+
+            _logger.LogWarning("Scenario CANCELLED: '{ScenarioName}' (ID: {ScenarioId}) at step {CurrentStep}/{TotalSteps}",
+                scenario.Name, scenario.Id, CurrentStepIndex + 1, scenario.Steps.Count);
         }
         catch (Exception ex)
         {
@@ -131,6 +144,9 @@ public class ScenarioExecutor : IScenarioExecutor
             {
                 _state = ScenarioExecutionState.Failed;
             }
+
+            _logger.LogError(ex, "Scenario FAILED: '{ScenarioName}' (ID: {ScenarioId}) at step {CurrentStep}/{TotalSteps} - Error: {ErrorMessage}",
+                scenario.Name, scenario.Id, CurrentStepIndex + 1, scenario.Steps.Count, ex.Message);
 
             // Fire failed event
             ScenarioFailed?.Invoke(this, new ScenarioExecutionEventArgs(scenario, ex.Message));
