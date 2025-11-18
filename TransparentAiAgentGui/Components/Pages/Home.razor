@@ -13,7 +13,6 @@
 @inject global::TransparentAiAgentCore.Domain.UIControl.IAppModeService AppModeService
 @inject IServiceProvider ServiceProvider
 @inject ILongTermMemoryService MemoryService
-@inject LongTermMemoryConfiguration MemoryConfig
 @inject IJSRuntime JSRuntime
 @implements IDisposable
 @rendermode InteractiveServer
@@ -47,16 +46,12 @@
         <label class="memory-checkbox">
             <input type="checkbox"
                    @bind="isMemoryEnabled"
-                   @bind:after="OnMemoryToggled"
-                   disabled="@(!isMemoryFeatureEnabled)" />
+                   @bind:after="OnMemoryToggled" />
             <span>Use long-term memory</span>
-            @if (isMemoryFeatureEnabled)
-            {
-                <span class="info-icon"
-                      title="Allow agent to remember your preferences and context across conversations">
-                    ℹ️
-                </span>
-            }
+            <span class="info-icon"
+                  title="Allow agent to remember your preferences and context across conversations">
+                ℹ️
+            </span>
         </label>
 
         @if (isMemoryEnabled && hasMemory)
@@ -87,7 +82,6 @@
     private bool IsProviderSelectorAvailable => ServiceProvider.GetService<IProviderStateService>() != null;
 
     // Memory-related fields
-    private bool isMemoryFeatureEnabled = false;
     private bool isMemoryEnabled = false;
     private bool hasMemory = false;
     private bool hasLoadedFromStorage = false;
@@ -100,14 +94,11 @@
         ConversationService.ProcessingStateChanged += OnProcessingStateChanged;
         ConversationService.StreamingMessageUpdated += OnStreamingMessageUpdated;
         ConversationService.MemoryStateChanged += OnMemoryStateChanged;
-
-        // Initialize memory feature state
-        isMemoryFeatureEnabled = MemoryConfig.Enabled;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && isMemoryFeatureEnabled && !hasLoadedFromStorage)
+        if (firstRender && !hasLoadedFromStorage)
         {
             hasLoadedFromStorage = true;
 
