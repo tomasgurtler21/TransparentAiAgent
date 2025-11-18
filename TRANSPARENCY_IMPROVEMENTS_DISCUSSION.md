@@ -367,42 +367,47 @@ All three changes will need tests:
 
 ---
 
-## Remaining Questions (Need Clarification)
+## Remaining Questions (Answered During Investigation)
 
-### Q1: JavaScript File Location
+### Q1: JavaScript File Location ✅
 
-Where should I add the `downloadFile()` JavaScript function?
+**ANSWER:** Add to existing `wwwroot/js/site.js`
 
-**Option A:** Add to existing `wwwroot/app.js` (if it exists)
-**Option B:** Create new `wwwroot/js/transparency.js` specifically for this feature
-**Option C:** Create new `wwwroot/js/site.js` for all custom JS
+**Finding:** The file already exists with utility functions (scrollToBottom, overlayResize). Adding downloadFile() there keeps all custom JS in one place.
 
-I'll need to check what JavaScript files already exist in the GUI project.
+### Q2: Confirmation Dialog Implementation ✅
 
-### Q2: Confirmation Dialog Implementation
+**RECOMMENDATION:** Use JavaScript `confirm()` dialog (Option A)
 
-How should the privacy warning be displayed?
+**Rationale:**
+- Simple, built-in, no extra code needed
+- Fast to implement (time pressure)
+- Existing modal (ToolDetailsModal.razor) is tool-specific, not reusable
+- Good enough for yes/no question
+- Can upgrade to custom modal later if needed
 
-**Option A:** JavaScript `confirm()` dialog (simple, built-in browser dialog)
-- Pros: Simple, no extra code
-- Cons: Can't customize styling, looks basic
+**Implementation:**
+```csharp
+private async Task HandleExportClick()
+{
+    var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+        "Logs contain all message content. Ensure no sensitive information before exporting. Continue?");
 
-**Option B:** Custom Blazor modal component (styled dialog)
-- Pros: Matches app styling, better UX
-- Cons: More code, need to create modal component
+    if (confirmed)
+    {
+        await ExportToJson();
+    }
+}
+```
 
-**Option C:** Use existing modal if available
-- Need to check if GUI already has a modal component
+### Q3: Implementation Order ✅
 
-### Q3: Implementation Order
-
-You suggested doing all 3 at once due to time pressure. Recommended order:
-
+**PROPOSED ORDER:**
 1. **Event Type Cleanup** (easiest, low risk, reduces clutter for other 2 tasks)
 2. **Export to JSON** (medium complexity, independent of multi-filter)
 3. **Multi-Filter UI** (most complex, benefits from cleaner event types)
 
-Is this order acceptable, or do you want a different sequence?
+**Awaiting user confirmation on this order before proceeding.**
 
 ---
 
