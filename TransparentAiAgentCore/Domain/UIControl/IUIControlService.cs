@@ -81,12 +81,10 @@ public interface IUIControlService
     /// Updates configuration page state.
     /// </summary>
     /// <param name="visible">Show or hide the configuration page overlay.</param>
-    /// <param name="navigate">Navigate to the Configuration page.</param>
     /// <param name="highlightSection">Section ID to highlight on the Configuration page.</param>
     /// <returns>Success result with updated state, or failure with error message.</returns>
     Result<UIState> UpdateConfigurationPage(
         bool? visible = null,
-        bool? navigate = null,
         string? highlightSection = null);
 
     /// <summary>

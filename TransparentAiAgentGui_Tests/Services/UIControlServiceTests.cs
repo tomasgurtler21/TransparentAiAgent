@@ -169,13 +169,13 @@ public class UIControlServiceTests
 
         // Act
         var result = _service.UpdateConfigurationPage(
-            navigate: true,
+            visible: true,
             highlightSection: "system-prompt");
 
         // Assert
         Assert.IsTrue(result.Success);
         Assert.IsNotNull(capturedState);
-        Assert.IsTrue(capturedState.ConfigurationPage.NavigateRequested);
+        Assert.IsTrue(capturedState.ConfigurationPage.Visible);
         Assert.AreEqual("system-prompt", capturedState.ConfigurationPage.HighlightedSection);
     }
 

@@ -214,12 +214,12 @@ public class UIControlToolExecutorTests
 
         var arguments = JsonSerializer.Serialize(new
         {
-            navigate = true,
+            visible = true,
             highlight_section = "system-prompt"
         });
 
         _mockUIControlService
-            .Setup(s => s.UpdateConfigurationPage(null, true, "system-prompt"))
+            .Setup(s => s.UpdateConfigurationPage(true, "system-prompt"))
             .Returns(Result<UIState>.Ok(UIState.DefaultNormalMode()));
 
         // Act
@@ -228,7 +228,7 @@ public class UIControlToolExecutorTests
         // Assert
         Assert.IsTrue(result.IsSuccess);
         _mockUIControlService.Verify(s => s.UpdateConfigurationPage(
-            null, true, "system-prompt"), Times.Once);
+            true, "system-prompt"), Times.Once);
     }
 
     [TestMethod]

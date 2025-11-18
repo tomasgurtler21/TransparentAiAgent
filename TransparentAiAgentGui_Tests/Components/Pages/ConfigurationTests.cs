@@ -82,7 +82,7 @@ public class ConfigurationTests : Bunit.TestContext
         {
             ConfigurationPage = new ConfigurationPageState
             {
-                NavigateRequested = false,
+                Visible = true,
                 HighlightedSection = "SystemPrompt"
             }
         };
@@ -129,7 +129,7 @@ public class ConfigurationTests : Bunit.TestContext
         {
             ConfigurationPage = new ConfigurationPageState
             {
-                NavigateRequested = false,
+                Visible = true,
                 HighlightedSection = "AgentConfiguration"
             }
         };

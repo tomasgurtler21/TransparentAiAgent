@@ -201,7 +201,7 @@ public class BuiltInUIControlToolRegistry : IToolRegistry
             type = "object",
             properties = new
             {
-                navigate = new { type = "boolean", description = "Navigate to the Configuration page" },
+                visible = new { type = "boolean", description = "Show or hide the configuration overlay" },
                 highlight_section = new
                 {
                     type = "string",
@@ -213,7 +213,7 @@ public class BuiltInUIControlToolRegistry : IToolRegistry
 
         return new UIControlTool(
             "ui_control_configuration",
-            "Control the Configuration page. Can navigate to the page and highlight specific sections (e.g., system prompt, LLM parameters).",
+            "Control the Configuration overlay. Can show/hide the overlay and highlight specific sections (e.g., system prompt, LLM parameters).",
             schema);
     }
 }

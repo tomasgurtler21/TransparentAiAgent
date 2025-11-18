@@ -234,7 +234,6 @@ public class UIControlToolExecutor : IToolExecutor
 
         return uiControlService.UpdateConfigurationPage(
             visible: GetBoolProperty(root, "visible"),
-            navigate: GetBoolProperty(root, "navigate"),
             highlightSection: GetStringProperty(root, "highlight_section"));
     }
 
