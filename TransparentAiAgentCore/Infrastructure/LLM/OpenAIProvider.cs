@@ -200,7 +200,7 @@ public class OpenAIProvider : ILLMProvider
                             index: toolCallUpdate.Index,
                             toolCallId: toolCallUpdate.ToolCallId,
                             functionName: toolCallUpdate.FunctionName,
-                            argumentsUpdate: toolCallUpdate.FunctionArgumentsUpdate?.ToString());
+                            argumentsUpdate: SafeBinaryDataToString(toolCallUpdate.FunctionArgumentsUpdate));
                     }
                 }
 
@@ -631,6 +631,25 @@ public class OpenAIProvider : ILLMProvider
         };
     }
 
+    /// <summary>
+    /// Safely converts BinaryData to string, handling cases where internal bytes may be null.
+    /// </summary>
+    private static string? SafeBinaryDataToString(BinaryData? data)
+    {
+        if (data == null)
+            return null;
+
+        try
+        {
+            return data.ToString();
+        }
+        catch (ArgumentNullException)
+        {
+            // BinaryData has null internal bytes
+            return null;
+        }
+    }
+
     private void LogStreamingChunk(StreamingChatCompletionUpdate update, string correlationId)
     {
         // Log each streaming chunk for diagnostics
@@ -653,8 +672,8 @@ public class OpenAIProvider : ILLMProvider
                 ToolCallIdIsNullOrEmpty = string.IsNullOrEmpty(tc.ToolCallId),
                 FunctionName = tc.FunctionName,
                 FunctionNameIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionName),
-                FunctionArgumentsUpdate = tc.FunctionArgumentsUpdate?.ToString(),
-                FunctionArgumentsUpdateIsNullOrEmpty = string.IsNullOrEmpty(tc.FunctionArgumentsUpdate?.ToString())
+                FunctionArgumentsUpdate = SafeBinaryDataToString(tc.FunctionArgumentsUpdate),
+                FunctionArgumentsUpdateIsNullOrEmpty = string.IsNullOrEmpty(SafeBinaryDataToString(tc.FunctionArgumentsUpdate))
             }).ToList(),
             FinishReason = update.FinishReason?.ToString(),
             Timestamp = DateTime.UtcNow
