@@ -127,7 +127,7 @@ None at this time. The fix is straightforward.
 
 ## Implementation Complete
 
-### Changes Made
+### First Fix (Commit cba415e)
 
 **OpenAIProvider.cs:**
 1. Added `SafeBinaryDataToString()` helper method (lines 634-651)
@@ -139,10 +139,27 @@ None at this time. The fix is straightforward.
 2. Updated `LogStreamingChunk()` to use safe helper (lines 968-969)
 3. Updated `StreamRequestAsync()` tool call accumulation to use safe helper (line 366)
 
+**Issue:** First fix missed `ConvertStreamingUpdate()` method in both providers!
+
+### Second Fix (Current)
+
+**Problem:** The error still occurred at line 379 in OpenAIProvider.cs because `ConvertStreamingUpdate()` was still using direct `?.ToString()` call.
+
+**OpenAIProvider.cs:**
+- Updated `ConvertStreamingUpdate()` to use `SafeBinaryDataToString()` helper (line 382)
+
+**AzureOpenAIProvider.cs:**
+- Updated `ConvertStreamingUpdate()` to use `SafeBinaryDataToString()` helper (line 639)
+
 ### How the Fix Works
 The `SafeBinaryDataToString()` method:
 - Returns null if BinaryData is null
 - Wraps `ToString()` in try-catch to handle ArgumentNullException
 - Returns null when internal bytes are null, preventing the crash
 
-This allows the diagnostic logging and tool call accumulation to continue gracefully even when OpenAI sends BinaryData with null internal bytes during streaming.
+This allows the diagnostic logging, tool call accumulation, AND streaming chunk conversion to continue gracefully even when OpenAI sends BinaryData with null internal bytes during streaming.
+
+### All Affected Locations Now Fixed
+✅ StreamRequestAsync - tool call accumulation (both providers)
+✅ LogStreamingChunk - diagnostic logging (both providers)
+✅ ConvertStreamingUpdate - streaming chunk conversion (both providers)

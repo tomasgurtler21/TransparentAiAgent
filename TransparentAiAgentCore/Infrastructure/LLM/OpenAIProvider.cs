@@ -379,7 +379,7 @@ public class OpenAIProvider : ILLMProvider
                 toolCallDelta = new LLMToolCall(
                     toolUpdate.ToolCallId,
                     toolUpdate.FunctionName ?? string.Empty,
-                    toolUpdate.FunctionArgumentsUpdate?.ToString() ?? string.Empty);
+                    SafeBinaryDataToString(toolUpdate.FunctionArgumentsUpdate) ?? string.Empty);
             }
         }
 
