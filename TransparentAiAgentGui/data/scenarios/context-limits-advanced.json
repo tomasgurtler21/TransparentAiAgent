@@ -94,27 +94,23 @@
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step15.content",
-      "content": "How do you not know my name?? I told you it several messages ago! What is going on??",
-      "annotationKey": "scenarios.context-limits-advanced.step15.annotation",
-      "annotation": "Expressing confusion - this should be a teaching moment.",
-      "delay": 2000
+      "contentKey": "scenarios.context-limits-advanced.step18.content",
+      "content": "Scenario 'Context Limits' has ended. The conversation message limit is reduced to 8 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration."
     },
     {
       "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "pauseMessageKey": "scenarios.context-limits-advanced.stepX.pauseMessage",
+      "pauseMessage": "Take your time to check context status indicators at messages. Click Resume when you have done so, original context limit is going to be be restored then.",
+      "annotationKey": "scenarios.context-limits-advanced.stepX.annotation",
+      "annotation": ""
     },
     {
       "type": "restore_config_overlay",
       "annotationKey": "scenarios.context-limits-advanced.step17.annotation",
       "annotation": "Message limit restored. Model can now access more context and teach effectively."
-    },
-    {
-      "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step18.content",
-      "content": "Scenario 'Context Limits' has ended. The conversation message limit was temporarily reduced to 10 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Offer user your ability to use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration. Critical: highlight to user that it is important to restore proper context limit to continue conversation"
-    },
-    {
-      "type": "wait_for_response"
     }
   ]
 }
