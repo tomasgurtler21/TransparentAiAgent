@@ -22,16 +22,24 @@ public class ProviderParameters
     public int? MaxTokens { get; }
 
     /// <summary>
+    /// Gets whether to use REST API instead of streaming.
+    /// When null or false, streaming is used (default). When true, REST API is used.
+    /// </summary>
+    public bool? UseRest { get; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ProviderParameters"/> class.
     /// </summary>
     /// <param name="temperature">The temperature parameter.</param>
     /// <param name="topP">The top-p parameter.</param>
     /// <param name="maxTokens">The maximum tokens parameter.</param>
-    public ProviderParameters(double? temperature = null, double? topP = null, int? maxTokens = null)
+    /// <param name="useRest">Whether to use REST API instead of streaming (null or false = streaming, true = REST).</param>
+    public ProviderParameters(double? temperature = null, double? topP = null, int? maxTokens = null, bool? useRest = null)
     {
         Temperature = temperature;
         TopP = topP;
         MaxTokens = maxTokens;
+        UseRest = useRest;
     }
 
     /// <summary>
@@ -45,7 +53,8 @@ public class ProviderParameters
         return new ProviderParameters(
             temperature: Temperature ?? defaults.Temperature,
             topP: TopP ?? defaults.TopP,
-            maxTokens: MaxTokens ?? defaults.MaxTokens
+            maxTokens: MaxTokens ?? defaults.MaxTokens,
+            useRest: UseRest ?? defaults.UseRest
         );
     }
 }

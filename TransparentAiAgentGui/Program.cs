@@ -321,6 +321,21 @@ try
                     Console.WriteLine($"⚠ Active provider '{llmConfig.ActiveProvider}' is invalid, switching to '{firstValidProvider}'");
                     llmConfig.ActiveProvider = firstValidProvider;
                 }
+
+                // Apply effective parameters (DefaultParameters merged with active provider's ParameterOverrides)
+                if (!string.IsNullOrEmpty(llmConfig.ActiveProvider) && llmConfig.Providers.ContainsKey(llmConfig.ActiveProvider))
+                {
+                    var activeProviderConfig = llmConfig.Providers[llmConfig.ActiveProvider];
+                    var effectiveParams = llmConfig.DefaultParameters != null && activeProviderConfig.ParameterOverrides != null
+                        ? activeProviderConfig.ParameterOverrides.GetEffectiveParameters(llmConfig.DefaultParameters)
+                        : activeProviderConfig.ParameterOverrides ?? llmConfig.DefaultParameters ?? new ProviderParameters();
+
+                    // Apply effective parameters to internal properties used by orchestrator
+                    llmConfig.Temperature = effectiveParams.Temperature;
+                    llmConfig.TopP = effectiveParams.TopP;
+                    llmConfig.MaxTokens = effectiveParams.MaxTokens ?? 4096;
+                    llmConfig.UseRest = effectiveParams.UseRest ?? false;
+                }
             }
             else
             {

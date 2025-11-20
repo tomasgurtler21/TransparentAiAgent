@@ -60,6 +60,13 @@ public class LLMConfiguration
     /// <summary>
     /// INTERNAL USE ONLY. Do not set in configuration files.
     /// Used by factory pattern when creating temporary config objects.
+    /// Whether to use REST API instead of streaming (null or false = streaming, true = REST).
+    /// </summary>
+    public bool UseRest { get; set; } = false;
+
+    /// <summary>
+    /// INTERNAL USE ONLY. Do not set in configuration files.
+    /// Used by factory pattern when creating temporary config objects.
     /// </summary>
     public AzureOpenAIConfiguration? AzureOpenAI { get; set; }
 

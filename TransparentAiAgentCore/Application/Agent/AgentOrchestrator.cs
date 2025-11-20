@@ -26,6 +26,7 @@ public class AgentOrchestrator : IAgentOrchestrator
     private readonly IToolManager? _toolManager;
     private readonly AgentConfiguration _agentConfig;
     private readonly LLMConfiguration _llmConfig;
+    private readonly bool _useRest;
     private const int MaxToolCallDepth = 10;
 
     public IConversationManager ConversationManager => _conversationManager;
@@ -49,12 +50,13 @@ public class AgentOrchestrator : IAgentOrchestrator
 
         _agentConfig = configuration.Agent;
         _llmConfig = configuration.LLM;
+        _useRest = _llmConfig.UseRest;
 
         // Add system message to conversation
         var systemMessage = new SystemMessage(_agentConfig.SystemPrompt);
         _conversationManager.AddMessage(systemMessage);
 
-        LogEvent("AgentInitialized", "Agent orchestrator initialized");
+        LogEvent("AgentInitialized", $"Agent orchestrator initialized (Mode: {(_useRest ? "REST" : "Streaming")})");
     }
 
     public async Task<IMessage> ProcessUserInputAsync(
@@ -238,49 +240,65 @@ public class AgentOrchestrator : IAgentOrchestrator
 
         // Build LLM request from current conversation state
         var llmRequest = BuildLLMRequest();
-        llmRequest = new LLMRequest(
-            llmRequest.Messages,
-            llmRequest.Temperature,
-            llmRequest.TopP,
-            llmRequest.MaxTokens,
-            stream: true,
-            tools: llmRequest.Tools);
-
-        // Stream from LLM and collect accumulated tool calls from final chunk
-        LogEvent("LLMStreamRequestSent", $"Sending streaming request to LLM (depth: {depth})");
 
         var contentBuilder = new StringBuilder();
         List<LLMToolCall>? accumulatedToolCalls = null;
         string? accumulatedThinking = null;
 
-        await foreach (var chunk in _llmProvider.StreamRequestAsync(llmRequest, cancellationToken))
+        if (_useRest)
         {
-            // Accumulate text content
-            if (!string.IsNullOrEmpty(chunk.ContentDelta))
+            // REST mode: Use non-streaming API and convert to streaming chunks
+            LogEvent("LLMRestRequestSent", $"Sending REST request to LLM (depth: {depth})");
+
+            var response = await _llmProvider.SendRequestAsync(llmRequest, cancellationToken);
+
+            // Convert response to streaming chunks
+            if (!string.IsNullOrEmpty(response.Content))
             {
-                contentBuilder.Append(chunk.ContentDelta);
-                // Yield text content immediately for real-time streaming
-                yield return new StreamingResponseChunk(chunk.ContentDelta, IsComplete: false, Status: StreamingStatus.Streaming);
+                contentBuilder.Append(response.Content);
+                // Yield entire content as single chunk
+                yield return new StreamingResponseChunk(response.Content, IsComplete: false, Status: StreamingStatus.Streaming);
             }
 
-            // Capture accumulated tool calls from final chunk
-            if (chunk.AccumulatedToolCalls != null && chunk.AccumulatedToolCalls.Count > 0)
-            {
-                accumulatedToolCalls = chunk.AccumulatedToolCalls;
-                LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, Tool calls: {accumulatedToolCalls.Count}");
-            }
+            accumulatedToolCalls = response.ToolCalls ?? new List<LLMToolCall>();
+            accumulatedThinking = response.Thinking;
 
-            // Capture accumulated thinking from final chunk
-            if (!string.IsNullOrEmpty(chunk.AccumulatedThinking))
-            {
-                accumulatedThinking = chunk.AccumulatedThinking;
-            }
+            LogEvent("LLMRestCompleted", $"REST request completed (depth: {depth}). Content length: {contentBuilder.Length}, Tool calls: {accumulatedToolCalls.Count}");
+        }
+        else
+        {
+            // Streaming mode: Use streaming API
+            LogEvent("LLMStreamRequestSent", $"Sending streaming request to LLM (depth: {depth})");
 
-            // Check if stream is complete
-            if (chunk.IsComplete && accumulatedToolCalls == null)
+            await foreach (var chunk in _llmProvider.StreamRequestAsync(llmRequest, cancellationToken))
             {
-                LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, No tool calls");
-                break;
+                // Accumulate text content
+                if (!string.IsNullOrEmpty(chunk.ContentDelta))
+                {
+                    contentBuilder.Append(chunk.ContentDelta);
+                    // Yield text content immediately for real-time streaming
+                    yield return new StreamingResponseChunk(chunk.ContentDelta, IsComplete: false, Status: StreamingStatus.Streaming);
+                }
+
+                // Capture accumulated tool calls from final chunk
+                if (chunk.AccumulatedToolCalls != null && chunk.AccumulatedToolCalls.Count > 0)
+                {
+                    accumulatedToolCalls = chunk.AccumulatedToolCalls;
+                    LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, Tool calls: {accumulatedToolCalls.Count}");
+                }
+
+                // Capture accumulated thinking from final chunk
+                if (!string.IsNullOrEmpty(chunk.AccumulatedThinking))
+                {
+                    accumulatedThinking = chunk.AccumulatedThinking;
+                }
+
+                // Check if stream is complete
+                if (chunk.IsComplete && accumulatedToolCalls == null)
+                {
+                    LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, No tool calls");
+                    break;
+                }
             }
         }
 
@@ -465,7 +483,7 @@ public class AgentOrchestrator : IAgentOrchestrator
             _llmConfig.Temperature,
             _llmConfig.TopP,
             _llmConfig.MaxTokens,
-            stream: false,
+            stream: !_useRest,  // Use REST when _useRest is true, streaming otherwise
             tools: tools);
     }
 
