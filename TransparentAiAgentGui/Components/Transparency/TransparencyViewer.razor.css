@@ -97,3 +97,45 @@
     height: 200px;
     color: #6c757d;
 }
+
+.event-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-remove-filter {
+    padding: 4px 8px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.btn-remove-filter:hover {
+    background-color: #c82333;
+}
+
+.btn-add-filter {
+    padding: 8px 12px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-add-filter:hover {
+    background-color: #218838;
+}

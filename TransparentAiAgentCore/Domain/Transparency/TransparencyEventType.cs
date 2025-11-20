@@ -2,38 +2,21 @@ namespace TransparentAiAgentCore.Domain.Transparency;
 
 public enum TransparencyEventType
 {
-    UserInput,
+    // Core events - actively used
+    UserInput,              // Used in tests (future feature)
     AssistantResponse,
     ToolCall,
     ToolResult,
     ContextChange,
-    ConfigurationChange,
     SystemState,
     Error,
-    Warning,
-    Debug,
     Info,
 
-    // Tool discovery events (Phase 5)
-    ToolDiscoveryStarted,
-    ToolDiscoveryCompleted,
-    ToolDiscoveryFailed,
-    ToolRegistered,
+    // Tool execution events
+    ToolCallCompleted,      // Used in tests (future feature)
 
-    // Tool execution events (Phase 5)
-    ToolCallStarted,
-    ToolCallCompleted,
-    ToolCallFailed,
-    ToolCallTimeout,
-
-    // MCP server lifecycle events (Phase 5)
-    MCPServerConnecting,
-    MCPServerConnected,
-    MCPServerDisconnected,
-    MCPServerConnectionFailed,
-
-    // UI Control events (Phase 9)
-    UIControlAction,
+    // UI Control events
+    UIControlAction,        // Used in tests (future feature)
 
     // Raw LLM request/response events (Phase 9a - Transparency Enhancement)
     RawLLMRequest,          // Complete request JSON before sending to LLM

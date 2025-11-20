@@ -23,13 +23,31 @@
                    @bind="SearchQuery"
                    @bind:event="oninput" />
 
-            <select class="filter-select" @bind="SelectedEventType">
-                <option value="">All Events</option>
-                @foreach (TransparencyEventType eventType in Enum.GetValues<TransparencyEventType>())
+            <div class="event-filters">
+                @foreach (var filter in EventTypeFilters)
                 {
-                    <option value="@eventType">@eventType</option>
+                    <div class="filter-item">
+                        <select @bind="filter.SelectedType" class="filter-select">
+                            <option value="">All Events</option>
+                            @foreach (TransparencyEventType eventType in Enum.GetValues<TransparencyEventType>())
+                            {
+                                <option value="@eventType">@eventType</option>
+                            }
+                        </select>
+
+                        @if (EventTypeFilters.Count > 1)
+                        {
+                            <button @onclick="() => RemoveFilter(filter)"
+                                    class="btn-remove-filter"
+                                    title="Remove filter">✕</button>
+                        }
+                    </div>
                 }
-            </select>
+
+                <button @onclick="AddFilter" class="btn-add-filter">
+                    + Add Filter
+                </button>
+            </div>
 
             <label class="auto-scroll-label">
                 <input type="checkbox" @bind="AutoScroll" />
@@ -38,6 +56,10 @@
 
             <button class="btn btn-sm btn-outline-secondary" @onclick="ClearEvents">
                 Clear
+            </button>
+
+            <button class="btn btn-sm btn-primary" @onclick="HandleExportClick">
+                Save
             </button>
         </div>
     </div>
@@ -69,9 +91,17 @@
     private UIState _uiState = UIState.DefaultNormalMode();
     private List<TransparencyEvent> Events { get; set; } = new();
     private string SearchQuery { get; set; } = string.Empty;
-    private string SelectedEventType { get; set; } = string.Empty;
+    private List<EventTypeFilter> EventTypeFilters { get; set; } = new()
+    {
+        new EventTypeFilter() // Start with one empty filter
+    };
     private bool AutoScroll { get; set; } = true;
     private ElementReference ViewerContentRef;
+
+    private class EventTypeFilter
+    {
+        public string SelectedType { get; set; } = string.Empty;
+    }
 
     private List<TransparencyEvent> FilteredEvents
     {
@@ -79,20 +109,30 @@
         {
             IEnumerable<TransparencyEvent> filtered = Events;
 
-            // Apply UI state event type filters if any
+            // Apply UI state event type filters if any (for teaching mode/programmatic control)
             if (_uiState.TransparencyViewer.EventTypeFilters.Any())
             {
                 filtered = filtered.Where(e =>
                     _uiState.TransparencyViewer.EventTypeFilters.Contains(e.EventType.ToString()));
             }
 
-            // Apply user search/filter
+            // Apply multi-filter (OR logic)
+            var selectedTypes = EventTypeFilters
+                .Where(f => !string.IsNullOrEmpty(f.SelectedType))
+                .Select(f => f.SelectedType)
+                .ToList();
+
+            if (selectedTypes.Any())
+            {
+                filtered = filtered.Where(e => selectedTypes.Contains(e.EventType.ToString()));
+            }
+
+            // Apply search filter
             filtered = filtered.Where(e =>
-                (string.IsNullOrEmpty(SelectedEventType) || e.EventType.ToString() == SelectedEventType) &&
-                (string.IsNullOrEmpty(SearchQuery) ||
-                 e.EventType.ToString().Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
-                 e.AdditionalInfo?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true ||
-                 e.Data?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true));
+                string.IsNullOrEmpty(SearchQuery) ||
+                e.EventType.ToString().Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                e.AdditionalInfo?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true ||
+                e.Data?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) == true);
 
             return filtered.ToList();
         }
@@ -160,11 +200,63 @@
         StateHasChanged();
     }
 
+    private void AddFilter()
+    {
+        EventTypeFilters.Add(new EventTypeFilter());
+    }
+
+    private void RemoveFilter(EventTypeFilter filter)
+    {
+        if (EventTypeFilters.Count > 1) // Keep at least one filter
+        {
+            EventTypeFilters.Remove(filter);
+        }
+    }
+
     private async Task HandleClose()
     {
         // Close via UIControlService
         await Task.Run(() =>
             UIControlService.UpdateTransparencyViewer(visible: false));
+    }
+
+    private async Task HandleExportClick()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+            "Logs contain all message content. Ensure no sensitive information before exporting. Continue?");
+
+        if (confirmed)
+        {
+            await ExportToJson();
+        }
+    }
+
+    private async Task ExportToJson()
+    {
+        try
+        {
+            // Export the viewer's current event list (limited to 1000)
+            var export = new
+            {
+                exportedAt = DateTime.UtcNow,
+                totalEventsInViewer = Events.Count,
+                events = Events
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(export, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+            });
+
+            var filename = $"transparency-events-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.json";
+            await JSRuntime.InvokeVoidAsync("downloadFile", filename, json);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't crash UI
+            Console.WriteLine($"Export failed: {ex.Message}");
+        }
     }
 
     public void Dispose()

@@ -76,3 +76,14 @@ window.overlayResize = {
         }
     }
 };
+
+// File export utility for Transparency Viewer
+window.downloadFile = function(filename, content) {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+};
