@@ -67,7 +67,17 @@ public class AnthropicProvider : ILLMProvider
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new ArgumentException("Anthropic API key is required");
 
-        _client = new AnthropicClient { APIKey = apiKey };
+        // Get endpoint from configuration (use custom endpoint if provided)
+        var endpoint = appConfig.LLM.Anthropic?.Endpoint;
+        var baseUrl = string.IsNullOrWhiteSpace(endpoint)
+            ? authProvider.GetEndpoint("Anthropic")
+            : endpoint;
+
+        _client = new AnthropicClient
+        {
+            APIKey = apiKey,
+            BaseUrl = new Uri(baseUrl)
+        };
     }
 
     /// <summary>

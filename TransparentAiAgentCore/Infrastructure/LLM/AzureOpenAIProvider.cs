@@ -69,7 +69,7 @@ public class AzureOpenAIProvider : ILLMProvider
             {
                 // Use DefaultAzureCredential (OAuth/Microsoft Entra ID)
                 // Automatically discovers credentials from environment, CLI, managed identity, etc.
-                if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
+                if (!string.IsNullOrWhiteSpace(azureConfig!.TenantId))
                 {
                     // Use specific tenant if provided
                     _tokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
@@ -90,7 +90,7 @@ public class AzureOpenAIProvider : ILLMProvider
             {
                 // Use InteractiveBrowserCredential (OAuth/Microsoft Entra ID)
                 // Opens browser popup for interactive user login
-                if (!string.IsNullOrWhiteSpace(azureConfig.TenantId))
+                if (!string.IsNullOrWhiteSpace(azureConfig!.TenantId))
                 {
                     // Use specific tenant if provided
                     _tokenCredential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions

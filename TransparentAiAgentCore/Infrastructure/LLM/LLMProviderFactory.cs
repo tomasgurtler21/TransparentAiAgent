@@ -57,6 +57,13 @@ public class LLMProviderFactory : ILLMProviderFactory
         var model = GetRequiredStringParameter(config, "Model", "Anthropic");
         var apiKey = GetRequiredStringParameter(config, "ApiKey", "Anthropic");
 
+        // Extract optional Endpoint parameter
+        string? endpoint = null;
+        if (config.Parameters.TryGetValue("Endpoint", out var endpointObj))
+        {
+            endpoint = endpointObj?.ToString();
+        }
+
         // Create a temporary AppConfiguration with Anthropic config for the provider constructor
         var tempConfig = new AppConfiguration
         {
@@ -66,7 +73,8 @@ public class LLMProviderFactory : ILLMProviderFactory
                 Anthropic = new AnthropicConfiguration
                 {
                     ApiKey = apiKey,
-                    Model = model
+                    Model = model,
+                    Endpoint = endpoint
                 }
             }
         };
@@ -172,6 +180,13 @@ public class LLMProviderFactory : ILLMProviderFactory
         var model = GetRequiredStringParameter(config, "Model", "OpenAI");
         var apiKey = GetRequiredStringParameter(config, "ApiKey", "OpenAI");
 
+        // Extract optional Endpoint parameter
+        string? endpoint = null;
+        if (config.Parameters.TryGetValue("Endpoint", out var endpointObj))
+        {
+            endpoint = endpointObj?.ToString();
+        }
+
         // Extract IsReasoningModel parameter - REQUIRED, no silent defaults
         if (!config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
         {
@@ -195,7 +210,8 @@ public class LLMProviderFactory : ILLMProviderFactory
                 {
                     ApiKey = apiKey,
                     Model = model,
-                    IsReasoningModel = isReasoningModel  // ✅ Set from config
+                    IsReasoningModel = isReasoningModel,  // ✅ Set from config
+                    Endpoint = endpoint  // ✅ Set optional endpoint from config
                 }
             }
         };

@@ -13,6 +13,12 @@ public class AnthropicConfiguration
     public string Model { get; set; } = "claude-sonnet-4-5-20250929";
 
     /// <summary>
+    /// Optional custom endpoint URL.
+    /// Defaults to https://api.anthropic.com if not specified.
+    /// </summary>
+    public string? Endpoint { get; set; } = null;
+
+    /// <summary>
     /// Extended thinking configuration for Claude models
     /// </summary>
     public ExtendedThinkingConfiguration? ExtendedThinking { get; set; }
@@ -24,6 +30,9 @@ public class AnthropicConfiguration
 
         if (string.IsNullOrWhiteSpace(Model))
             throw new ConfigurationException("Anthropic Model cannot be null or whitespace");
+
+        if (!string.IsNullOrWhiteSpace(Endpoint) && !Uri.TryCreate(Endpoint, UriKind.Absolute, out _))
+            throw new ConfigurationException("Anthropic Endpoint must be a valid URI");
 
         ExtendedThinking?.Validate();
     }

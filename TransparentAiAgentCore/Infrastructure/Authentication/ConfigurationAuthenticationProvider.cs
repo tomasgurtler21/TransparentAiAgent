@@ -45,7 +45,8 @@ public class ConfigurationAuthenticationProvider : IAuthenticationProvider
                 ?? throw new ConfigurationException("Azure OpenAI endpoint not configured"),
             "openai" => _configuration.LLM.OpenAI?.Endpoint
                 ?? "https://api.openai.com", // OpenAI has default endpoint
-            "anthropic" => "https://api.anthropic.com", // Anthropic has fixed endpoint
+            "anthropic" => _configuration.LLM.Anthropic?.Endpoint
+                ?? "https://api.anthropic.com", // Anthropic has default endpoint
             _ => throw new ArgumentException($"Unknown service: {serviceName}", nameof(serviceName))
         };
     }

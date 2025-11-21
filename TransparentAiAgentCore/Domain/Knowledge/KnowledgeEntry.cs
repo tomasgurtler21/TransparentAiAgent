@@ -63,7 +63,7 @@ public class KnowledgeEntry
         Topic = topic;
         Category = category;
         Summary = summary;
-        KnowledgeGapLikelihood = knowledgeGapLikelihood.ToLowerInvariant();
+        KnowledgeGapLikelihood = knowledgeGapLikelihood!.ToLowerInvariant();
         LastUpdated = lastUpdated;
         LastChecked = lastChecked;
         Content = content;

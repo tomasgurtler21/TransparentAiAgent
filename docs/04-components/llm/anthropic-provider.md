@@ -1,6 +1,6 @@
 # Anthropic Provider
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-21
 **Status**: Active
 **Phase**: Phase 8
 **Layer**: Infrastructure
@@ -175,7 +175,7 @@ Logs comprehensive event data:
 
 ### Required Configuration
 
-**In appsettings.json**:
+**Basic Configuration (in appsettings.json)**:
 
 ```json
 {
@@ -188,6 +188,32 @@ Logs comprehensive event data:
   }
 }
 ```
+
+### Optional Configuration
+
+**With Custom Endpoint (for proxies or alternative endpoints)**:
+
+```json
+{
+  "LLM": {
+    "Provider": "Anthropic",
+    "Anthropic": {
+      "ApiKey": "sk-ant-...",
+      "ModelName": "claude-3-5-sonnet-20241022",
+      "Endpoint": "https://custom-anthropic-proxy.example.com"
+    }
+  }
+}
+```
+
+**Configuration Fields**:
+- `ApiKey` (required): Anthropic API key
+- `ModelName` (required): Claude model identifier
+- `Endpoint` (optional): Custom endpoint URL. Defaults to `https://api.anthropic.com` if not specified. Useful for:
+  - Anthropic proxies or API gateways
+  - Regional endpoints
+  - Development/testing environments
+  - Corporate proxy servers
 
 ### Supported Models
 

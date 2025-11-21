@@ -1,6 +1,6 @@
 # LLM Provider Selector Guide
 
-**Last Updated**: 2025-11-15
+**Last Updated**: 2025-11-21
 **Status**: ✅ Implemented
 
 ## 📋 Scope
@@ -104,14 +104,35 @@ Additional fields depend on provider type:
 
 #### Anthropic Provider
 
+**Basic Configuration:**
 ```json
 {
   "Type": "Anthropic",
   "DisplayName": "Claude Haiku (Fast)",
-  "Model": "claude-haiku-4-5-20251001",
-  "ApiKey": "sk-ant-xxx"
+  "Parameters": {
+    "Model": "claude-haiku-4-5-20251001",
+    "ApiKey": "sk-ant-xxx"
+  }
 }
 ```
+
+**With Custom Endpoint (for proxies or alternative endpoints):**
+```json
+{
+  "Type": "Anthropic",
+  "DisplayName": "Claude via Custom Endpoint",
+  "Parameters": {
+    "Model": "claude-haiku-4-5-20251001",
+    "ApiKey": "sk-ant-xxx",
+    "Endpoint": "https://custom-anthropic-proxy.example.com"
+  }
+}
+```
+
+**Parameters:**
+- `Model` (required): Claude model identifier
+- `ApiKey` (required): Anthropic API key
+- `Endpoint` (optional): Custom endpoint URL. Defaults to `https://api.anthropic.com` if not specified.
 
 #### Azure OpenAI Provider
 
@@ -167,14 +188,41 @@ Additional fields depend on provider type:
 
 #### OpenAI Provider
 
+**Basic Configuration:**
 ```json
 {
   "Type": "OpenAI",
   "DisplayName": "GPT-4o",
-  "Model": "gpt-4o",
-  "ApiKey": "sk-xxx"
+  "Parameters": {
+    "Model": "gpt-4o",
+    "ApiKey": "sk-xxx",
+    "IsReasoningModel": false
+  }
 }
 ```
+
+**With Custom Endpoint (for OpenAI-compatible APIs):**
+```json
+{
+  "Type": "OpenAI",
+  "DisplayName": "LocalAI / vLLM / Ollama",
+  "Parameters": {
+    "Model": "gpt-4o",
+    "ApiKey": "sk-xxx",
+    "IsReasoningModel": false,
+    "Endpoint": "https://custom-openai-compatible.example.com/v1"
+  }
+}
+```
+
+**Parameters:**
+- `Model` (required): OpenAI model identifier
+- `ApiKey` (required): OpenAI API key
+- `IsReasoningModel` (required): Set to `true` for reasoning models (o1, o3, o4-mini), `false` for standard models
+- `Endpoint` (optional): Custom endpoint URL. Defaults to `https://api.openai.com/v1` if not specified. Useful for:
+  - OpenAI-compatible APIs (LocalAI, vLLM, Ollama with OpenAI compatibility)
+  - Corporate proxies or API gateways
+  - Development/testing environments
 
 ---
 
