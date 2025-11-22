@@ -1,19 +1,151 @@
+/* ========================================
+   Dark Mode Design System - CSS Variables
+   ======================================== */
+:root {
+    /* Dark Backgrounds */
+    --bg-primary: #1e1e2e;
+    --bg-secondary: #27273a;
+    --bg-tertiary: #2d2d42;
+    --bg-elevated: #32324a;
+
+    /* Chat Message Backgrounds (Moderate Contrast - Improved readability) */
+    --msg-user: #2d4a66;
+    --msg-assistant: #4a3866;
+    --msg-system: #5c4d33;
+    --msg-tool: #386660;
+
+    /* Accent Colors */
+    --accent-blue: #5d9cec;
+    --accent-blue-hover: #4a8cd9;
+    --accent-purple: #b47adb;
+    --accent-purple-hover: #a166cc;
+    --accent-orange: #ffa940;
+    --accent-orange-hover: #ff9626;
+    --accent-teal: #5fcec4;
+    --accent-teal-hover: #4cbdb3;
+    --accent-red: #fc6d6d;
+    --accent-red-hover: #fa5454;
+    --accent-green: #66d9a0;
+    --accent-green-hover: #52cc8f;
+
+    /* Text Colors */
+    --text-primary: #e4e4e7;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #71717a;
+    --text-disabled: #52525b;
+
+    /* Borders & Dividers */
+    --border-primary: #3f3f46;
+    --border-secondary: #52525b;
+    --border-focus: #5d9cec;
+
+    /* Typography */
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: var(--font-body);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--accent-blue);
 }
 
+a:hover, .btn-link:hover {
+    color: var(--accent-blue-hover);
+}
+
+/* ========================================
+   Unified Modern Button System
+   ======================================== */
+.btn-modern {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    border: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+}
+
+.btn-modern:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-modern:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-modern:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-modern.btn-primary {
+    background-color: var(--accent-blue);
+}
+
+.btn-modern.btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-blue-hover);
+}
+
+.btn-modern.btn-danger {
+    background-color: var(--accent-red);
+}
+
+.btn-modern.btn-danger:hover:not(:disabled) {
+    background-color: var(--accent-red-hover);
+}
+
+.btn-modern.btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.btn-modern.btn-secondary:hover:not(:disabled) {
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.btn-modern.btn-success {
+    background-color: var(--accent-green);
+}
+
+.btn-modern.btn-success:hover:not(:disabled) {
+    background-color: var(--accent-green-hover);
+}
+
+/* Legacy Bootstrap button support (updated for dark mode) */
 .btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    color: var(--text-primary);
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-blue-hover);
+    border-color: var(--accent-blue-hover);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem var(--bg-primary), 0 0 0 0.25rem var(--border-focus);
 }
 
 .content {
@@ -25,15 +157,15 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 1px solid var(--accent-green);
 }
 
 .invalid {
-    outline: 1px solid #e50000;
+    outline: 1px solid var(--accent-red);
 }
 
 .validation-message {
-    color: #e50000;
+    color: var(--accent-red);
 }
 
 .blazor-error-boundary {
@@ -47,7 +179,24 @@ h1:focus {
     }
 
 .darker-border-checkbox.form-check-input {
-    border-color: #929292;
+    border-color: var(--border-secondary);
+}
+
+/* Form Controls Dark Mode */
+.form-control, .form-select, input, textarea, select {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-primary);
+}
+
+.form-control:focus, .form-select:focus, input:focus, textarea:focus, select:focus {
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border-focus);
+}
+
+.form-control::placeholder, input::placeholder, textarea::placeholder {
+    color: var(--text-tertiary);
 }
 
 /* ========================================
@@ -71,11 +220,12 @@ h1:focus {
     top: 0;
     right: 0;
     height: 100vh;
-    background: white;
-    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease-in-out;
+    background: var(--bg-secondary);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+    transition: transform var(--transition-normal);
     pointer-events: auto; /* Capture clicks on panel */
     overflow-y: auto;
+    border-left: 1px solid var(--border-primary);
 }
 
 .overlay-panel-right {

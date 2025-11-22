@@ -1,45 +1,73 @@
 .message {
     margin: 10px 0;
-    padding: 12px;
-    border-radius: 8px;
-    border-left: 4px solid;
+    padding: 12px 16px;
+    border-radius: 0.5rem;
+    border-left: 3px solid;
+    transition: all var(--transition-fast);
+    max-width: 85%;
+    clear: both;
 }
 
+/* User messages - align right */
 .message-user {
-    background-color: #e3f2fd;
-    border-left-color: #2196f3;
+    background-color: var(--msg-user);
+    border-left-color: var(--accent-blue);
+    margin-left: auto;
+    margin-right: 0;
 }
 
+/* Assistant messages - align left */
 .message-assistant {
-    background-color: #f3e5f5;
-    border-left-color: #9c27b0;
+    background-color: var(--msg-assistant);
+    border-left-color: var(--accent-purple);
+    margin-left: 0;
+    margin-right: auto;
 }
 
+/* System messages - align left */
 .message-system {
-    background-color: #fff3e0;
-    border-left-color: #ff9800;
+    background-color: var(--msg-system);
+    border-left-color: var(--accent-orange);
+    margin-left: 0;
+    margin-right: auto;
 }
 
+/* Tool messages - default style */
 .message-tool {
-    background-color: #e0f2f1;
-    border-left-color: #009688;
+    background-color: var(--msg-tool);
+    border-left-color: var(--accent-teal);
+}
+
+/* Tool calls (from assistant) - align left */
+.message-tool:has(.tool-call-container) {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* Tool results/responses - align right */
+.message-tool:has(.tool-result) {
+    margin-left: auto;
+    margin-right: 0;
 }
 
 .message-header {
     display: flex;
     gap: 10px;
     font-size: 0.85rem;
-    color: #666;
-    margin-bottom: 6px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
 }
 
 .message-role {
     font-weight: 600;
     text-transform: capitalize;
+    color: var(--text-primary);
 }
 
 .message-content {
     word-wrap: break-word;
+    color: var(--text-primary);
+    line-height: 1.6;
 }
 
 /* Tool-specific and scenario styling */
@@ -57,10 +85,10 @@
 }
 
 .tool-error {
-    color: #d32f2f;
-    background-color: #ffebee;
-    padding: 6px 8px;
-    border-radius: 4px;
+    color: var(--text-primary);
+    background-color: var(--accent-red);
+    padding: 8px 12px;
+    border-radius: 0.375rem;
     margin: 6px 0;
     font-weight: 500;
 }
@@ -68,12 +96,12 @@
 /* Annotation styling */
 .message-annotation {
     margin-top: 10px;
-    padding: 8px 12px;
-    background-color: #fffbf0;
-    border-left: 3px solid #ffc107;
-    border-radius: 4px;
+    padding: 10px 14px;
+    background-color: var(--bg-elevated);
+    border-left: 3px solid var(--accent-orange);
+    border-radius: 0.375rem;
     font-size: 0.9rem;
-    color: #856404;
+    color: var(--text-secondary);
     display: flex;
     gap: 8px;
     align-items: flex-start;
@@ -97,19 +125,19 @@
 }
 
 .message-context-status.highlighted {
-    background-color: #fff3cd;
-    border: 2px solid #ffc107;
-    border-radius: 4px;
+    background-color: var(--bg-elevated);
+    border: 2px solid var(--accent-orange);
+    border-radius: 0.25rem;
     padding: 2px 6px;
-    box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+    box-shadow: 0 0 8px rgba(255, 169, 64, 0.5);
     animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
     0%, 100% {
-        box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+        box-shadow: 0 0 8px rgba(255, 169, 64, 0.5);
     }
     50% {
-        box-shadow: 0 0 16px rgba(255, 193, 7, 0.8);
+        box-shadow: 0 0 16px rgba(255, 169, 64, 0.8);
     }
 }
