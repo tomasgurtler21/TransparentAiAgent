@@ -333,7 +333,7 @@ public class OpenAIProvider : ILLMProvider
 
     private LLMResponse ConvertResponse(ChatCompletion response)
     {
-        var content = response.Content[0].Text ?? string.Empty;
+        var content = response.Content.Count > 0 ? (response.Content[0].Text ?? string.Empty) : string.Empty;
 
         List<LLMToolCall>? toolCalls = null;
         if (response.ToolCalls.Count > 0)
