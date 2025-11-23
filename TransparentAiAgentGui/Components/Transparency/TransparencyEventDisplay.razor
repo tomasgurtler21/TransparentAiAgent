@@ -18,7 +18,7 @@
     @if (IsExpanded && !string.IsNullOrEmpty(Event.Data))
     {
         <div class="event-details">
-            <pre><code>@Event.Data</code></pre>
+            <pre><code>@ProcessEventData(Event.Data)</code></pre>
         </div>
     }
 </div>
@@ -70,5 +70,27 @@
             TransparencyEventType.UserInput => "👤",
             _ => "ℹ️"
         };
+    }
+
+    private string ProcessEventData(string data)
+    {
+        if (string.IsNullOrEmpty(data))
+            return data;
+
+        // Replace escaped newlines and tabs with actual characters
+        data = data.Replace("\\r\\n", "\r\n")
+                   .Replace("\\n", "\n")
+                   .Replace("\\r", "\r")
+                   .Replace("\\t", "\t");
+
+        // Replace unicode escape sequences like \u0022 with actual characters
+        data = System.Text.RegularExpressions.Regex.Replace(data, @"\\u([0-9a-fA-F]{4})", match =>
+        {
+            var hexValue = match.Groups[1].Value;
+            var charCode = Convert.ToInt32(hexValue, 16);
+            return ((char)charCode).ToString();
+        });
+
+        return data;
     }
 }
