@@ -4,6 +4,7 @@ using TransparentAiAgentCore.Domain.LLM;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Domain.Transparency;
 using TransparentAiAgentCore.Domain.UIControl;
+using TransparentAiAgentCore.Infrastructure.Configuration;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Infrastructure.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools.Validation;
@@ -22,6 +23,7 @@ public class ToolManager : IToolManager
     private readonly IToolUsageStatistics _statistics;
     private readonly ToolSchemaValidator _validator;
     private readonly IAppModeService? _appModeService;
+    private readonly IUserSettingsService? _userSettingsService;
 
     public ToolManager(
         IToolRegistry registry,
@@ -29,7 +31,8 @@ public class ToolManager : IToolManager
         ITransparencyService transparencyService,
         IToolUsageStatistics statistics,
         ToolSchemaValidator validator,
-        IAppModeService? appModeService = null)
+        IAppModeService? appModeService = null,
+        IUserSettingsService? userSettingsService = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _executors = executors ?? throw new ArgumentNullException(nameof(executors));
@@ -37,6 +40,7 @@ public class ToolManager : IToolManager
         _statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _appModeService = appModeService; // Optional - may be null if mode service not available
+        _userSettingsService = userSettingsService; // Optional - may be null if settings service not available
     }
 
     /// <summary>
@@ -204,29 +208,57 @@ public class ToolManager : IToolManager
                 return new List<LLMTool>();
             }
 
-            // Filter tools based on mode
+            // Get user settings for memory preference
+            var enableMemory = _userSettingsService?.GetCurrentSettings()?.EnableMemory ?? false;
+
+            // Filter tools based on mode and user preferences
             // In Normal mode: exclude UI control and knowledge library tools (teaching-specific)
             // In Teaching mode: include all tools
-            var filteredTools = currentMode == AppMode.Normal
-                ? tools.Where(t => t.SourceType != ToolSourceType.BuiltInUIControl
-                                && t.SourceType != ToolSourceType.BuiltInKnowledge).ToList()
-                : tools;
+            // Long-term memory tools: only if EnableMemory setting is true
+            var filteredTools = tools.Where(t =>
+            {
+                // Filter by mode (existing logic)
+                if (currentMode == AppMode.Normal &&
+                    (t.SourceType == ToolSourceType.BuiltInUIControl ||
+                     t.SourceType == ToolSourceType.BuiltInKnowledge))
+                    return false;
+
+                // Filter by user preference: memory tools
+                if (t.SourceType == ToolSourceType.BuiltInLongTermMemory && !enableMemory)
+                    return false;
+
+                return true;
+            }).ToList();
 
             var filteredCount = filteredTools.Count();
             if (filteredCount < toolCount)
             {
                 var excludedCount = toolCount - filteredCount;
+                var excludedTypes = new List<string>();
+
+                if (currentMode == AppMode.Normal)
+                {
+                    excludedTypes.Add("BuiltInUIControl");
+                    excludedTypes.Add("BuiltInKnowledge");
+                }
+
+                if (!enableMemory)
+                {
+                    excludedTypes.Add("BuiltInLongTermMemory");
+                }
+
                 _transparencyService.LogEvent(new TransparencyEvent(
                     TransparencyEventType.SystemState,
                     JsonSerializer.Serialize(new
                     {
                         CurrentMode = currentMode.ToString(),
+                        EnableMemory = enableMemory,
                         TotalTools = toolCount,
                         FilteredTools = filteredCount,
                         ExcludedTools = excludedCount,
-                        ExcludedTypes = new[] { "BuiltInUIControl", "BuiltInKnowledge" }
+                        ExcludedTypes = excludedTypes
                     }),
-                    $"[ToolManager] Filtered {excludedCount} teaching-mode-only tools (mode: {currentMode})"));
+                    $"[ToolManager] Filtered {excludedCount} tools (mode: {currentMode}, memory: {enableMemory})"));
             }
 
             var llmTools = filteredTools
@@ -239,9 +271,10 @@ public class ToolManager : IToolManager
                 {
                     ConvertedCount = llmTools.Count,
                     ToolNames = llmTools.Select(t => t.Name).ToList(),
-                    Mode = currentMode.ToString()
+                    Mode = currentMode.ToString(),
+                    EnableMemory = enableMemory
                 }),
-                $"[ToolManager] Converted {llmTools.Count} tools to LLM format (mode: {currentMode})"));
+                $"[ToolManager] Converted {llmTools.Count} tools to LLM format (mode: {currentMode}, memory: {enableMemory})"));
 
             return llmTools;
         }

@@ -8,11 +8,13 @@
 @using TransparentAiAgentGui.Components.Shared
 @using TransparentAiAgentCore.Domain.UIControl
 @using TransparentAiAgentCore.Domain.Memory
+@using TransparentAiAgentCore.Infrastructure.Configuration
 @using Microsoft.JSInterop
 @inject IConversationUIService ConversationService
 @inject global::TransparentAiAgentCore.Domain.UIControl.IAppModeService AppModeService
 @inject IServiceProvider ServiceProvider
 @inject ILongTermMemoryService MemoryService
+@inject IUserSettingsService UserSettingsService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
 @rendermode InteractiveServer
@@ -102,16 +104,21 @@
         {
             hasLoadedFromStorage = true;
 
-            // Restore checkbox state from localStorage (only works on client-side)
+            // Restore checkbox state from UserSettings (primary source of truth)
+            var userSettings = UserSettingsService.GetCurrentSettings();
+            isMemoryEnabled = userSettings.EnableMemory;
+
+            // Also check localStorage for backwards compatibility (if different, update settings)
             var stored = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "memory_enabled");
-            if (bool.TryParse(stored, out var enabled))
+            if (bool.TryParse(stored, out var localStorageValue) && localStorageValue != isMemoryEnabled)
             {
-                isMemoryEnabled = enabled;
-                if (enabled)
-                {
-                    await OnMemoryToggled(); // Apply saved state
-                }
+                // Migrate from localStorage to UserSettings
+                isMemoryEnabled = localStorageValue;
+                UserSettingsService.UpdateEnableMemory(isMemoryEnabled);
             }
+
+            // Apply the memory state to conversation service
+            await ConversationService.SetMemoryEnabledAsync(isMemoryEnabled);
 
             // Check if memory exists for current mode
             hasMemory = await MemoryService.HasMemoryAsync(AppModeService.CurrentMode);
@@ -155,9 +162,12 @@
 
     private async Task OnMemoryToggled()
     {
-        // Persist to localStorage
+        // Persist to localStorage (for backwards compatibility)
         await JSRuntime.InvokeVoidAsync("localStorage.setItem",
             "memory_enabled", isMemoryEnabled.ToString());
+
+        // Update UserSettings (this is what ToolManager reads)
+        UserSettingsService.UpdateEnableMemory(isMemoryEnabled);
 
         await ConversationService.SetMemoryEnabledAsync(isMemoryEnabled);
 

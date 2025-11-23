@@ -246,13 +246,16 @@ try
 
                 // Create Tool Manager with all available executors and mode service for filtering
                 // Note: UI control and knowledge library tools are only visible in Teaching mode
+                // Note: Long-term memory tools are only visible when user has enabled memory in settings
+                var userSettingsService = sp.GetService<IUserSettingsService>();
                 var toolManager = new ToolManager(
                     toolRegistry,
                     executors,
                     transparencyService,
                     statistics,
                     validator,
-                    appModeService);
+                    appModeService,
+                    userSettingsService);
 
                 return toolManager;
             }
