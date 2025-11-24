@@ -26,7 +26,7 @@ public class ConfigurationServiceTests
         Assert.IsNotNull(config);
         Assert.IsNotNull(config.Agent);
         Assert.IsNotNull(config.LLM);
-        Assert.IsNotNull(config.MCP);
+        Assert.IsNotNull(config.Tools);
     }
 
     [TestMethod]
@@ -178,10 +178,6 @@ public class ConfigurationServiceTests
                         }
                     )
                 }
-            },
-            MCP = new MCPConfiguration
-            {
-                AutoDiscoverTools = true
             }
         };
     }
@@ -377,10 +373,6 @@ public class ConfigurationServiceTests
                         }
                     )
                 }
-            },
-            MCP = new MCPConfiguration
-            {
-                AutoDiscoverTools = true
             }
         };
     }

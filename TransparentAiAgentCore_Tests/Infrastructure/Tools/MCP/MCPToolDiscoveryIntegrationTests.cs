@@ -21,7 +21,7 @@ public class MCPToolDiscoveryIntegrationTests
     public async Task DiscoverToolsFromRealTodoListServer_ShouldSucceed()
     {
         // Arrange
-        var mcpConfig = new MCPConfiguration
+        var toolsConfig = new ToolsConfiguration
         {
             Servers = new List<MCPServerConfiguration>
             {
@@ -35,7 +35,7 @@ public class MCPToolDiscoveryIntegrationTests
             }
         };
 
-        var discovery = new MCPToolDiscovery(mcpConfig);
+        var discovery = new MCPToolDiscovery(toolsConfig);
 
         // Act
         var tools = await discovery.DiscoverAllToolsAsync(CancellationToken.None);
@@ -72,7 +72,7 @@ public class MCPToolDiscoveryIntegrationTests
     public async Task ExecuteToolCall_CreateTodoItem_ShouldSucceed()
     {
         // Arrange
-        var mcpConfig = new MCPConfiguration
+        var toolsConfig = new ToolsConfiguration
         {
             Servers = new List<MCPServerConfiguration>
             {
@@ -86,7 +86,7 @@ public class MCPToolDiscoveryIntegrationTests
             }
         };
 
-        var discovery = new MCPToolDiscovery(mcpConfig);
+        var discovery = new MCPToolDiscovery(toolsConfig);
         var executor = new MCPToolExecutor(discovery);
 
         // Discover tools first

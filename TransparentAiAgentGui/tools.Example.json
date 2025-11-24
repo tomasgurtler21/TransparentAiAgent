@@ -1,0 +1,54 @@
+{
+  "// NOTE": "This is an example tools configuration file showing all available options with detailed comments",
+  "// USAGE": "Copy to tools.json and fill in your actual values",
+
+  "// EnableTools": "Enable tool calling (default: true)",
+  "EnableTools": true,
+
+  "// ToolExecutionMode": "Execute tools sequentially or in parallel (Sequential or Parallel)",
+  "ToolExecutionMode": "Sequential",
+
+  "// Servers": "List of MCP (Model Context Protocol) server configurations",
+  "Servers": [
+    {
+      "// Name": "Unique identifier for the MCP server",
+      "Name": "todo-list",
+
+      "// Command": "Command to start the MCP server (e.g., npx, node, python, path to executable)",
+      "Command": "npx",
+
+      "// Args": "Array of command-line arguments for the server",
+      "Args": [
+        "-y",
+        "@anthropic/mcp-server-todo-list"
+      ],
+
+      "// Env": "Optional environment variables for the server process (augments/overwrites inherited environment)",
+      "// Note": "Set a variable to null to remove it from the inherited environment",
+      "Env": {}
+    },
+    {
+      "// Example": "Another MCP server with custom environment variables",
+      "Name": "custom-server",
+      "Command": "node",
+      "Args": [
+        "path/to/custom-mcp-server.js"
+      ],
+      "Env": {
+        "// Description": "Environment variables are set when starting the server process (not per tool call)",
+        "API_KEY": "your-api-key-here",
+        "DEBUG": "true",
+        "INHERITED_VAR_TO_REMOVE": null
+      }
+    }
+  ],
+
+  "// AutoDiscoverTools": "Automatically discover tools from MCP servers on startup (default: true)",
+  "AutoDiscoverTools": true,
+
+  "// ToolExecutionTimeoutSeconds": "Maximum time in seconds to wait for a tool to execute (default: 180)",
+  "ToolExecutionTimeoutSeconds": 180,
+
+  "// MaxToolCallDepth": "Maximum depth of nested tool calls to prevent infinite loops (1-50, default: 10)",
+  "MaxToolCallDepth": 10
+}

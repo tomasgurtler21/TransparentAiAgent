@@ -50,11 +50,9 @@ public class MCPClientWrapper : IMCPClientWrapper
             {
                 Name = _serverConfig.Name,
                 Command = _serverConfig.Command,
-                Arguments = _serverConfig.Args.ToArray()
+                Arguments = _serverConfig.Args.ToArray(),
+                EnvironmentVariables = _serverConfig.Env.Count > 0 ? _serverConfig.Env : null
             };
-
-            // Note: Environment variables would be set here if API supports it
-            // For now, env vars in server config may not be used
 
             // Create transport and client
             _transport = new StdioClientTransport(transportOptions);

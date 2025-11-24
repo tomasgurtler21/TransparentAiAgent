@@ -162,7 +162,7 @@ try
     builder.Services.AddSingleton<TeachingModePromptBuilder>();
 
     // Register Tool services (if tools are enabled)
-    if (appConfig.Agent.EnableTools)
+    if (appConfig.Tools.EnableTools)
     {
         // Register IToolRegistry first (needed by UI components like ToolsOverview)
         // IMPORTANT: Tool discovery will be triggered synchronously after app is built
@@ -172,7 +172,7 @@ try
             try
             {
                 // Create MCP Tool Registry
-                var mcpRegistry = new MCPToolRegistry(appConfig.MCP);
+                var mcpRegistry = new MCPToolRegistry(appConfig.Tools);
 
                 // Create Built-in UI Control Tool Registry (Phase 9)
                 var uiControlRegistry = sp.GetRequiredService<BuiltInUIControlToolRegistry>();
@@ -228,16 +228,16 @@ try
                 var executors = new List<IToolExecutor> { uiControlExecutor, knowledgeExecutor, memoryExecutor };
 
                 // Add MCP executor only if MCP servers are configured
-                if (appConfig.MCP.Servers.Count > 0)
+                if (appConfig.Tools.Servers.Count > 0)
                 {
                     // Create MCP Tool Discovery
-                    var mcpDiscovery = new MCPToolDiscovery(appConfig.MCP);
+                    var mcpDiscovery = new MCPToolDiscovery(appConfig.Tools);
 
                     // Create MCP Tool Executor
                     var mcpExecutor = new MCPToolExecutor(mcpDiscovery);
                     executors.Add(mcpExecutor);
 
-                    Console.WriteLine($"✓ Tool system enabled with {appConfig.MCP.Servers.Count} MCP server(s) + UI control tools + knowledge library tools + long-term memory tools");
+                    Console.WriteLine($"✓ Tool system enabled with {appConfig.Tools.Servers.Count} MCP server(s) + UI control tools + knowledge library tools + long-term memory tools");
                 }
                 else
                 {
@@ -478,8 +478,8 @@ try
         {
             { "messageLimit", appConfig.Agent.ContextWindowSize },
             { "systemPrompt", appConfig.Agent.SystemPrompt ?? string.Empty },
-            { "enableTools", appConfig.Agent.EnableTools },
-            { "toolExecutionMode", appConfig.Agent.ToolExecutionMode.ToString() },
+            { "enableTools", appConfig.Tools.EnableTools },
+            { "toolExecutionMode", appConfig.Tools.ToolExecutionMode.ToString() },
             // Future-proof: Add other config values as needed
         };
 
@@ -524,12 +524,12 @@ try
 
     // CRITICAL FIX: Discover tools synchronously BEFORE accepting requests
     // This prevents race condition where tools aren't available on first request
-    if (appConfig.Agent.EnableTools && appConfig.MCP.AutoDiscoverTools && appConfig.MCP.Servers.Count > 0)
+    if (appConfig.Tools.EnableTools && appConfig.Tools.AutoDiscoverTools && appConfig.Tools.Servers.Count > 0)
     {
         try
         {
-            Console.WriteLine($"⏳ Discovering tools from {appConfig.MCP.Servers.Count} MCP server(s)...");
-            Console.WriteLine($"   MCP Servers: {string.Join(", ", appConfig.MCP.Servers.Select(s => s.Name))}");
+            Console.WriteLine($"⏳ Discovering tools from {appConfig.Tools.Servers.Count} MCP server(s)...");
+            Console.WriteLine($"   MCP Servers: {string.Join(", ", appConfig.Tools.Servers.Select(s => s.Name))}");
 
             var toolRegistry = app.Services.GetRequiredService<IToolRegistry>();
             Console.WriteLine($"   Tool registry type: {toolRegistry.GetType().Name}");
@@ -537,7 +537,7 @@ try
             await toolRegistry.RefreshAsync();
 
             var tools = toolRegistry.GetAllTools();
-            Console.WriteLine($"✓ Discovered {tools.Count} tools from {appConfig.MCP.Servers.Count} MCP server(s)");
+            Console.WriteLine($"✓ Discovered {tools.Count} tools from {appConfig.Tools.Servers.Count} MCP server(s)");
 
             // Log each tool for verification
             if (tools.Count > 0)
@@ -564,9 +564,9 @@ try
     else
     {
         Console.WriteLine($"⚠ Tool discovery skipped:");
-        Console.WriteLine($"   EnableTools: {appConfig.Agent.EnableTools}");
-        Console.WriteLine($"   AutoDiscoverTools: {appConfig.MCP.AutoDiscoverTools}");
-        Console.WriteLine($"   MCP Servers count: {appConfig.MCP.Servers.Count}");
+        Console.WriteLine($"   EnableTools: {appConfig.Tools.EnableTools}");
+        Console.WriteLine($"   AutoDiscoverTools: {appConfig.Tools.AutoDiscoverTools}");
+        Console.WriteLine($"   MCP Servers count: {appConfig.Tools.Servers.Count}");
     }
 
     // Configure the HTTP request pipeline.
@@ -620,8 +620,7 @@ try
             Agent = new
             {
                 config.Agent.SystemPrompt,
-                config.Agent.ContextWindowSize,
-                config.Agent.EnableTools
+                config.Agent.ContextWindowSize
             },
             LLM = new
             {
@@ -629,6 +628,11 @@ try
                 config.LLM.Temperature,
                 config.LLM.MaxTokens,
                 config.LLM.TopP
+            },
+            Tools = new
+            {
+                config.Tools.EnableTools,
+                config.Tools.ToolExecutionMode
             }
         });
     });

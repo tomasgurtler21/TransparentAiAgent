@@ -9,6 +9,7 @@ public class ConfigurationService : IConfigurationService
 {
     private AppConfiguration _currentConfiguration;
     private readonly string _defaultConfigPath = "appsettings.json";
+    private readonly string _defaultToolsPath = "tools.json";
     private readonly JsonSerializerOptions _jsonOptions;
 
     public ConfigurationService()
@@ -59,6 +60,9 @@ public class ConfigurationService : IConfigurationService
                     if (config == null)
                         throw new ConfigurationException("Failed to deserialize configuration");
 
+                    // Load tools configuration from separate file
+                    LoadToolsConfiguration(config, filePath);
+
                     _currentConfiguration = config;
                     return config;
                 }
@@ -81,6 +85,40 @@ public class ConfigurationService : IConfigurationService
         }
     }
 
+    private void LoadToolsConfiguration(AppConfiguration config, string configFilePath)
+    {
+        // Determine tools.json path based on appsettings.json location
+        var configDir = Path.GetDirectoryName(configFilePath);
+        var toolsPath = string.IsNullOrEmpty(configDir)
+            ? _defaultToolsPath
+            : Path.Combine(configDir, "tools.json");
+
+        // If tools.json doesn't exist, use default tools configuration
+        if (!File.Exists(toolsPath))
+        {
+            config.Tools = new ToolsConfiguration();
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(toolsPath);
+            var toolsConfig = JsonSerializer.Deserialize<ToolsConfiguration>(json, _jsonOptions);
+            if (toolsConfig != null)
+            {
+                config.Tools = toolsConfig;
+            }
+        }
+        catch (JsonException ex)
+        {
+            throw new ConfigurationException($"Invalid JSON in tools configuration file: {ex.Message}", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new ConfigurationException($"Error reading tools configuration file: {ex.Message}", ex);
+        }
+    }
+
     public void SaveConfiguration(AppConfiguration config, string filePath)
     {
         if (config == null)
@@ -94,6 +132,9 @@ public class ConfigurationService : IConfigurationService
 
         try
         {
+            // Save tools configuration to separate file
+            SaveToolsConfiguration(config, filePath);
+
             // Create wrapper object with TransparentAiAgent section
             var wrapper = new
             {
@@ -112,6 +153,29 @@ public class ConfigurationService : IConfigurationService
         catch (IOException ex)
         {
             throw new ConfigurationException($"Error writing configuration file: {ex.Message}", ex);
+        }
+    }
+
+    private void SaveToolsConfiguration(AppConfiguration config, string configFilePath)
+    {
+        // Determine tools.json path based on appsettings.json location
+        var configDir = Path.GetDirectoryName(configFilePath);
+        var toolsPath = string.IsNullOrEmpty(configDir)
+            ? _defaultToolsPath
+            : Path.Combine(configDir, "tools.json");
+
+        try
+        {
+            var json = JsonSerializer.Serialize(config.Tools, _jsonOptions);
+            File.WriteAllText(toolsPath, json);
+        }
+        catch (JsonException ex)
+        {
+            throw new ConfigurationException($"Error serializing tools configuration: {ex.Message}", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new ConfigurationException($"Error writing tools configuration file: {ex.Message}", ex);
         }
     }
 

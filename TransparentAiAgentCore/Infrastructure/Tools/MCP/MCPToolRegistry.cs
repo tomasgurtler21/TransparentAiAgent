@@ -9,16 +9,16 @@ namespace TransparentAiAgentCore.Infrastructure.Tools.MCP;
 /// </summary>
 public class MCPToolRegistry : IToolRegistry
 {
-    private readonly MCPConfiguration _mcpConfiguration;
+    private readonly ToolsConfiguration _toolsConfiguration;
     private readonly MCPToolDiscovery _toolDiscovery;
     private readonly SemaphoreSlim _refreshLock;
     private IReadOnlyList<ITool> _cachedTools;
     private DateTime _lastRefresh;
 
-    public MCPToolRegistry(MCPConfiguration mcpConfiguration)
+    public MCPToolRegistry(ToolsConfiguration toolsConfiguration)
     {
-        _mcpConfiguration = mcpConfiguration ?? throw new ArgumentNullException(nameof(mcpConfiguration));
-        _toolDiscovery = new MCPToolDiscovery(mcpConfiguration);
+        _toolsConfiguration = toolsConfiguration ?? throw new ArgumentNullException(nameof(toolsConfiguration));
+        _toolDiscovery = new MCPToolDiscovery(toolsConfiguration);
         _refreshLock = new SemaphoreSlim(1, 1);
         _cachedTools = Array.Empty<ITool>();
         _lastRefresh = DateTime.MinValue;

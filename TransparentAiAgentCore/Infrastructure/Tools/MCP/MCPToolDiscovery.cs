@@ -8,11 +8,11 @@ namespace TransparentAiAgentCore.Infrastructure.Tools.MCP;
 /// </summary>
 public class MCPToolDiscovery
 {
-    private readonly MCPConfiguration _mcpConfiguration;
+    private readonly ToolsConfiguration _toolsConfiguration;
 
-    public MCPToolDiscovery(MCPConfiguration mcpConfiguration)
+    public MCPToolDiscovery(ToolsConfiguration toolsConfiguration)
     {
-        _mcpConfiguration = mcpConfiguration ?? throw new ArgumentNullException(nameof(mcpConfiguration));
+        _toolsConfiguration = toolsConfiguration ?? throw new ArgumentNullException(nameof(toolsConfiguration));
     }
 
     /// <summary>
@@ -24,7 +24,7 @@ public class MCPToolDiscovery
     {
         var allTools = new List<ITool>();
 
-        foreach (var serverConfig in _mcpConfiguration.Servers)
+        foreach (var serverConfig in _toolsConfiguration.Servers)
         {
             try
             {
@@ -89,7 +89,7 @@ public class MCPToolDiscovery
     /// <exception cref="InvalidOperationException">If server is not found in configuration.</exception>
     public IMCPClientWrapper GetClientWrapper(string serverName)
     {
-        var serverConfig = _mcpConfiguration.Servers
+        var serverConfig = _toolsConfiguration.Servers
             .FirstOrDefault(s => s.Name.Equals(serverName, StringComparison.OrdinalIgnoreCase));
 
         if (serverConfig == null)

@@ -35,8 +35,7 @@ public class AppConfigurationTests
                         }
                     )
                 }
-            },
-            MCP = new MCPConfiguration()
+            }
         };
 
         // Act & Assert - Should not throw
@@ -82,7 +81,7 @@ public class AppConfigurationTests
     }
 
     [TestMethod]
-    public void Validate_InvalidMCPConfig_ThrowsConfigurationException()
+    public void Validate_InvalidToolsConfig_ThrowsConfigurationException()
     {
         // Arrange
         var config = new AppConfiguration
@@ -111,7 +110,7 @@ public class AppConfigurationTests
                     )
                 }
             },
-            MCP = new MCPConfiguration
+            Tools = new ToolsConfiguration
             {
                 Servers = new List<MCPServerConfiguration>
                 {

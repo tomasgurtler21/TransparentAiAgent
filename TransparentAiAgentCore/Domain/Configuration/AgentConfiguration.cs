@@ -8,16 +8,6 @@ public class AgentConfiguration
 
     public int ContextWindowSize { get; set; } = 20;
 
-    /// <summary>
-    /// Enable tool calling (default: true)
-    /// </summary>
-    public bool EnableTools { get; set; } = true;
-
-    /// <summary>
-    /// Tool execution mode: Sequential or Parallel
-    /// </summary>
-    public ToolExecutionMode ToolExecutionMode { get; set; } = ToolExecutionMode.Sequential;
-
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(SystemPrompt))
@@ -26,17 +16,4 @@ public class AgentConfiguration
         if (ContextWindowSize <= 0)
             throw new ConfigurationException("ContextWindowSize must be greater than 0");
     }
-}
-
-public enum ToolExecutionMode
-{
-    /// <summary>
-    /// Execute tools one at a time (simpler, easier to debug)
-    /// </summary>
-    Sequential,
-
-    /// <summary>
-    /// Execute all tool calls in parallel (faster, but more complex)
-    /// </summary>
-    Parallel
 }

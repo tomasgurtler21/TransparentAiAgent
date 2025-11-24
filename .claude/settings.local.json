@@ -5,7 +5,8 @@
       "Skill(tdd)",
       "Bash(dotnet test:*)",
       "Bash(Select-Object -Last 50)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

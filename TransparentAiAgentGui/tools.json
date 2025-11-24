@@ -1,0 +1,18 @@
+{
+  "EnableTools": true,
+  "ToolExecutionMode": "Sequential",
+  "Servers": [
+    {
+      "Name": "todo-list",
+      "Command": "npx",
+      "Args": [
+        "-y",
+        "@anthropic/mcp-server-todo-list"
+      ],
+      "Env": {}
+    }
+  ],
+  "AutoDiscoverTools": true,
+  "ToolExecutionTimeoutSeconds": 180,
+  "MaxToolCallDepth": 10
+}
