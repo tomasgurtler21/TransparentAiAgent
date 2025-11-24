@@ -96,6 +96,20 @@ public class ConfigurationService_OAuthTests
         var jsonContent = @"{
   ""TransparentAiAgent"": {
     ""LLM"": {
+      ""ActiveProvider"": ""azure-gpt4"",
+      ""Providers"": {
+        ""azure-gpt4"": {
+          ""Type"": ""AzureOpenAI"",
+          ""DisplayName"": ""Azure GPT-4"",
+          ""Parameters"": {
+            ""AuthenticationMode"": ""DefaultAzureCredential"",
+            ""Endpoint"": ""https://test.openai.azure.com/"",
+            ""DeploymentName"": ""gpt-4"",
+            ""ApiVersion"": ""2024-02-15-preview"",
+            ""IsReasoningModel"": false
+          }
+        }
+      },
       ""Provider"": ""AzureOpenAI"",
       ""AzureOpenAI"": {
         ""AuthenticationMode"": ""DefaultAzureCredential"",
@@ -123,6 +137,21 @@ public class ConfigurationService_OAuthTests
         var jsonContent = @"{
   ""TransparentAiAgent"": {
     ""LLM"": {
+      ""ActiveProvider"": ""azure-gpt4"",
+      ""Providers"": {
+        ""azure-gpt4"": {
+          ""Type"": ""AzureOpenAI"",
+          ""DisplayName"": ""Azure GPT-4"",
+          ""Parameters"": {
+            ""AuthenticationMode"": ""DefaultAzureCredential"",
+            ""Endpoint"": ""https://test.openai.azure.com/"",
+            ""DeploymentName"": ""gpt-4"",
+            ""ApiVersion"": ""2024-02-15-preview"",
+            ""TenantId"": ""12345678-1234-1234-1234-123456789012"",
+            ""IsReasoningModel"": false
+          }
+        }
+      },
       ""Provider"": ""AzureOpenAI"",
       ""AzureOpenAI"": {
         ""AuthenticationMode"": ""DefaultAzureCredential"",

@@ -97,7 +97,15 @@ public class ToolsOverviewTests : Bunit.TestContext
         _mockUIControlService.SetupAdd(s => s.UIStateChanged += It.IsAny<EventHandler<UIState>>())
             .Callback<EventHandler<UIState>>(handler => capturedHandler = handler);
 
-        UIState initialState = UIState.DefaultNormalMode();
+        UIState initialState = UIState.DefaultNormalMode() with
+        {
+            ToolsPanel = new ToolsPanelState
+            {
+                Visible = true,
+                ExpandedTools = new List<string>(),
+                HighlightedTool = null
+            }
+        };
         _mockUIControlService.Setup(s => s.GetCurrentState()).Returns(initialState);
 
         IRenderedComponent<ToolsOverview> cut = RenderComponent<ToolsOverview>();
@@ -116,9 +124,9 @@ public class ToolsOverviewTests : Bunit.TestContext
             }
         };
         capturedHandler?.Invoke(_mockUIControlService.Object, newState);
-        cut.Render();
 
-        // Assert - Should now be hidden
-        Assert.IsFalse(cut.Markup.Contains("tools-overview"));
+        // Assert - Should now be hidden (wait for async state change)
+        cut.WaitForAssertion(() =>
+            Assert.IsFalse(cut.Markup.Contains("tools-overview")));
     }
 }

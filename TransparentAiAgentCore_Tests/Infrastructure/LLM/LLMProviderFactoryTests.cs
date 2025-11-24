@@ -146,7 +146,8 @@ public class LLMProviderFactoryTests
                 ["DeploymentName"] = "gpt-4",
                 ["ApiKey"] = "test-azure-key",
                 ["ApiVersion"] = "2024-02-15-preview",
-                ["AuthenticationMode"] = "ApiKey"
+                ["AuthenticationMode"] = "ApiKey",
+                ["IsReasoningModel"] = false
             }
         );
 
@@ -319,7 +320,8 @@ public class LLMProviderFactoryTests
     }
 
     [TestMethod]
-    public void CreateProvider_AzureOpenAI_WithoutIsReasoningModel_DefaultsToFalse()
+    [ExpectedException(typeof(ConfigurationException))]
+    public void CreateProvider_AzureOpenAI_WithoutIsReasoningModel_ThrowsConfigurationException()
     {
         // Arrange
         var config = CreateValidConfiguration();
@@ -337,17 +339,12 @@ public class LLMProviderFactoryTests
                 ["ApiKey"] = "test-key",
                 ["ApiVersion"] = "2024-02-15-preview",
                 ["AuthenticationMode"] = "ApiKey"
-                // IsReasoningModel not specified - should default to false
+                // IsReasoningModel not specified - should throw ConfigurationException
             }
         );
 
-        // Act
-        var provider = factory.CreateProvider("azure-gpt4", providerConfig);
-
-        // Assert
-        Assert.IsNotNull(provider);
-        Assert.IsInstanceOfType(provider, typeof(AzureOpenAIProvider));
-        // Provider should be created with IsReasoningModel = false (default)
+        // Act - Should throw ConfigurationException
+        factory.CreateProvider("azure-gpt4", providerConfig);
     }
 
     [TestMethod]

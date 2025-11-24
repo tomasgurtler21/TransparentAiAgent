@@ -195,7 +195,15 @@ public class TransparencyViewerTests : Bunit.TestContext
         _mockUIControlService.SetupAdd(s => s.UIStateChanged += It.IsAny<EventHandler<UIState>>())
             .Callback<EventHandler<UIState>>(handler => capturedHandler = handler);
 
-        UIState initialState = UIState.DefaultNormalMode();
+        UIState initialState = UIState.DefaultNormalMode() with
+        {
+            TransparencyViewer = new TransparencyViewerState
+            {
+                Visible = true,
+                ShowTimestamps = true,
+                EventTypeFilters = new List<string>()
+            }
+        };
         _mockUIControlService.Setup(s => s.GetCurrentState()).Returns(initialState);
 
         IRenderedComponent<TransparencyViewer> cut = RenderComponent<TransparencyViewer>();
@@ -214,9 +222,9 @@ public class TransparencyViewerTests : Bunit.TestContext
             }
         };
         capturedHandler?.Invoke(_mockUIControlService.Object, newState);
-        cut.Render();
 
-        // Assert - Should now be hidden
-        Assert.IsFalse(cut.Markup.Contains("transparency-viewer"));
+        // Assert - Should now be hidden (wait for async state change)
+        cut.WaitForAssertion(() =>
+            Assert.IsFalse(cut.Markup.Contains("transparency-viewer")));
     }
 }
