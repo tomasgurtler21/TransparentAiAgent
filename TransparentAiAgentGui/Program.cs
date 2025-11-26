@@ -400,8 +400,16 @@ try
         }
         else
         {
-            // No valid providers - set isLLMConfigured to false to trigger stub registration
-            isLLMConfigured = false;
+            // No valid providers - register NotConfiguredAgentOrchestrator
+            builder.Services.AddScoped<IAgentOrchestrator>(sp =>
+            {
+                var conversationManager = sp.GetRequiredService<IConversationManager>();
+                return new NotConfiguredAgentOrchestrator(conversationManager, "No valid LLM providers configured. All providers had configuration errors.");
+            });
+
+            Console.WriteLine("⚠ No valid providers. Agent will show configuration error when used.");
+            Console.WriteLine("  Configure LLM settings in appsettings.json to enable agent features.");
+            Console.WriteLine("  See docs/CONFIGURATION_SETUP.md for instructions.");
         }
     }
     else
