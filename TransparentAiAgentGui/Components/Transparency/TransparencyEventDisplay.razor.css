@@ -2,13 +2,13 @@
     border-left: 4px solid var(--border-secondary);
     padding: 8px 12px;
     margin-bottom: 8px;
-    background-color: #27273a !important;
+    background-color: var(--bg-secondary);
     border-radius: 4px;
     transition: background-color 0.2s;
 }
 
 .transparency-event:hover {
-    background-color: #2d2d42 !important;
+    background-color: var(--bg-tertiary);
 }
 
 .event-header {
@@ -51,7 +51,7 @@
 .event-details {
     margin-top: 12px;
     padding: 12px;
-    background-color: #1e1e2e !important;
+    background-color: var(--bg-elevated);
     border-radius: 4px;
     border: 1px solid var(--border-primary);
 }
@@ -63,7 +63,15 @@
     word-wrap: break-word;
     color: var(--text-primary);
     font-family: var(--font-mono);
+    background-color: transparent;
+}
+
+.event-details pre code {
+    /* CRITICAL FIX: Explicitly style code element to override browser defaults */
     background-color: transparent !important;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: inherit;
 }
 
 /* Event type colors */

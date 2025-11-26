@@ -28,11 +28,11 @@
     --accent-green: #66d9a0;
     --accent-green-hover: #52cc8f;
 
-    /* Text Colors */
-    --text-primary: #e4e4e7;
-    --text-secondary: #a1a1aa;
-    --text-tertiary: #71717a;
-    --text-disabled: #52525b;
+    /* Text Colors - White hierarchy for dark UI */
+    --text-primary: #ffffff;    /* Pure white (100%) - primary content */
+    --text-secondary: #d0d0d5;  /* Light gray (82%) - supporting text */
+    --text-tertiary: #a0a0aa;   /* Medium gray (65%) - tertiary text */
+    --text-disabled: #707075;   /* Darker gray (45%) - disabled text */
 
     /* Borders & Dividers */
     --border-primary: #3f3f46;

@@ -1,13 +1,13 @@
 .json-display {
     margin: 8px 0;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
-    background-color: #ffffff;
+    background-color: var(--bg-secondary);
 }
 
 .json-header {
     padding: 8px 12px;
-    background-color: #f8f9fa;
+    background-color: var(--bg-tertiary);
     cursor: pointer;
     user-select: none;
     display: flex;
@@ -17,23 +17,23 @@
 }
 
 .json-header:hover {
-    background-color: #e9ecef;
+    background-color: var(--bg-elevated);
 }
 
 .expand-icon {
     font-size: 12px;
-    color: #6c757d;
+    color: var(--text-secondary);
 }
 
 .json-title {
     font-weight: 600;
     font-size: 14px;
-    color: #495057;
+    color: var(--text-secondary);
 }
 
 .json-content {
     padding: 12px;
-    background-color: #f6f8fa;
+    background-color: var(--bg-tertiary);
 }
 
 .json-content pre {
@@ -45,5 +45,5 @@
     font-family: 'Courier New', Courier, monospace;
     font-size: 12px;
     line-height: 1.5;
-    color: #212529;
+    color: var(--text-primary);
 }
