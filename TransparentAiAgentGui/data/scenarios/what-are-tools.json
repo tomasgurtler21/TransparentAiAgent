@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "what-are-tools",
+  "version": "1.0",
+  "nameKey": "scenarios.what-are-tools.name",
+  "name": "What Are AI Agent Tools?",
+  "descriptionKey": "scenarios.what-are-tools.description",
+  "description": "Question about what tools are and why agents need them",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.what-are-tools.user-question.content",
+      "content": "What are tools in AI agents, and why do agents need them?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

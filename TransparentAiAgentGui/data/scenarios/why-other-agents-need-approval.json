@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "why-other-agents-need-approval",
+  "version": "1.0",
+  "nameKey": "scenarios.why-other-agents-need-approval.name",
+  "name": "Why Do Agents Need Approval?",
+  "descriptionKey": "scenarios.why-other-agents-need-approval.description",
+  "description": "Question about why some agents require approval for tool usage",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-other-agents-need-approval.user-question.content",
+      "content": "Why do some agents ask for approval before using certain tools?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

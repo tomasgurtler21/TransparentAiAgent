@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "how-much-can-agent-remember",
+  "version": "1.0",
+  "nameKey": "scenarios.how-much-can-agent-remember.name",
+  "name": "How Much Can Agent Remember?",
+  "descriptionKey": "scenarios.how-much-can-agent-remember.description",
+  "description": "Question about agent context window and memory capacity",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.how-much-can-agent-remember.user-question.content",
+      "content": "How much information can the agent keep in its 'head' at once?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

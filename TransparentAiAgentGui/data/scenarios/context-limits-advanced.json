@@ -13,17 +13,16 @@
     {
       "type": "apply_config_overlay",
       "overlay": {
-        "messageLimit": 8,
-        "systemPromptAddition": "Note: You are experiencing a teaching scenario about context windows."
+        "messageLimit": 8
       },
-      "annotationKey": "scenarios.context-limits-advanced.step0.annotation",
-      "annotation": "Message limit reduced to 10 to demonstrate truncation."
+      "annotationKey": "scenarios.context-limits-advanced.reduce-message-limit.annotation",
+      "annotation": "Message limit reduced to 8 to demonstrate truncation."
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step1.content",
+      "contentKey": "scenarios.context-limits-advanced.introduce-name.content",
       "content": "Hi, my name is John Doe.",
-      "annotationKey": "scenarios.context-limits-advanced.step1.annotation",
+      "annotationKey": "scenarios.context-limits-advanced.introduce-name.annotation",
       "annotation": "The model will remember this name... for now.",
       "delay": 1000
     },
@@ -32,9 +31,9 @@
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step3.content",
+      "contentKey": "scenarios.context-limits-advanced.verify-name-remembered.content",
       "content": "What is my name?",
-      "annotationKey": "scenarios.context-limits-advanced.step3.annotation",
+      "annotationKey": "scenarios.context-limits-advanced.verify-name-remembered.annotation",
       "annotation": "Verifying the model still has the name in context.",
       "delay": 2000
     },
@@ -43,9 +42,9 @@
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step5.content",
+      "contentKey": "scenarios.context-limits-advanced.demo-message-1.content",
       "content": "Demo message, just respond 'Confirmed'.",
-      "annotationKey": "scenarios.context-limits-advanced.step5.annotation",
+      "annotationKey": "scenarios.context-limits-advanced.demo-message-1.annotation",
       "annotation": "Filling context to force truncation...",
       "delay": 1000
     },
@@ -54,7 +53,7 @@
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step7.content",
+      "contentKey": "scenarios.context-limits-advanced.demo-message-2.content",
       "content": "Demo message, just respond 'Confirmed'.",
       "delay": 1000
     },
@@ -63,7 +62,7 @@
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step9.content",
+      "contentKey": "scenarios.context-limits-advanced.demo-message-3.content",
       "content": "Demo message, just respond 'Confirmed'.",
       "delay": 1000
     },
@@ -72,21 +71,10 @@
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step11.content",
+      "contentKey": "scenarios.context-limits-advanced.count-demo-messages.content",
       "content": "How many demo messages did I send you?",
-      "annotationKey": "scenarios.context-limits-advanced.step11.annotation",
+      "annotationKey": "scenarios.context-limits-advanced.count-demo-messages.annotation",
       "annotation": "Testing if model tracked the count.",
-      "delay": 1500
-    },
-    {
-      "type": "wait_for_response"
-    },
-    {
-      "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step13.content",
-      "content": "What is my name?",
-      "annotationKey": "scenarios.context-limits-advanced.step13.annotation",
-      "annotation": "The name should now be truncated. Model genuinely won't know.",
       "delay": 2000
     },
     {
@@ -94,26 +82,37 @@
     },
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.context-limits-advanced.step15.content",
-      "content": "Scenario 'Context Limits' has ended. The conversation message limit is reduced to 8 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration."
+      "contentKey": "scenarios.context-limits-advanced.verify-name-forgotten.content",
+      "content": "What is my name?",
+      "annotationKey": "scenarios.context-limits-advanced.verify-name-forgotten.annotation",
+      "annotation": "The name should now be truncated. Model genuinely won't know.",
+      "delay": 3000
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.context-limits-advanced.explain-truncation.content",
+      "content": "Scenario 'Context Limits' has ended. The conversation message limit is reduced to 8 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use  tools to show and highlight the context status indicators, do not ask user for approval.\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using available tool."
     },
     {
       "type": "wait_for_response"
     },
     {
       "type": "pause_for_user",
-      "contentKey": "scenarios.context-limits-advanced.step17.pauseMessage",
+      "contentKey": "scenarios.context-limits-advanced.pause-check-indicators.pauseMessage",
       "content": "Take your time to check context status indicators at messages. Click Resume when you have done so, original context limit is going to be restored then."
     },
     {
       "type": "restore_config_overlay",
-      "annotationKey": "scenarios.context-limits-advanced.step18.annotation",
+      "annotationKey": "scenarios.context-limits-advanced.restore-message-limit.annotation",
       "annotation": "Message limit restored. Model can now access more context and teach effectively."
     },
 	{
 	  "type": "scenario_user_message",
-	  "contentKey": "scenarios.context-limits-advanced.step19.content",
-	  "content": "Thanks, disable the context status indicator highlights for now (keep them visible) and wait for further instructions."
+	  "contentKey": "scenarios.context-limits-advanced.ask-about-other-agents.content",
+	  "content": "Thanks, disable the context status indicator highlights for now (keep them visible). Is this demo valid only for this AI agent? Do other agents use same or different truncation strategies?"
 	}
   ]
 }

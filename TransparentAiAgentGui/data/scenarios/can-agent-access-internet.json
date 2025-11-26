@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "can-agent-access-internet",
+  "version": "1.0",
+  "nameKey": "scenarios.can-agent-access-internet.name",
+  "name": "Can Agents Access Internet?",
+  "descriptionKey": "scenarios.can-agent-access-internet.description",
+  "description": "Question about agent internet and external resource access",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.can-agent-access-internet.user-question.content",
+      "content": "Can AI agents access the internet or external resources?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

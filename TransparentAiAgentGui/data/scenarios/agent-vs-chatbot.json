@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "agent-vs-chatbot",
+  "version": "1.0",
+  "nameKey": "scenarios.agent-vs-chatbot.name",
+  "name": "Agent vs Chatbot?",
+  "descriptionKey": "scenarios.agent-vs-chatbot.description",
+  "description": "Question about difference between AI agents and chatbots",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.agent-vs-chatbot.user-question.content",
+      "content": "What's the difference between an AI agent and a regular chatbot?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

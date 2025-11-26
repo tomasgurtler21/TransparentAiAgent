@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "why-show-thinking",
+  "version": "1.0",
+  "nameKey": "scenarios.why-show-thinking.name",
+  "name": "Why Show Thinking Process?",
+  "descriptionKey": "scenarios.why-show-thinking.description",
+  "description": "Question about why agents show their thinking process explicitly",
+  "category": "TransparentAiAgent",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-show-thinking.user-question.content",
+      "content": "Why do some agents show their thinking process explicitly? Isn't the result all that matters?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

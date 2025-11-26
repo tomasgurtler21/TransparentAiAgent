@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "can-i-customize-agent",
+  "version": "1.0",
+  "nameKey": "scenarios.can-i-customize-agent.name",
+  "name": "Can I Customize Agent Behavior?",
+  "descriptionKey": "scenarios.can-i-customize-agent.description",
+  "description": "Question about customizing agent behavior and communication style",
+  "category": "TransparentAiAgent",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.can-i-customize-agent.user-question.content",
+      "content": "Can I customize how the agent behaves or talks to me?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

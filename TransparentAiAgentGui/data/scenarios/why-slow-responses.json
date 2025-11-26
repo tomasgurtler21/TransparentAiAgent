@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "why-slow-responses",
+  "version": "1.0",
+  "nameKey": "scenarios.why-slow-responses.name",
+  "name": "Why Slow Agent Responses?",
+  "descriptionKey": "scenarios.why-slow-responses.description",
+  "description": "Question about why agents take time to respond",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-slow-responses.user-question.content",
+      "content": "Why does the agent sometimes take so long to respond?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

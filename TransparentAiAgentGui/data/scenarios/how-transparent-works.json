@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "how-transparent-works",
+  "version": "1.0",
+  "nameKey": "scenarios.how-transparent-works.name",
+  "name": "How Does Transparency Work?",
+  "descriptionKey": "scenarios.how-transparent-works.description",
+  "description": "Question about how the transparency feature works in this app",
+  "category": "TransparentAiAgent",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.how-transparent-works.user-question.content",
+      "content": "How does the transparency feature in this app work? What am I seeing?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

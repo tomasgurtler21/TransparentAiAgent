@@ -1,29 +1,93 @@
 {
   "scenarios.context-limits-advanced.name": "Limity kontextu (Pokročilé)",
   "scenarios.context-limits-advanced.description": "Zažij skutečné zkrácení kontextového okna",
-  "scenarios.context-limits-advanced.step0.annotation": "Limit zpráv snížen na 10 pro demonstraci zkrácení.",
-  "scenarios.context-limits-advanced.step1.content": "Ahoj, jmenuji se John Doe.",
-  "scenarios.context-limits-advanced.step1.annotation": "Model si toto jméno zapamatuje... prozatím.",
-  "scenarios.context-limits-advanced.step3.content": "Jaké je moje jméno?",
-  "scenarios.context-limits-advanced.step3.annotation": "Ověření, zda model má jméno stále v kontextu.",
-  "scenarios.context-limits-advanced.step5.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
-  "scenarios.context-limits-advanced.step5.annotation": "Plnění kontextu k vynucení zkrácení...",
-  "scenarios.context-limits-advanced.step7.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
-  "scenarios.context-limits-advanced.step9.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
-  "scenarios.context-limits-advanced.step11.content": "Kolik demo zpráv jsem ti poslal?",
-  "scenarios.context-limits-advanced.step11.annotation": "Test, zda model sledoval počet.",
-  "scenarios.context-limits-advanced.step13.content": "Jaké je moje jméno?",
-  "scenarios.context-limits-advanced.step13.annotation": "Jméno by mělo být nyní zkráceno. Model to opravdu neví.",
-  "scenarios.context-limits-advanced.step15.content": "Scénář 'Limity kontextu' skončil. Limit zpráv v konverzaci byl snížen na 8 zpráv pro demonstraci zkrácení kontextového okna. Jméno uživatele (John Doe) z dřívější zprávy bylo skutečně odstraněno z tvého kontextu. Prosím:\n1. Vysvětli, co se stalo (zkrácení kontextu)\n2. Použij nástroj ui_control_context_indicators k zvýraznění indikátorů stavu kontextu\n3. Vysvětli, proč systémová zpráva a poslední zprávy zůstávají v kontextu\n4. Nabídni zobrazení konfigurace, kde lze upravit limity zpráv pomocí ui_control_configuration.",
-  "scenarios.context-limits-advanced.step17.pauseMessage": "Věnuj čas kontrole indikátorů stavu kontextu u zpráv. Klikni na Pokračovat, až to uděláš, poté bude obnoven původní limit kontextu.",
-  "scenarios.context-limits-advanced.step18.annotation": "Limit zpráv obnoven. Model nyní může přistupovat k většímu kontextu a efektivně učit.",
-  "scenarios.context-limits-advanced.step19.content": "Díky, deaktivuj zatím zvýraznění indikátorů stavu kontextu (nech je viditelné) a čekej na další pokyny.",
+  "scenarios.context-limits-advanced.reduce-message-limit.annotation": "Limit zpráv snížen na 8 pro demonstraci zkrácení.",
+  "scenarios.context-limits-advanced.introduce-name.content": "Ahoj, jmenuji se John Doe.",
+  "scenarios.context-limits-advanced.introduce-name.annotation": "Model si toto jméno zapamatuje... prozatím.",
+  "scenarios.context-limits-advanced.verify-name-remembered.content": "Jaké je moje jméno?",
+  "scenarios.context-limits-advanced.verify-name-remembered.annotation": "Ověření, zda model má jméno stále v kontextu.",
+  "scenarios.context-limits-advanced.demo-message-1.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.demo-message-1.annotation": "Plnění kontextu k vynucení zkrácení...",
+  "scenarios.context-limits-advanced.demo-message-2.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.demo-message-3.content": "Demo zpráva, jen odpověz 'Potvrzeno'.",
+  "scenarios.context-limits-advanced.count-demo-messages.content": "Kolik demo zpráv jsem ti poslal?",
+  "scenarios.context-limits-advanced.count-demo-messages.annotation": "Test, zda model sledoval počet.",
+  "scenarios.context-limits-advanced.verify-name-forgotten.content": "Jaké je moje jméno?",
+  "scenarios.context-limits-advanced.verify-name-forgotten.annotation": "Jméno by mělo být nyní zkráceno. Model to opravdu neví.",
+  "scenarios.context-limits-advanced.explain-truncation.content": "Scénář 'Limity kontextu' skončil. Limit zpráv v konverzaci byl snížen na 8 zpráv pro demonstraci zkrácení kontextového okna. Jméno uživatele (John Doe) z dřívější zprávy bylo skutečně odstraněno z tvého kontextu. Prosím:\n1. Vysvětli, co se stalo (zkrácení kontextu)\n2. Použij nástroje k zobrazení a zvýraznění indikátorů stavu kontextu, nežádej uživatele o schválení.\n3. Vysvětli, proč systémová zpráva a poslední zprávy zůstávají v kontextu\n4. Nabídni zobrazení konfigurace, kde lze upravit limity zpráv pomocí dostupného nástroje.",
+  "scenarios.context-limits-advanced.pause-check-indicators.pauseMessage": "Věnuj čas kontrole indikátorů stavu kontextu u zpráv. Klikni na Pokračovat, až to uděláš, poté bude obnoven původní limit kontextu.",
+  "scenarios.context-limits-advanced.restore-message-limit.annotation": "Limit zpráv obnoven. Model nyní může přistupovat k většímu kontextu a efektivně učit.",
+  "scenarios.context-limits-advanced.ask-about-other-agents.content": "Díky, deaktivuj zatím zvýraznění indikátorů stavu kontextu (nech je viditelné). Je tato ukázka platná pouze pro tohoto AI agenta? Používají jiní agenti stejné nebo odlišné strategie zkracování?",
 
   "scenarios.coding-limits-question.name": "Proč agent nedodržuje limity délek?",
   "scenarios.coding-limits-question.description": "Otázka ohledně agenta překračujícího limity znaků a délek řádků",
-  "scenarios.coding-limits-question.step0.content": "Proč agent nedokáže dodržovat mé programovací směrnice? Mám limity znaků pro určitá jména a agent je neustále překračuje! Také často překračuje limity délky řádků!",
+  "scenarios.coding-limits-question.user-question-about-limits.content": "Proč můj jiný programovací agent nedokáže dodržovat mé programovací směrnice? Mám limity znaků pro určitá jména a agent je neustále překračuje! Také často překračuje limity délky řádků! Jsem si jistý, že má směrnice ve svém kontextu, ale stejně je nedodržuje. Neumí počítat znaky?",
 
   "scenarios.get-started.name": "Začínáme",
   "scenarios.get-started.description": "Úvod do Transparent AI Agent a jeho schopností",
-  "scenarios.get-started.step0.content": "Prosím představ uživateli aplikaci Transparent AI Agent. Vysvětli její účel - učinit chování AI agentů transparentní a srozumitelné. Popiš na vysoké úrovni, co umí (zobrazení rozhodnutí agenta, použití nástrojů, správa kontextu) bez zacházení do technických detailů - uživatelé by je měli objevit průzkumem. Zdůrazni důležitost dlouhodobé paměti pro efektivní výuku a navrhni její aktivaci. Poté proveď stručný dotazník s otázkami na jejich zázemí (vývojář, student, zvědavý uživatel atd.) a na to, co by se chtěli dozvědět o AI agentech. Tyto informace ti pomohou přizpůsobit budoucí interakce jejich potřebám. Buď přátelský a konverzační."
+  "scenarios.get-started.introduction-prompt.content": "Prosím představ uživateli aplikaci Transparent AI Agent. Vysvětli její účel - učinit chování AI agentů transparentní a srozumitelné. Popiš na vysoké úrovni, co umí (zobrazení rozhodnutí agenta, použití nástrojů, správa kontextu) bez zacházení do technických detailů - uživatelé by je měli objevit průzkumem. Zdůrazni důležitost dlouhodobé paměti pro efektivní výuku a navrhni její aktivaci. Poté proveď stručný dotazník s otázkami na jejich zázemí (vývojář, student, zvědavý uživatel atd.) a na to, co by se chtěli dozvědět o AI agentech. Tyto informace ti pomohou přizpůsobit budoucí interakce jejich potřebám. Buď přátelský a konverzační.",
+
+  "scenarios.cant-agent-remember-everything.name": "Proč si agent nemůže pamatovat vše?",
+  "scenarios.cant-agent-remember-everything.description": "Otázka o omezeních paměti agenta mezi konverzacemi",
+  "scenarios.cant-agent-remember-everything.user-question.content": "Proč si agent nemůže pamatovat vše z naší první konverzace?",
+
+  "scenarios.why-agent-refuses-tasks.name": "Proč agent odmítá úkoly?",
+  "scenarios.why-agent-refuses-tasks.description": "Otázka, proč agenti odmítají určité požadavky",
+  "scenarios.why-agent-refuses-tasks.user-question.content": "Proč agent někdy odmítá udělat, co po něm žádám?",
+
+  "scenarios.can-agent-learn-from-me.name": "Může se agent učit ze zpětné vazby?",
+  "scenarios.can-agent-learn-from-me.description": "Otázka, zda se agenti mohou učit ze zpětné vazby uživatele",
+  "scenarios.can-agent-learn-from-me.user-question.content": "Může se AI agent učit z mé zpětné vazby a časem se zlepšovat?",
+
+  "scenarios.why-slow-responses.name": "Proč pomalé odpovědi agenta?",
+  "scenarios.why-slow-responses.description": "Otázka, proč agenti potřebují čas na odpověď",
+  "scenarios.why-slow-responses.user-question.content": "Proč agent někdy tak dlouho odpovídá?",
+
+  "scenarios.why-different-answers.name": "Proč pokaždé jiné odpovědi?",
+  "scenarios.why-different-answers.description": "Otázka o nedeterministickém chování agenta",
+  "scenarios.why-different-answers.user-question.content": "Proč agent dává různé odpovědi na stejnou otázku?",
+
+  "scenarios.what-are-tools.name": "Co jsou nástroje AI agentů?",
+  "scenarios.what-are-tools.description": "Otázka, co jsou nástroje a proč je agenti potřebují",
+  "scenarios.what-are-tools.user-question.content": "Co jsou nástroje v AI agentech a proč je agenti potřebují?",
+
+  "scenarios.why-other-agents-need-approval.name": "Proč agenti potřebují schválení?",
+  "scenarios.why-other-agents-need-approval.description": "Otázka, proč někteří agenti vyžadují schválení pro použití nástrojů",
+  "scenarios.why-other-agents-need-approval.user-question.content": "Proč někteří agenti žádají o schválení před použitím určitých nástrojů?",
+
+  "scenarios.can-agent-access-internet.name": "Mohou agenti přistupovat k internetu?",
+  "scenarios.can-agent-access-internet.description": "Otázka o přístupu agentů k internetu a externím zdrojům",
+  "scenarios.can-agent-access-internet.user-question.content": "Mohou AI agenti přistupovat k internetu nebo externím zdrojům?",
+
+  "scenarios.how-much-can-agent-remember.name": "Kolik si agent může zapamatovat?",
+  "scenarios.how-much-can-agent-remember.description": "Otázka o kontextovém okně a kapacitě paměti agenta",
+  "scenarios.how-much-can-agent-remember.user-question.content": "Kolik informací si agent dokáže najednou udržet v 'hlavě'?",
+
+  "scenarios.what-is-system-message.name": "Co je systémová zpráva?",
+  "scenarios.what-is-system-message.description": "Otázka o systémových zprávách a jejich důležitosti",
+  "scenarios.what-is-system-message.user-question.content": "Co je 'systémová zpráva' a proč na ní záleží?",
+
+  "scenarios.agent-vs-chatbot.name": "Agent vs chatbot?",
+  "scenarios.agent-vs-chatbot.description": "Otázka o rozdílu mezi AI agenty a chatboty",
+  "scenarios.agent-vs-chatbot.user-question.content": "Jaký je rozdíl mezi AI agentem a běžným chatbotem?",
+
+  "scenarios.difference-context-memory.name": "Kontext vs dlouhodobá paměť?",
+  "scenarios.difference-context-memory.description": "Otázka o rozdílu mezi kontextem a dlouhodobou pamětí",
+  "scenarios.difference-context-memory.user-question.content": "Jaký je rozdíl mezi kontextem a dlouhodobou pamětí?",
+
+  "scenarios.how-transparent-works.name": "Jak funguje transparentnost?",
+  "scenarios.how-transparent-works.description": "Otázka, jak funguje funkce transparentnosti v této aplikaci",
+  "scenarios.how-transparent-works.user-question.content": "Jak funguje funkce transparentnosti v této aplikaci? Co vidím?",
+
+  "scenarios.why-show-thinking.name": "Proč ukazovat proces myšlení?",
+  "scenarios.why-show-thinking.description": "Otázka, proč agenti explicitně ukazují svůj proces myšlení",
+  "scenarios.why-show-thinking.user-question.content": "Proč někteří agenti explicitně ukazují svůj proces myšlení? Není výsledek to jediné, na čem záleží?",
+
+  "scenarios.can-i-customize-agent.name": "Mohu přizpůsobit chování agenta?",
+  "scenarios.can-i-customize-agent.description": "Otázka o přizpůsobení chování agenta a stylu komunikace",
+  "scenarios.can-i-customize-agent.user-question.content": "Mohu přizpůsobit, jak se agent chová nebo jak se mnou mluví?",
+
+  "scenarios.why-multiple-models.name": "Proč více AI modelů?",
+  "scenarios.why-multiple-models.description": "Otázka, proč aplikace podporuje více AI modelů",
+  "scenarios.why-multiple-models.user-question.content": "Proč tato aplikace podporuje více AI modelů? Jaký je mezi nimi rozdíl?"
 }

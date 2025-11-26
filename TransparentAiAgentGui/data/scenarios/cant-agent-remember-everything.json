@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "cant-agent-remember-everything",
+  "version": "1.0",
+  "nameKey": "scenarios.cant-agent-remember-everything.name",
+  "name": "Why Can't Agent Remember Everything?",
+  "descriptionKey": "scenarios.cant-agent-remember-everything.description",
+  "description": "Question about agent memory limitations across conversations",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.cant-agent-remember-everything.user-question.content",
+      "content": "Why can't the agent remember everything from our first conversation?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

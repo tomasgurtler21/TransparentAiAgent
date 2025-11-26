@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "can-agent-learn-from-me",
+  "version": "1.0",
+  "nameKey": "scenarios.can-agent-learn-from-me.name",
+  "name": "Can Agent Learn From Feedback?",
+  "descriptionKey": "scenarios.can-agent-learn-from-me.description",
+  "description": "Question about whether agents can learn from user feedback",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.can-agent-learn-from-me.user-question.content",
+      "content": "Can the AI agent learn from my feedback and improve over time?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

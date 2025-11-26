@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "why-multiple-models",
+  "version": "1.0",
+  "nameKey": "scenarios.why-multiple-models.name",
+  "name": "Why Multiple AI Models?",
+  "descriptionKey": "scenarios.why-multiple-models.description",
+  "description": "Question about why the app supports multiple AI models",
+  "category": "TransparentAiAgent",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-multiple-models.user-question.content",
+      "content": "Why does this app support multiple AI models? What's the difference between them?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

@@ -6,14 +6,14 @@
   "name": "Why Doesn't Agent Follow Length Limits?",
   "descriptionKey": "scenarios.coding-limits-question.description",
   "description": "Question about agent exceeding character and line length limits",
-  "category": "best-practices",
+  "category": "FAQ",
   "difficulty": "beginner",
   "estimatedDurationSeconds": 60,
   "steps": [
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.coding-limits-question.step0.content",
-      "content": "Why is the agent unable to follow my coding guidelines? I have character limits for certain names, and the agent keeps exceeding them! Also, it exceeds line length limits frequently!",
+      "contentKey": "scenarios.coding-limits-question.user-question-about-limits.content",
+      "content": "Why is my other coding agent unable to follow my coding guidelines? I have character limits for certain names, and the agent keeps exceeding them! Also, it exceeds line length limits frequently!. I am sure he has guidelines in hix context, but he does not comply anyway. Can't he count characters?",
       "delay": 500
     },
     {

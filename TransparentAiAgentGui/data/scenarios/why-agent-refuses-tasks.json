@@ -1,0 +1,23 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "why-agent-refuses-tasks",
+  "version": "1.0",
+  "nameKey": "scenarios.why-agent-refuses-tasks.name",
+  "name": "Why Does Agent Refuse Tasks?",
+  "descriptionKey": "scenarios.why-agent-refuses-tasks.description",
+  "description": "Question about why agents refuse certain requests",
+  "category": "FAQ",
+  "difficulty": "beginner",
+  "estimatedDurationSeconds": 60,
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-agent-refuses-tasks.user-question.content",
+      "content": "Why does the agent sometimes refuse to do what I ask?",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

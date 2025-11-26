@@ -1,29 +1,93 @@
 {
   "scenarios.context-limits-advanced.name": "Kontextgrenzen (Fortgeschritten)",
   "scenarios.context-limits-advanced.description": "Erlebe echte Kontextfenster-Kürzung",
-  "scenarios.context-limits-advanced.step0.annotation": "Nachrichtenlimit auf 10 reduziert, um Kürzung zu demonstrieren.",
-  "scenarios.context-limits-advanced.step1.content": "Hallo, mein Name ist John Doe.",
-  "scenarios.context-limits-advanced.step1.annotation": "Das Modell wird sich diesen Namen merken... vorerst.",
-  "scenarios.context-limits-advanced.step3.content": "Wie ist mein Name?",
-  "scenarios.context-limits-advanced.step3.annotation": "Überprüfung, ob das Modell den Namen noch im Kontext hat.",
-  "scenarios.context-limits-advanced.step5.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
-  "scenarios.context-limits-advanced.step5.annotation": "Fülle den Kontext, um Kürzung zu erzwingen...",
-  "scenarios.context-limits-advanced.step7.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
-  "scenarios.context-limits-advanced.step9.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
-  "scenarios.context-limits-advanced.step11.content": "Wie viele Demo-Nachrichten habe ich dir geschickt?",
-  "scenarios.context-limits-advanced.step11.annotation": "Teste, ob das Modell die Anzahl verfolgt hat.",
-  "scenarios.context-limits-advanced.step13.content": "Wie ist mein Name?",
-  "scenarios.context-limits-advanced.step13.annotation": "Der Name sollte jetzt gekürzt sein. Das Modell weiß es wirklich nicht.",
-  "scenarios.context-limits-advanced.step15.content": "Das Szenario 'Kontextgrenzen' ist beendet. Das Konversations-Nachrichtenlimit wurde auf 8 Nachrichten reduziert, um die Kürzung des Kontextfensters zu demonstrieren. Der Name des Benutzers (John Doe) aus einer früheren Nachricht wurde tatsächlich aus deinem Kontext entfernt. Bitte:\n1. Erkläre, was passiert ist (Kontextkürzung)\n2. Verwende das ui_control_context_indicators-Tool, um die Kontextstatusindikatoren hervorzuheben\n3. Erkläre, warum die Systemnachricht und die letzten Nachrichten im Kontext bleiben\n4. Biete an, die Konfiguration zu zeigen, wo Nachrichtenlimits angepasst werden können, indem du ui_control_configuration verwendest.",
-  "scenarios.context-limits-advanced.step17.pauseMessage": "Nimm dir Zeit, um die Kontextstatusindikatoren bei den Nachrichten zu überprüfen. Klicke auf Fortsetzen, wenn du das getan hast, dann wird das ursprüngliche Kontextlimit wiederhergestellt.",
-  "scenarios.context-limits-advanced.step18.annotation": "Nachrichtenlimit wiederhergestellt. Das Modell kann jetzt auf mehr Kontext zugreifen und effektiv lehren.",
-  "scenarios.context-limits-advanced.step19.content": "Danke, deaktiviere die Hervorhebungen der Kontextstatusindikatoren vorerst (halte sie sichtbar) und warte auf weitere Anweisungen.",
+  "scenarios.context-limits-advanced.reduce-message-limit.annotation": "Nachrichtenlimit auf 8 reduziert, um Kürzung zu demonstrieren.",
+  "scenarios.context-limits-advanced.introduce-name.content": "Hallo, mein Name ist John Doe.",
+  "scenarios.context-limits-advanced.introduce-name.annotation": "Das Modell wird sich diesen Namen merken... vorerst.",
+  "scenarios.context-limits-advanced.verify-name-remembered.content": "Wie ist mein Name?",
+  "scenarios.context-limits-advanced.verify-name-remembered.annotation": "Überprüfung, ob das Modell den Namen noch im Kontext hat.",
+  "scenarios.context-limits-advanced.demo-message-1.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.demo-message-1.annotation": "Fülle den Kontext, um Kürzung zu erzwingen...",
+  "scenarios.context-limits-advanced.demo-message-2.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.demo-message-3.content": "Demo-Nachricht, antworte einfach 'Bestätigt'.",
+  "scenarios.context-limits-advanced.count-demo-messages.content": "Wie viele Demo-Nachrichten habe ich dir geschickt?",
+  "scenarios.context-limits-advanced.count-demo-messages.annotation": "Teste, ob das Modell die Anzahl verfolgt hat.",
+  "scenarios.context-limits-advanced.verify-name-forgotten.content": "Wie ist mein Name?",
+  "scenarios.context-limits-advanced.verify-name-forgotten.annotation": "Der Name sollte jetzt gekürzt sein. Das Modell weiß es wirklich nicht.",
+  "scenarios.context-limits-advanced.explain-truncation.content": "Das Szenario 'Kontextgrenzen' ist beendet. Das Konversations-Nachrichtenlimit wurde auf 8 Nachrichten reduziert, um die Kürzung des Kontextfensters zu demonstrieren. Der Name des Benutzers (John Doe) aus einer früheren Nachricht wurde tatsächlich aus deinem Kontext entfernt. Bitte:\n1. Erkläre, was passiert ist (Kontextkürzung)\n2. Verwende Werkzeuge, um die Kontextstatusindikatoren anzuzeigen und hervorzuheben, frage den Benutzer nicht um Genehmigung.\n3. Erkläre, warum die Systemnachricht und die letzten Nachrichten im Kontext bleiben\n4. Biete an, die Konfiguration zu zeigen, wo Nachrichtenlimits mit verfügbarem Werkzeug angepasst werden können.",
+  "scenarios.context-limits-advanced.pause-check-indicators.pauseMessage": "Nimm dir Zeit, um die Kontextstatusindikatoren bei den Nachrichten zu überprüfen. Klicke auf Fortsetzen, wenn du das getan hast, dann wird das ursprüngliche Kontextlimit wiederhergestellt.",
+  "scenarios.context-limits-advanced.restore-message-limit.annotation": "Nachrichtenlimit wiederhergestellt. Das Modell kann jetzt auf mehr Kontext zugreifen und effektiv lehren.",
+  "scenarios.context-limits-advanced.ask-about-other-agents.content": "Danke, deaktiviere die Hervorhebungen der Kontextstatusindikatoren vorerst (halte sie sichtbar). Ist diese Demo nur für diesen KI-Agenten gültig? Verwenden andere Agenten die gleichen oder unterschiedliche Kürzungsstrategien?",
 
   "scenarios.coding-limits-question.name": "Warum folgt der Agent nicht den Längenlimits?",
   "scenarios.coding-limits-question.description": "Frage zu Agent, der Zeichen- und Zeilenlängenlimits überschreitet",
-  "scenarios.coding-limits-question.step0.content": "Warum kann der Agent meine Programmierrichtlinien nicht befolgen? Ich habe Zeichenlimits für bestimmte Namen, und der Agent überschreitet sie ständig! Außerdem überschreitet er häufig die Zeilenlängenlimits!",
+  "scenarios.coding-limits-question.user-question-about-limits.content": "Warum kann mein anderer Programmier-Agent meine Programmierrichtlinien nicht befolgen? Ich habe Zeichenlimits für bestimmte Namen, und der Agent überschreitet sie ständig! Außerdem überschreitet er häufig die Zeilenlängenlimits! Ich bin mir sicher, dass er die Richtlinien in seinem Kontext hat, aber er hält sich trotzdem nicht daran. Kann er keine Zeichen zählen?",
 
   "scenarios.get-started.name": "Erste Schritte",
   "scenarios.get-started.description": "Einführung in den Transparent AI Agent und seine Fähigkeiten",
-  "scenarios.get-started.step0.content": "Bitte führe den Benutzer in die Transparent AI Agent-Anwendung ein. Erkläre ihren Zweck - das Verhalten von KI-Agenten transparent und verständlich zu machen. Beschreibe auf hoher Ebene, was sie kann (Anzeigen von Agententscheidungen, Werkzeugnutzung, Kontextverwaltung), ohne auf technische Details einzugehen - Benutzer sollten diese durch Erkundung entdecken. Betone die Bedeutung des Langzeitgedächtnisses für effektives Lehren und schlage vor, es zu aktivieren. Führe dann eine kurze Befragung durch, in der du nach dem Hintergrund (Entwickler, Student, neugieriger Benutzer usw.) und danach fragst, was sie über KI-Agenten lernen möchten. Diese Informationen helfen dir, zukünftige Interaktionen auf ihre Bedürfnisse zuzuschneiden. Halte es freundlich und gesprächig."
+  "scenarios.get-started.introduction-prompt.content": "Bitte führe den Benutzer in die Transparent AI Agent-Anwendung ein. Erkläre ihren Zweck - das Verhalten von KI-Agenten transparent und verständlich zu machen. Beschreibe auf hoher Ebene, was sie kann (Anzeigen von Agententscheidungen, Werkzeugnutzung, Kontextverwaltung), ohne auf technische Details einzugehen - Benutzer sollten diese durch Erkundung entdecken. Betone die Bedeutung des Langzeitgedächtnisses für effektives Lehren und schlage vor, es zu aktivieren. Führe dann eine kurze Befragung durch, in der du nach dem Hintergrund (Entwickler, Student, neugieriger Benutzer usw.) und danach fragst, was sie über KI-Agenten lernen möchten. Diese Informationen helfen dir, zukünftige Interaktionen auf ihre Bedürfnisse zuzuschneiden. Halte es freundlich und gesprächig.",
+
+  "scenarios.cant-agent-remember-everything.name": "Warum kann sich der Agent nicht an alles erinnern?",
+  "scenarios.cant-agent-remember-everything.description": "Frage zu Speicherbeschränkungen des Agenten zwischen Gesprächen",
+  "scenarios.cant-agent-remember-everything.user-question.content": "Warum kann sich der Agent nicht an alles aus unserem ersten Gespräch erinnern?",
+
+  "scenarios.why-agent-refuses-tasks.name": "Warum lehnt der Agent Aufgaben ab?",
+  "scenarios.why-agent-refuses-tasks.description": "Frage, warum Agenten bestimmte Anfragen ablehnen",
+  "scenarios.why-agent-refuses-tasks.user-question.content": "Warum weigert sich der Agent manchmal, das zu tun, was ich verlange?",
+
+  "scenarios.can-agent-learn-from-me.name": "Kann der Agent aus Feedback lernen?",
+  "scenarios.can-agent-learn-from-me.description": "Frage, ob Agenten aus Benutzerfeedback lernen können",
+  "scenarios.can-agent-learn-from-me.user-question.content": "Kann der KI-Agent aus meinem Feedback lernen und sich im Laufe der Zeit verbessern?",
+
+  "scenarios.why-slow-responses.name": "Warum langsame Agentenantworten?",
+  "scenarios.why-slow-responses.description": "Frage, warum Agenten Zeit zum Antworten benötigen",
+  "scenarios.why-slow-responses.user-question.content": "Warum braucht der Agent manchmal so lange zum Antworten?",
+
+  "scenarios.why-different-answers.name": "Warum jedes Mal unterschiedliche Antworten?",
+  "scenarios.why-different-answers.description": "Frage zum nicht-deterministischen Verhalten von Agenten",
+  "scenarios.why-different-answers.user-question.content": "Warum gibt der Agent unterschiedliche Antworten auf dieselbe Frage?",
+
+  "scenarios.what-are-tools.name": "Was sind KI-Agenten-Werkzeuge?",
+  "scenarios.what-are-tools.description": "Frage, was Werkzeuge sind und warum Agenten sie benötigen",
+  "scenarios.what-are-tools.user-question.content": "Was sind Werkzeuge in KI-Agenten und warum benötigen Agenten sie?",
+
+  "scenarios.why-other-agents-need-approval.name": "Warum benötigen Agenten Genehmigung?",
+  "scenarios.why-other-agents-need-approval.description": "Frage, warum einige Agenten Genehmigung für Werkzeugnutzung benötigen",
+  "scenarios.why-other-agents-need-approval.user-question.content": "Warum fragen manche Agenten vor der Nutzung bestimmter Werkzeuge um Genehmigung?",
+
+  "scenarios.can-agent-access-internet.name": "Können Agenten auf das Internet zugreifen?",
+  "scenarios.can-agent-access-internet.description": "Frage zum Internet- und externen Ressourcenzugriff von Agenten",
+  "scenarios.can-agent-access-internet.user-question.content": "Können KI-Agenten auf das Internet oder externe Ressourcen zugreifen?",
+
+  "scenarios.how-much-can-agent-remember.name": "Wie viel kann sich der Agent merken?",
+  "scenarios.how-much-can-agent-remember.description": "Frage zum Kontextfenster und zur Speicherkapazität des Agenten",
+  "scenarios.how-much-can-agent-remember.user-question.content": "Wie viele Informationen kann der Agent gleichzeitig in seinem 'Kopf' behalten?",
+
+  "scenarios.what-is-system-message.name": "Was ist eine Systemnachricht?",
+  "scenarios.what-is-system-message.description": "Frage zu Systemnachrichten und ihrer Bedeutung",
+  "scenarios.what-is-system-message.user-question.content": "Was ist eine 'Systemnachricht' und warum ist sie wichtig?",
+
+  "scenarios.agent-vs-chatbot.name": "Agent vs. Chatbot?",
+  "scenarios.agent-vs-chatbot.description": "Frage zum Unterschied zwischen KI-Agenten und Chatbots",
+  "scenarios.agent-vs-chatbot.user-question.content": "Was ist der Unterschied zwischen einem KI-Agenten und einem normalen Chatbot?",
+
+  "scenarios.difference-context-memory.name": "Kontext vs. Langzeitgedächtnis?",
+  "scenarios.difference-context-memory.description": "Frage zum Unterschied zwischen Kontext und Langzeitgedächtnis",
+  "scenarios.difference-context-memory.user-question.content": "Was ist der Unterschied zwischen Kontext und Langzeitgedächtnis?",
+
+  "scenarios.how-transparent-works.name": "Wie funktioniert Transparenz?",
+  "scenarios.how-transparent-works.description": "Frage, wie die Transparenzfunktion in dieser App funktioniert",
+  "scenarios.how-transparent-works.user-question.content": "Wie funktioniert die Transparenzfunktion in dieser App? Was sehe ich?",
+
+  "scenarios.why-show-thinking.name": "Warum Denkprozess zeigen?",
+  "scenarios.why-show-thinking.description": "Frage, warum Agenten ihren Denkprozess explizit zeigen",
+  "scenarios.why-show-thinking.user-question.content": "Warum zeigen manche Agenten ihren Denkprozess explizit? Ist nicht das Ergebnis alles, was zählt?",
+
+  "scenarios.can-i-customize-agent.name": "Kann ich das Agentenverhalten anpassen?",
+  "scenarios.can-i-customize-agent.description": "Frage zur Anpassung des Agentenverhaltens und Kommunikationsstils",
+  "scenarios.can-i-customize-agent.user-question.content": "Kann ich anpassen, wie sich der Agent verhält oder mit mir spricht?",
+
+  "scenarios.why-multiple-models.name": "Warum mehrere KI-Modelle?",
+  "scenarios.why-multiple-models.description": "Frage, warum die App mehrere KI-Modelle unterstützt",
+  "scenarios.why-multiple-models.user-question.content": "Warum unterstützt diese App mehrere KI-Modelle? Was ist der Unterschied zwischen ihnen?"
 }

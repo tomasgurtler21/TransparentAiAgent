@@ -12,7 +12,7 @@
   "steps": [
     {
       "type": "scenario_user_message",
-      "contentKey": "scenarios.get-started.step0.content",
+      "contentKey": "scenarios.get-started.introduction-prompt.content",
       "content": "Please introduce the user to the Transparent AI Agent application. Explain its purpose - making AI agent behavior transparent and understandable. Describe what it can do at a high level (showing agent decisions, tool usage, context management) without going into technical details - users should discover those through exploration. Emphasize the importance of long-term memory for effective teaching and suggest activating it. Then conduct a brief questionnaire asking about their background (developer, student, curious user, etc.) and what they'd like to learn about AI agents. This information will help you tailor future interactions to their needs. Keep it friendly and conversational."
     },
     {
