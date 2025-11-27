@@ -18,6 +18,7 @@ using TransparentAiAgentCore.Infrastructure.Tools;
 using TransparentAiAgentCore.Infrastructure.Tools.MCP;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInUIControl;
 using TransparentAiAgentCore.Infrastructure.Tools.BuiltInKnowledge;
+using TransparentAiAgentCore.Infrastructure.Tools.ScenarioMock;
 using TransparentAiAgentCore.Infrastructure.Tools.Validation;
 using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Domain.Scenarios;
@@ -183,8 +184,12 @@ try
                 // Create Built-in Long-Term Memory Tool Registry (Phase 4)
                 var memoryRegistry = sp.GetRequiredService<BuiltInLongTermMemoryToolRegistry>();
 
-                // Create Tool Registry Composite (MCP + UI Control + Knowledge + Memory)
-                var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { mcpRegistry, uiControlRegistry, knowledgeRegistry, memoryRegistry });
+                // Get Scenario Tool Registry (for teaching scenarios with mock tools)
+                var scenarioRegistry = sp.GetRequiredService<IScenarioToolRegistry>() as IToolRegistry;
+
+                // Create Tool Registry Composite (Scenario Mock + MCP + UI Control + Knowledge + Memory)
+                // NOTE: Scenario registry is first so mock tools take precedence during scenarios
+                var compositeRegistry = new ToolRegistryComposite(new IToolRegistry[] { scenarioRegistry!, mcpRegistry, uiControlRegistry, knowledgeRegistry, memoryRegistry });
 
                 // NOTE: Tool discovery will be triggered synchronously AFTER app.Build()
                 // to ensure tools are available before accepting requests
@@ -215,6 +220,9 @@ try
                 // Create Long-Term Memory Tool Executor (Phase 4) - always available
                 var memoryExecutor = sp.GetRequiredService<LongTermMemoryToolExecutor>();
 
+                // Create Scenario Mock Tool Executor (for teaching scenarios)
+                var scenarioMockExecutor = sp.GetRequiredService<ScenarioMockToolExecutor>();
+
                 // Get tool usage statistics service
                 var statistics = sp.GetRequiredService<IToolUsageStatistics>();
 
@@ -224,8 +232,8 @@ try
                 // Get app mode service for mode-aware tool filtering (Phase 9 - Teaching Mode)
                 var appModeService = sp.GetRequiredService<IAppModeService>();
 
-                // Build list of executors (UI Control + Knowledge + Memory always available)
-                var executors = new List<IToolExecutor> { uiControlExecutor, knowledgeExecutor, memoryExecutor };
+                // Build list of executors (Scenario Mock + UI Control + Knowledge + Memory always available)
+                var executors = new List<IToolExecutor> { scenarioMockExecutor, uiControlExecutor, knowledgeExecutor, memoryExecutor };
 
                 // Add MCP executor only if MCP servers are configured
                 if (appConfig.Tools.Servers.Count > 0)
@@ -456,6 +464,10 @@ try
     // Register memory tools
     builder.Services.AddSingleton<BuiltInLongTermMemoryToolRegistry>();
     builder.Services.AddScoped<LongTermMemoryToolExecutor>();
+
+    // Register scenario mock tools (for teaching scenarios)
+    builder.Services.AddSingleton<IScenarioToolRegistry, ScenarioToolRegistry>();
+    builder.Services.AddScoped<ScenarioMockToolExecutor>();
 
     // Register Scenario services (Phase 10a/10b - Teaching Mode Scenarios)
     // Register JsonScenarioLoader first (needed by ScenarioRegistry)

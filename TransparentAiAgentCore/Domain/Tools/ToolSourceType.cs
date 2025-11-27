@@ -34,5 +34,11 @@ public enum ToolSourceType
     /// </summary>
     BuiltInLongTermMemory,
 
+    /// <summary>
+    /// Scenario-specific mock tool (temporary, scenario-scoped)
+    /// Used in teaching scenarios to demonstrate tool behavior with controlled responses
+    /// </summary>
+    ScenarioMock,
+
     // Future: ExternalAPI, CustomProtocol, etc.
 }

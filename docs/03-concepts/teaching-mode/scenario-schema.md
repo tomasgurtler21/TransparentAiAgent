@@ -410,14 +410,125 @@ Directly manipulates UI state (e.g., reveal filter controls).
 ```
 
 **Fields:**
-- `tool` (string, required): UI control tool name
+- `tool` (string, required): UI control tool name (e.g., `ui_control_chat_filter`, `ui_control_context_indicators`, `ui_control_transparency_viewer`, `ui_control_tools_panel`, `ui_control_configuration`, `ui_control_scenario_selector`)
 - `arguments` (object, required): Tool-specific arguments
 - `annotation` (string, optional): Explanation for user
+
+**Available UI Control Tools:**
+
+| Tool Name | Purpose | Arguments |
+|-----------|---------|-----------|
+| `ui_control_chat_filter` | Control message visibility | `show_user_messages`, `show_assistant_messages`, `show_system_messages`, `show_tool_calls`, `show_tool_results`, `show_truncated_messages` (all boolean, optional) |
+| `ui_control_filter_visibility` | Show/hide filter controls | `visible` (boolean, required) |
+| `ui_control_transparency_viewer` | Control transparency panel | `visible` (boolean), `event_type_filters` (string[]), `show_timestamps` (boolean) |
+| `ui_control_tools_panel` | Control tools panel | `visible` (boolean), `expanded_tools` (string[]), `highlighted_tool` (string) |
+| `ui_control_context_indicators` | Control context indicators | `visible` (boolean), `highlighted` (boolean) |
+| `ui_control_configuration` | Control configuration page | `visible` (boolean), `highlight_section` (string) |
+| `ui_control_scenario_selector` | Show/hide scenario selector | `visible` (boolean) |
 
 **Use Cases:**
 - Pre-configure UI before scenario runs
 - Highlight specific features during teaching
 - Synchronize UI state with scenario flow
+- Control message visibility to focus user attention
+
+---
+
+#### 13. `register_mock_tool`
+
+Registers a scenario-specific mock tool with predefined responses. Mock tools are temporary and automatically cleaned up when the scenario completes.
+
+```json
+{
+  "type": "register_mock_tool",
+  "mock_tool_name": "read_file",
+  "mock_tool_description": "Reads the contents of a file",
+  "mock_tool_parameters_schema": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}",
+  "mock_tool_response_map": {
+    "{\"path\":\"FileA\"}": {
+      "is_success": false,
+      "error_message": "{\"code\":-32603,\"message\":\"Internal error\"}"
+    },
+    "{\"path\":\"FileB\"}": {
+      "is_success": true,
+      "content": "File contents: Hello World!"
+    }
+  }
+}
+```
+
+**Fields:**
+- `mock_tool_name` (string, required): Name of the mock tool (will override any existing tool with the same name during scenario execution)
+- `mock_tool_description` (string, optional): Human-readable description of the tool
+- `mock_tool_parameters_schema` (string, optional): JSON schema for tool parameters
+- `mock_tool_response_map` (object, required): Map of exact JSON argument strings to predefined responses
+
+**Response Map Format:**
+Each key in `mock_tool_response_map` must be an exact JSON string matching the tool arguments. Each value is a response configuration:
+- `is_success` (boolean, required): Whether this is a successful response
+- `content` (string, optional): Content to return for successful responses (required if `is_success` is true)
+- `error_message` (string, optional): Error message to return for failed responses (required if `is_success` is false)
+- `simulated_execution_time_ms` (number, optional): Artificial delay in milliseconds
+
+**Use Cases:**
+- Demonstrate tool calling behavior without requiring real MCP tools
+- Show error handling by returning specific error responses
+- Create deterministic scenarios that don't depend on external services
+- Teach about MCP error formats and tool debugging
+- Demonstrate the difference between cryptic and clear error messages
+
+**Important Notes:**
+- Mock tools are scenario-scoped and automatically cleaned up when the scenario ends (even on failure)
+- Mock tools take precedence over real tools with the same name during scenario execution
+- The response map uses exact JSON string matching, so `{"path":"FileA"}` will NOT match `{"path": "FileA"}` (different spacing)
+- Tools are visible in the Tools page while the scenario is running
+
+**Example - Teaching Tool Visibility:**
+```json
+{
+  "type": "register_mock_tool",
+  "mock_tool_name": "read_file",
+  "mock_tool_description": "Reads the contents of a file",
+  "mock_tool_parameters_schema": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}",
+  "mock_tool_response_map": {
+    "{\"path\":\"cryptic-error-file\"}": {
+      "is_success": false,
+      "error_message": "{\"code\":-32603,\"message\":\"Internal error\"}"
+    },
+    "{\"path\":\"clear-error-file\"}": {
+      "is_success": false,
+      "error_message": "File not found: clear-error-file. Please check the path and try again."
+    },
+    "{\"path\":\"success-file\"}": {
+      "is_success": true,
+      "content": "File contents: This is the file content!",
+      "simulated_execution_time_ms": 100
+    }
+  }
+}
+```
+
+---
+
+#### 14. `unregister_mock_tool`
+
+Unregisters a previously registered mock tool.
+
+```json
+{
+  "type": "unregister_mock_tool",
+  "mock_tool_name": "read_file"
+}
+```
+
+**Fields:**
+- `mock_tool_name` (string, required): Name of the mock tool to unregister
+
+**Use Cases:**
+- Explicitly clean up mock tools mid-scenario if no longer needed
+- Replace a mock tool with a different configuration (unregister, then register again with new response map)
+
+**Note:** Mock tools are automatically cleaned up when scenarios complete, so explicit unregistration is usually not necessary. However, it can be useful for multi-phase scenarios that need different tool behaviors at different stages.
 
 ---
 
@@ -756,6 +867,6 @@ wwwroot/scenarios/
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-11-09
-**Status:** Design Draft
+**Document Version:** 1.1
+**Last Updated:** 2025-11-27
+**Status:** Implemented (Mock Tools feature added)

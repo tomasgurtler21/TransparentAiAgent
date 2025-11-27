@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using TransparentAiAgentCore.Domain.Scenarios;
+using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Infrastructure.Localization;
 
 namespace TransparentAiAgentCore.Infrastructure.Scenarios;
@@ -104,6 +105,35 @@ public class JsonScenarioLoader
     }
 
     #region DTOs for JSON Deserialization
+
+    /// <summary>
+    /// DTO for mock tool response configuration.
+    /// </summary>
+    private class MockToolResponseConfigDto
+    {
+        [JsonPropertyName("is_success")]
+        public bool IsSuccess { get; set; }
+
+        [JsonPropertyName("content")]
+        public string? Content { get; set; }
+
+        [JsonPropertyName("error_message")]
+        public string? ErrorMessage { get; set; }
+
+        [JsonPropertyName("simulated_execution_time_ms")]
+        public int? SimulatedExecutionTimeMs { get; set; }
+
+        public MockToolResponseConfig ToMockToolResponseConfig()
+        {
+            return new MockToolResponseConfig
+            {
+                IsSuccess = IsSuccess,
+                Content = Content,
+                ErrorMessage = ErrorMessage,
+                SimulatedExecutionTimeMs = SimulatedExecutionTimeMs
+            };
+        }
+    }
 
     /// <summary>
     /// DTO for JSON deserialization. Maps snake_case JSON to C# objects.
@@ -224,6 +254,19 @@ public class JsonScenarioLoader
         [JsonPropertyName("arguments")]
         public Dictionary<string, object>? Arguments { get; set; }
 
+        // Mock Tool properties (for RegisterMockTool/UnregisterMockTool steps)
+        [JsonPropertyName("mock_tool_name")]
+        public string? MockToolName { get; set; }
+
+        [JsonPropertyName("mock_tool_description")]
+        public string? MockToolDescription { get; set; }
+
+        [JsonPropertyName("mock_tool_parameters_schema")]
+        public string? MockToolParametersSchema { get; set; }
+
+        [JsonPropertyName("mock_tool_response_map")]
+        public Dictionary<string, MockToolResponseConfigDto>? MockToolResponseMap { get; set; }
+
         public ScenarioStep ToScenarioStep(ITranslationService translationService)
         {
             // Resolve content using translation key
@@ -252,6 +295,8 @@ public class JsonScenarioLoader
                 "delay" => ScenarioStepType.Delay,
                 "ui_control" => ScenarioStepType.UIControl,
                 "pause_for_user" => ScenarioStepType.PauseForUser,
+                "register_mock_tool" => ScenarioStepType.RegisterMockTool,
+                "unregister_mock_tool" => ScenarioStepType.UnregisterMockTool,
                 _ => throw new ArgumentException($"Unknown scenario step type: {Type}")
             };
 
@@ -274,6 +319,17 @@ public class JsonScenarioLoader
             // Support both "overlay" and "config_overlay" for flexibility
             var configOverlayValue = ConfigOverlay ?? Overlay;
 
+            // Convert MockToolResponseMap DTO to domain model
+            IReadOnlyDictionary<string, MockToolResponseConfig>? mockToolResponseMap = null;
+            if (MockToolResponseMap != null)
+            {
+                mockToolResponseMap = MockToolResponseMap
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.ToMockToolResponseConfig()
+                    );
+            }
+
             return new ScenarioStep(
                 type: stepType,
                 content: resolvedContent,
@@ -285,7 +341,11 @@ public class JsonScenarioLoader
                 conditionParameters: Parameters,
                 onTimeout: OnTimeout,
                 uiControlTool: Tool,
-                uiControlArguments: Arguments
+                uiControlArguments: Arguments,
+                mockToolName: MockToolName,
+                mockToolDescription: MockToolDescription,
+                mockToolParametersSchema: MockToolParametersSchema,
+                mockToolResponseMap: mockToolResponseMap
             );
         }
     }

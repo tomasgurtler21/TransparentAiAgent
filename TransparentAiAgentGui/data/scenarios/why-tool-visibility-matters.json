@@ -1,0 +1,114 @@
+{
+  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
+  "id": "why-tool-visibility-matters",
+  "version": "1.0",
+  "nameKey": "scenarios.why-tool-visibility-matters.name",
+  "name": "Why Tool Visibility Matters",
+  "descriptionKey": "scenarios.why-tool-visibility-matters.description",
+  "description": "Demonstrates the importance of seeing tool inputs and outputs for debugging and understanding MCP errors",
+  "category": "tools",
+  "difficulty": "expert",
+  "estimatedDurationSeconds": 240,
+  "steps": [
+    {
+      "type": "register_mock_tool",
+      "mock_tool_name": "read_file",
+      "mock_tool_description": "Reads the contents of a file",
+      "mock_tool_parameters_schema": "{\"type\":\"object\",\"properties\":{\"fileName\":{\"type\":\"string\"}},\"required\":[\"fileName\"]}",
+      "mock_tool_response_map": {
+        "{\"fileName\":\"FileA\"}": {
+          "is_success": false,
+          "error_message": "{\"code\":-32603,\"message\":\"Internal error\"}"
+        },
+        "{\"fileName\":\"ImprovedFile1\"}": {
+          "is_success": false,
+          "error_message": "File not found: ImprovedFile1."
+        },
+        "{\"fileName\":\"AbsolutelyCorrectFile\"}": {
+          "is_success": true,
+          "content": "File contents: Hello from the correct file!"
+        }
+      }
+    },
+    {
+      "type": "ui_control",
+      "tool": "ui_control_chat_filter",
+      "arguments": {
+        "show_tool_calls": false,
+        "show_tool_results": false
+      }
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-tool-visibility-matters.step-first-query.content",
+      "content": "Read the file called 'FileA' for me now.",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.why-tool-visibility-matters.pause-cryptic-error.content",
+      "content": "Something went wrong, but what? Without tool call and result, it can be almost impossible to know. Many AI agents try to act as \"magic wand\", and prompt LLM to not share tool result details. Then it is almost impossible to debug who failed - Agent, Tool, LLM?"
+    },
+    {
+      "type": "ui_control",
+      "tool": "ui_control_chat_filter",
+      "arguments": {
+        "show_tool_calls": false,
+        "show_tool_results": true
+      }
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.why-tool-visibility-matters.pause-revealed-error.content",
+      "content": "✅ NOW you can see that root cause is indeed MCP server tool - much clearer!\n Note: This internal MCP error is a hint that used MCP server tool has a low quality. Good MCP server should never return unhandled internal exception."
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-tool-visibility-matters.step-second-query.content",
+      "content": "Okay, read 'ImprovedFile1' instead.",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.why-tool-visibility-matters.pause-revealed-error.content",
+      "content": "Check tool result again. This shows why Toll results should return descriptive errors. Now we know that file name is wrong."
+    },
+    {
+      "type": "ui_control",
+      "tool": "ui_control_chat_filter",
+      "arguments": {
+        "show_tool_calls": true,
+        "show_tool_results": true
+      }
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "TBD- make some proper key here",
+      "content": "With tool call also visible now (above tool result), you can see exact input arguments provided by LLM. Arguments can be result of much more complex process than demonstrated in this demo, and being able to see them is important for Agent debugging."
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.why-tool-visibility-matters.step-success-query.content",
+      "content": "Great! Now please read 'AbsolutelyCorrectFile'.",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.why-tool-visibility-matters.pause-final-takeaway.content",
+      "content": "With tool visibility, you see:\n• What tool was called\n• What arguments were passed\n• What the result was\n\nThis transparency helps debug agent behavior and understand MCP errors. Scenario complete!"
+    },
+    {
+      "type": "unregister_mock_tool",
+      "mock_tool_name": "read_file"
+    }
+  ]
+}

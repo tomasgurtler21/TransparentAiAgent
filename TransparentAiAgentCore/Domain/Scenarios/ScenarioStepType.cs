@@ -70,5 +70,16 @@ public enum ScenarioStepType
     /// Pauses scenario execution and waits for user to click Resume.
     /// Used to give users time to examine UI state, configuration, or other aspects.
     /// </summary>
-    PauseForUser
+    PauseForUser,
+
+    /// <summary>
+    /// Registers a scenario-specific mock tool.
+    /// Tool will be available until explicitly unregistered or scenario completes.
+    /// </summary>
+    RegisterMockTool,
+
+    /// <summary>
+    /// Unregisters a previously registered mock tool.
+    /// </summary>
+    UnregisterMockTool
 }

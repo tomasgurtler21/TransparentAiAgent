@@ -2,6 +2,8 @@ using TransparentAiAgentCore.Domain.Scenarios;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Domain.Enums;
+using TransparentAiAgentCore.Domain.Tools;
+using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Application.Agent;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +18,8 @@ public class ScenarioExecutor : IScenarioExecutor
     private readonly IAgentOrchestrator _orchestrator;
     private readonly IConfigurationOverlay _configurationOverlay;
     private readonly IConditionEvaluator _conditionEvaluator;
+    private readonly IScenarioToolRegistry _scenarioToolRegistry;
+    private readonly IUIControlService _uiControlService;
     private readonly ILogger<ScenarioExecutor> _logger;
     private CancellationTokenSource? _cts;
     private readonly object _lock = new();
@@ -25,6 +29,7 @@ public class ScenarioExecutor : IScenarioExecutor
     private readonly object _pauseLock = new();
     private string? _pauseMessage = null;
     private int _initialOverlayCount = 0;
+    private readonly HashSet<string> _registeredMockTools = new();
 
     public ScenarioDefinition? CurrentScenario { get; private set; }
     public bool IsExecuting { get; private set; }
@@ -37,11 +42,15 @@ public class ScenarioExecutor : IScenarioExecutor
         IAgentOrchestrator orchestrator,
         IConfigurationOverlay configurationOverlay,
         IConditionEvaluator conditionEvaluator,
+        IScenarioToolRegistry scenarioToolRegistry,
+        IUIControlService uiControlService,
         ILogger<ScenarioExecutor> logger)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _configurationOverlay = configurationOverlay ?? throw new ArgumentNullException(nameof(configurationOverlay));
         _conditionEvaluator = conditionEvaluator ?? throw new ArgumentNullException(nameof(conditionEvaluator));
+        _scenarioToolRegistry = scenarioToolRegistry ?? throw new ArgumentNullException(nameof(scenarioToolRegistry));
+        _uiControlService = uiControlService ?? throw new ArgumentNullException(nameof(uiControlService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -154,6 +163,13 @@ public class ScenarioExecutor : IScenarioExecutor
         }
         finally
         {
+            // Cleanup mock tools
+            foreach (var toolName in _registeredMockTools)
+            {
+                _scenarioToolRegistry.UnregisterMockTool(toolName);
+            }
+            _registeredMockTools.Clear();
+
             // Ensure configuration overlays are cleaned up
             // Pop any overlays that were pushed during the scenario
             while (_configurationOverlay.OverlayCount > _initialOverlayCount)
@@ -281,6 +297,14 @@ public class ScenarioExecutor : IScenarioExecutor
 
                 case ScenarioStepType.PauseForUser:
                     ExecutePauseForUserStep(step);
+                    break;
+
+                case ScenarioStepType.RegisterMockTool:
+                    ExecuteRegisterMockToolStep(step);
+                    break;
+
+                case ScenarioStepType.UnregisterMockTool:
+                    ExecuteUnregisterMockToolStep(step);
                     break;
 
                 default:
@@ -464,12 +488,147 @@ public class ScenarioExecutor : IScenarioExecutor
         if (string.IsNullOrWhiteSpace(step.UIControlTool))
             throw new InvalidOperationException("UIControlTool is required for UIControl step");
 
-        // This would need to integrate with the UIControlService
-        // For now, we'll throw NotImplementedException
-        // In a full implementation, this would call the UIControlService to execute the tool
-        throw new NotImplementedException(
-            "UIControl step execution requires integration with UIControlService. " +
-            $"Tool: {step.UIControlTool}");
+        _logger.LogInformation("Executing UI control step: {Tool}", step.UIControlTool);
+
+        // Route to appropriate UI control method based on tool name
+        Result<UIState> result = step.UIControlTool.ToLowerInvariant() switch
+        {
+            "ui_control_chat_filter" => ExecuteChatFilterControl(step),
+            "ui_control_filter_visibility" => ExecuteFilterVisibilityControl(step),
+            "ui_control_transparency_viewer" => ExecuteTransparencyViewerControl(step),
+            "ui_control_tools_panel" => ExecuteToolsPanelControl(step),
+            "ui_control_context_indicators" => ExecuteContextIndicatorsControl(step),
+            "ui_control_configuration" => ExecuteConfigurationControl(step),
+            "ui_control_scenario_selector" => ExecuteScenarioSelectorControl(step),
+            _ => Result<UIState>.Fail($"Unknown UI control tool: {step.UIControlTool}")
+        };
+
+        if (!result.Success)
+        {
+            _logger.LogError("UI control step failed: {Error}", result.Error);
+            throw new InvalidOperationException($"UI control step failed: {result.Error}");
+        }
+
+        _logger.LogInformation("UI control step executed successfully: {Tool}", step.UIControlTool);
+        return Task.CompletedTask;
+    }
+
+    private Result<UIState> ExecuteChatFilterControl(ScenarioStep step)
+    {
+        var args = step.UIControlArguments ?? new Dictionary<string, object>();
+
+        return _uiControlService.UpdateChatFilter(
+            showUserMessages: GetBoolArgument(args, "show_user_messages"),
+            showAssistantMessages: GetBoolArgument(args, "show_assistant_messages"),
+            showSystemMessages: GetBoolArgument(args, "show_system_messages"),
+            showToolCalls: GetBoolArgument(args, "show_tool_calls"),
+            showToolResults: GetBoolArgument(args, "show_tool_results"),
+            showTruncatedMessages: GetBoolArgument(args, "show_truncated_messages"));
+    }
+
+    private Result<UIState> ExecuteFilterVisibilityControl(ScenarioStep step)
+    {
+        var args = step.UIControlArguments ?? new Dictionary<string, object>();
+        var visible = GetBoolArgument(args, "visible") ?? true;
+
+        return _uiControlService.UpdateFilterControlVisibility(visible);
+    }
+
+    private Result<UIState> ExecuteTransparencyViewerControl(ScenarioStep step)
+    {
+        var args = step.UIControlArguments ?? new Dictionary<string, object>();
+
+        return _uiControlService.UpdateTransparencyViewer(
+            visible: GetBoolArgument(args, "visible"),
+            eventTypeFilters: GetStringListArgument(args, "event_type_filters"),
+            showTimestamps: GetBoolArgument(args, "show_timestamps"));
+    }
+
+    private Result<UIState> ExecuteToolsPanelControl(ScenarioStep step)
+    {
+        var args = step.UIControlArguments ?? new Dictionary<string, object>();
+
+        return _uiControlService.UpdateToolsPanel(
+            visible: GetBoolArgument(args, "visible"),
+            expandedTools: GetStringListArgument(args, "expanded_tools"),
+            highlightedTool: GetStringArgument(args, "highlighted_tool"));
+    }
+
+    private Result<UIState> ExecuteContextIndicatorsControl(ScenarioStep step)
+    {
+        var args = step.UIControlArguments ?? new Dictionary<string, object>();
+
+        return _uiControlService.UpdateContextIndicators(
+            visible: GetBoolArgument(args, "visible"),
+            highlighted: GetBoolArgument(args, "highlighted"));
+    }
+
+    private Result<UIState> ExecuteConfigurationControl(ScenarioStep step)
+    {
+        var args = step.UIControlArguments ?? new Dictionary<string, object>();
+
+        return _uiControlService.UpdateConfigurationPage(
+            visible: GetBoolArgument(args, "visible"),
+            highlightSection: GetStringArgument(args, "highlight_section"));
+    }
+
+    private Result<UIState> ExecuteScenarioSelectorControl(ScenarioStep step)
+    {
+        var args = step.UIControlArguments ?? new Dictionary<string, object>();
+        var visible = GetBoolArgument(args, "visible");
+
+        return _uiControlService.UpdateScenarioSelector(visible);
+    }
+
+    // Helper methods to extract arguments from dictionary
+    private static bool? GetBoolArgument(IReadOnlyDictionary<string, object> args, string key)
+    {
+        if (!args.TryGetValue(key, out var value))
+            return null;
+
+        return value switch
+        {
+            bool b => b,
+            System.Text.Json.JsonElement je when je.ValueKind == System.Text.Json.JsonValueKind.True => true,
+            System.Text.Json.JsonElement je when je.ValueKind == System.Text.Json.JsonValueKind.False => false,
+            _ => null
+        };
+    }
+
+    private static string? GetStringArgument(IReadOnlyDictionary<string, object> args, string key)
+    {
+        if (!args.TryGetValue(key, out var value))
+            return null;
+
+        return value switch
+        {
+            string s => s,
+            System.Text.Json.JsonElement je when je.ValueKind == System.Text.Json.JsonValueKind.String => je.GetString(),
+            _ => null
+        };
+    }
+
+    private static List<string>? GetStringListArgument(IReadOnlyDictionary<string, object> args, string key)
+    {
+        if (!args.TryGetValue(key, out var value))
+            return null;
+
+        if (value is System.Text.Json.JsonElement je && je.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            var list = new List<string>();
+            foreach (var element in je.EnumerateArray())
+            {
+                if (element.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    var str = element.GetString();
+                    if (str != null)
+                        list.Add(str);
+                }
+            }
+            return list;
+        }
+
+        return null;
     }
 
     private void ExecutePauseForUserStep(ScenarioStep step)
@@ -478,5 +637,47 @@ public class ScenarioExecutor : IScenarioExecutor
         // The pause will occur after this step completes (in the main execution loop)
         var message = step.Content ?? "Scenario paused. Click Resume to continue.";
         PauseScenario(message);
+    }
+
+    private void ExecuteRegisterMockToolStep(ScenarioStep step)
+    {
+        if (string.IsNullOrWhiteSpace(step.MockToolName))
+            throw new InvalidOperationException("MockToolName is required for RegisterMockTool step");
+
+        if (step.MockToolResponseMap == null || step.MockToolResponseMap.Count == 0)
+            throw new InvalidOperationException("MockToolResponseMap is required for RegisterMockTool step");
+
+        // Convert MockToolResponseConfig DTOs to MockToolResponse value objects
+        var responseMap = new Dictionary<string, MockToolResponse>();
+        foreach (var kvp in step.MockToolResponseMap)
+        {
+            responseMap[kvp.Key] = kvp.Value.ToMockToolResponse();
+        }
+
+        // Register the mock tool
+        _scenarioToolRegistry.RegisterMockTool(
+            step.MockToolName,
+            step.MockToolDescription ?? $"Mock tool: {step.MockToolName}",
+            step.MockToolParametersSchema ?? "{}",
+            responseMap);
+
+        // Track for cleanup
+        _registeredMockTools.Add(step.MockToolName);
+
+        _logger.LogInformation(
+            "Registered mock tool '{ToolName}' with {ResponseCount} response(s)",
+            step.MockToolName,
+            responseMap.Count);
+    }
+
+    private void ExecuteUnregisterMockToolStep(ScenarioStep step)
+    {
+        if (string.IsNullOrWhiteSpace(step.MockToolName))
+            throw new InvalidOperationException("MockToolName is required for UnregisterMockTool step");
+
+        _scenarioToolRegistry.UnregisterMockTool(step.MockToolName);
+        _registeredMockTools.Remove(step.MockToolName);
+
+        _logger.LogInformation("Unregistered mock tool '{ToolName}'", step.MockToolName);
     }
 }

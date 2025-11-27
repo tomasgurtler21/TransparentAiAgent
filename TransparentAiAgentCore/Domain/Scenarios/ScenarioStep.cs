@@ -1,3 +1,5 @@
+using TransparentAiAgentCore.Domain.Tools;
+
 namespace TransparentAiAgentCore.Domain.Scenarios;
 
 /// <summary>
@@ -56,6 +58,31 @@ public class ScenarioStep
     /// </summary>
     public IReadOnlyDictionary<string, object>? UIControlArguments { get; }
 
+    // Mock Tool properties (for RegisterMockTool/UnregisterMockTool steps)
+
+    /// <summary>
+    /// Mock tool name for RegisterMockTool/UnregisterMockTool steps.
+    /// </summary>
+    public string? MockToolName { get; }
+
+    /// <summary>
+    /// Mock tool description for RegisterMockTool steps.
+    /// </summary>
+    public string? MockToolDescription { get; }
+
+    /// <summary>
+    /// Mock tool parameters schema (JSON) for RegisterMockTool steps.
+    /// </summary>
+    public string? MockToolParametersSchema { get; }
+
+    /// <summary>
+    /// Mock tool response map: argument pattern -> MockToolResponseConfig
+    /// For RegisterMockTool steps.
+    /// Key: JSON string or simplified argument identifier
+    /// Value: Response configuration (success/error, content, execution time)
+    /// </summary>
+    public IReadOnlyDictionary<string, MockToolResponseConfig>? MockToolResponseMap { get; }
+
     public ScenarioStep(
         ScenarioStepType type,
         string? content = null,
@@ -67,7 +94,11 @@ public class ScenarioStep
         IReadOnlyDictionary<string, object>? conditionParameters = null,
         string? onTimeout = null,
         string? uiControlTool = null,
-        IReadOnlyDictionary<string, object>? uiControlArguments = null)
+        IReadOnlyDictionary<string, object>? uiControlArguments = null,
+        string? mockToolName = null,
+        string? mockToolDescription = null,
+        string? mockToolParametersSchema = null,
+        IReadOnlyDictionary<string, MockToolResponseConfig>? mockToolResponseMap = null)
     {
         // Validate content for step types that require it
         if (RequiresContent(type) && string.IsNullOrWhiteSpace(content))
@@ -86,7 +117,7 @@ public class ScenarioStep
         }
 
         // Validate advanced step types
-        ValidateAdvancedStep(type, condition, uiControlTool);
+        ValidateAdvancedStep(type, condition, uiControlTool, mockToolName, mockToolResponseMap);
 
         Type = type;
         Content = content;
@@ -99,6 +130,10 @@ public class ScenarioStep
         OnTimeout = onTimeout ?? "continue";
         UIControlTool = uiControlTool;
         UIControlArguments = uiControlArguments;
+        MockToolName = mockToolName;
+        MockToolDescription = mockToolDescription;
+        MockToolParametersSchema = mockToolParametersSchema;
+        MockToolResponseMap = mockToolResponseMap;
     }
 
     private static bool RequiresContent(ScenarioStepType type)
@@ -110,10 +145,17 @@ public class ScenarioStep
             && type != ScenarioStepType.EnableUserInput
             && type != ScenarioStepType.DisableUserInput
             && type != ScenarioStepType.Delay
-            && type != ScenarioStepType.UIControl;
+            && type != ScenarioStepType.UIControl
+            && type != ScenarioStepType.RegisterMockTool
+            && type != ScenarioStepType.UnregisterMockTool;
     }
 
-    private static void ValidateAdvancedStep(ScenarioStepType type, string? condition, string? uiControlTool)
+    private static void ValidateAdvancedStep(
+        ScenarioStepType type,
+        string? condition,
+        string? uiControlTool,
+        string? mockToolName,
+        IReadOnlyDictionary<string, MockToolResponseConfig>? mockToolResponseMap)
     {
         if (type == ScenarioStepType.WaitForCondition && string.IsNullOrWhiteSpace(condition))
         {
@@ -127,6 +169,30 @@ public class ScenarioStep
             throw new ArgumentException(
                 "UIControlTool cannot be null or whitespace for UIControl step type",
                 nameof(uiControlTool));
+        }
+
+        if (type == ScenarioStepType.RegisterMockTool)
+        {
+            if (string.IsNullOrWhiteSpace(mockToolName))
+            {
+                throw new ArgumentException(
+                    "MockToolName cannot be null or whitespace for RegisterMockTool step type",
+                    nameof(mockToolName));
+            }
+
+            if (mockToolResponseMap == null || mockToolResponseMap.Count == 0)
+            {
+                throw new ArgumentException(
+                    "MockToolResponseMap cannot be null or empty for RegisterMockTool step type",
+                    nameof(mockToolResponseMap));
+            }
+        }
+
+        if (type == ScenarioStepType.UnregisterMockTool && string.IsNullOrWhiteSpace(mockToolName))
+        {
+            throw new ArgumentException(
+                "MockToolName cannot be null or whitespace for UnregisterMockTool step type",
+                nameof(mockToolName));
         }
     }
 }

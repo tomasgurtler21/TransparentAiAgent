@@ -1,8 +1,8 @@
 # Tool System
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-27
 **Status**: Active
-**Phase**: Phase 5-8
+**Phase**: Phase 5-8 (Core), Phase 10b (Scenario Mock Tools)
 **Layer**: Domain + Application + Infrastructure
 
 ---
@@ -100,6 +100,28 @@ Tools implemented directly in the agent codebase.
 
 ---
 
+### [Scenario Mock Tools](scenariomock/README.md)
+**Layer**: Infrastructure
+**Phase**: Phase 10b (Advanced Teaching Scenarios)
+
+Temporary mock tools registered during teaching scenarios with predefined responses.
+
+**Key Features**:
+- Scenario-scoped registration (auto-cleanup)
+- Exact argument matching to predefined responses
+- Simulated execution times
+- Error simulation (MCP-style and custom errors)
+
+**Example Use Cases**:
+- Teaching tool debugging without real MCP servers
+- Demonstrating error handling with specific errors
+- Creating deterministic, reproducible teaching scenarios
+- Showing the difference between cryptic and clear tool errors
+
+**Purpose**: Enable advanced teaching scenarios that demonstrate tool behavior without dependencies on external services
+
+---
+
 ## Tool Flow
 
 ### Discovery (Startup)
@@ -138,16 +160,18 @@ Tools implemented directly in the agent codebase.
 
 ## Tool Sources Comparison
 
-| Aspect | MCP Tools | Built-in Tools |
-|--------|-----------|----------------|
-| **Source** | External MCP servers | Agent codebase |
-| **Discovery** | Runtime (via MCP protocol) | Compile-time (hardcoded) |
-| **Execution** | MCP protocol over stdio | Direct C# method calls |
-| **Examples** | Filesystem, web, databases | UI control |
-| **SourceType** | `ToolSourceType.MCP` | `ToolSourceType.BuiltInUIControl` |
-| **Registry** | MCPToolRegistry | BuiltInUIControlToolRegistry |
-| **Executor** | MCPToolExecutor | UIControlToolExecutor |
-| **Configuration** | `appsettings.json` MCP section | Hardcoded in registry |
+| Aspect | MCP Tools | Built-in Tools | Scenario Mock Tools |
+|--------|-----------|----------------|---------------------|
+| **Source** | External MCP servers | Agent codebase | Teaching scenarios |
+| **Discovery** | Runtime (via MCP protocol) | Compile-time (hardcoded) | Runtime (scenario registration) |
+| **Execution** | MCP protocol over stdio | Direct C# method calls | Predefined responses |
+| **Examples** | Filesystem, web, databases | UI control | Mocked file readers, API simulators |
+| **SourceType** | `ToolSourceType.MCP` | `ToolSourceType.BuiltInUIControl` | `ToolSourceType.ScenarioMock` |
+| **Registry** | MCPToolRegistry | BuiltInUIControlToolRegistry | ScenarioToolRegistry |
+| **Executor** | MCPToolExecutor | UIControlToolExecutor | ScenarioMockToolExecutor |
+| **Configuration** | `appsettings.json` MCP section | Hardcoded in registry | Scenario JSON files |
+| **Lifecycle** | Persistent (while server runs) | Persistent (application lifetime) | Temporary (scenario-scoped) |
+| **Purpose** | Real functionality | Interactive teaching features | Deterministic teaching scenarios |
 
 ---
 
@@ -223,6 +247,31 @@ High-level tool orchestration.
 ### Built-in Tools
 
 Hardcoded in `BuiltInUIControlToolRegistry`. No external configuration needed.
+
+### Scenario Mock Tools
+
+Defined in teaching scenario JSON files using `register_mock_tool` steps:
+
+```json
+{
+  "type": "register_mock_tool",
+  "mock_tool_name": "read_file",
+  "mock_tool_description": "Reads the contents of a file",
+  "mock_tool_parameters_schema": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}",
+  "mock_tool_response_map": {
+    "{\"path\":\"FileA\"}": {
+      "is_success": false,
+      "error_message": "{\"code\":-32603,\"message\":\"Internal error\"}"
+    },
+    "{\"path\":\"FileB\"}": {
+      "is_success": true,
+      "content": "File contents: Hello World!"
+    }
+  }
+}
+```
+
+See [Teaching Mode Scenario Schema](../../03-concepts/teaching-mode/scenario-schema.md#13-register_mock_tool) for complete documentation.
 
 ---
 
