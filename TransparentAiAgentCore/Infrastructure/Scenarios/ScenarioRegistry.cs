@@ -19,6 +19,9 @@ public class ScenarioRegistry : IScenarioRegistry
     private readonly ILogger<ScenarioRegistry> _logger;
     private readonly string _scenariosPath;
 
+    /// <inheritdoc/>
+    public event EventHandler? ScenariosReloaded;
+
     public ScenarioRegistry(
         JsonScenarioLoader loader,
         ILanguageService languageService,
@@ -67,6 +70,9 @@ public class ScenarioRegistry : IScenarioRegistry
             }
 
             _logger.LogInformation("Loaded {Count} scenario(s) successfully", scenarios.Count);
+
+            // Notify subscribers that scenarios have been reloaded
+            ScenariosReloaded?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {

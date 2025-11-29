@@ -67,6 +67,15 @@ try
     // Register Language service (singleton for app-wide state)
     builder.Services.AddSingleton<ILanguageService, LanguageService>();
 
+    // Register Language Metadata service (singleton for cached language discovery)
+    builder.Services.AddSingleton<ILanguageMetadataService>(sp =>
+    {
+        var metadataPath = Path.Combine(
+            builder.Environment.ContentRootPath,
+            "data", "translations", "language-metadata.json");
+        return new LanguageMetadataService(metadataPath);
+    });
+
     // Register Translation service (singleton for app-wide translation loading)
     builder.Services.AddSingleton<ITranslationService>(sp =>
     {

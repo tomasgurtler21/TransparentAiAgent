@@ -6,7 +6,8 @@
       "Bash(dotnet test:*)",
       "Bash(Select-Object -Last 50)",
       "Bash(dotnet build:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

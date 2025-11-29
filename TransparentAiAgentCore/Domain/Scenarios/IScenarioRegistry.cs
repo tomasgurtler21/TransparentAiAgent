@@ -6,6 +6,11 @@ namespace TransparentAiAgentCore.Domain.Scenarios;
 public interface IScenarioRegistry
 {
     /// <summary>
+    /// Event raised when scenarios are reloaded (e.g., after language change).
+    /// </summary>
+    event EventHandler? ScenariosReloaded;
+
+    /// <summary>
     /// Gets all available scenarios.
     /// </summary>
     /// <returns>Collection of all scenario definitions.</returns>

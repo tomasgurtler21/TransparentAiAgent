@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "languages": [
+    {
+      "code": "en",
+      "displayName": "English",
+      "nativeName": "English",
+      "flag": "🇬🇧",
+      "isDefault": true,
+      "requiresTranslationFile": false
+    },
+    {
+      "code": "de",
+      "displayName": "German",
+      "nativeName": "Deutsch",
+      "flag": "🇩🇪",
+      "isDefault": false,
+      "requiresTranslationFile": true
+    },
+    {
+      "code": "cs",
+      "displayName": "Czech",
+      "nativeName": "Čeština",
+      "flag": "🇨🇿",
+      "isDefault": false,
+      "requiresTranslationFile": true
+    }
+  ]
+}

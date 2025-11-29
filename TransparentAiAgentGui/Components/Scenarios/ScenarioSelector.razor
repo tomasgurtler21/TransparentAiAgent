@@ -2,11 +2,14 @@
 @using TransparentAiAgentCore.Application.Scenarios
 @using TransparentAiAgentCore.Domain.UIControl
 @using TransparentAiAgentCore.Application.Localization
+@using TransparentAiAgentCore.Infrastructure.Localization
+@using TransparentAiAgentCore.Domain.Localization
 @implements IDisposable
 @inject IScenarioRegistry ScenarioRegistry
 @inject IScenarioExecutor ScenarioExecutor
 @inject IUIControlService UIControlService
 @inject ILanguageService LanguageService
+@inject ILanguageMetadataService LanguageMetadataService
 @rendermode InteractiveServer
 
 <div class="scenario-selector-overlay">
@@ -28,9 +31,10 @@
         <div class="selector-content">
             <div class="scenario-filters">
                 <select class="form-select form-select-sm" @bind="selectedLanguage" @bind:after="OnLanguageChanged">
-                    <option value="en">🇬🇧 English</option>
-                    <option value="de">🇩🇪 Deutsch</option>
-                    <option value="cs">🇨🇿 Čeština</option>
+                    @foreach (var language in availableLanguages)
+                    {
+                        <option value="@language.Code">@language.Flag @language.NativeName</option>
+                    }
                 </select>
 
                 <select class="form-select form-select-sm mt-2" @bind="selectedCategory" @bind:after="FilterScenarios">
@@ -88,12 +92,17 @@
     private List<ScenarioDefinition> scenarios = new();
     private List<ScenarioDefinition> filteredScenarios = new();
     private List<string> categories = new();
+    private List<LanguageMetadata> availableLanguages = new();
     private string selectedCategory = "";
     private string selectedDifficulty = "";
     private string selectedLanguage = "en";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        // Load available languages from metadata
+        var languages = await LanguageMetadataService.GetAvailableLanguagesAsync();
+        availableLanguages = languages.ToList();
+
         // Initialize with current language
         selectedLanguage = LanguageService.CurrentLanguage;
 
@@ -102,6 +111,9 @@
         // Subscribe to UI state changes
         UIControlService.UIStateChanged += OnUIStateChanged;
         _uiState = UIControlService.GetCurrentState();
+
+        // Subscribe to scenario registry changes (e.g., after language change)
+        ScenarioRegistry.ScenariosReloaded += OnScenariosReloaded;
 
         // Subscribe to scenario completion to auto-close selector
         ScenarioExecutor.ScenarioCompleted += OnScenarioCompleted;
@@ -156,13 +168,16 @@
 
     private void OnLanguageChanged()
     {
-        // Update the language service (this will trigger scenario reload)
+        // Update the language service (this will trigger scenario reload via event)
         LanguageService.SetLanguage(selectedLanguage);
+        // No need to manually reload - ScenarioRegistry will fire ScenariosReloaded event
+    }
 
-        // Wait a bit for scenarios to reload, then refresh the UI
-        InvokeAsync(async () =>
+    private void OnScenariosReloaded(object? sender, EventArgs e)
+    {
+        // Scenarios have been reloaded with new language - refresh UI
+        InvokeAsync(() =>
         {
-            await Task.Delay(100);
             LoadScenarios();
             StateHasChanged();
         });
@@ -219,6 +234,7 @@
     public void Dispose()
     {
         UIControlService.UIStateChanged -= OnUIStateChanged;
+        ScenarioRegistry.ScenariosReloaded -= OnScenariosReloaded;
         ScenarioExecutor.ScenarioCompleted -= OnScenarioCompleted;
     }
 }
