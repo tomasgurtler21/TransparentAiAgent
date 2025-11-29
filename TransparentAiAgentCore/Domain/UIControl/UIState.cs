@@ -37,6 +37,12 @@ public record UIState
     public ScenarioSelectorState ScenarioSelector { get; init; } = new();
 
     /// <summary>
+    /// Component highlighting state for teaching mode.
+    /// Tracks which UI components are currently highlighted.
+    /// </summary>
+    public HighlightState HighlightState { get; init; } = new();
+
+    /// <summary>
     /// Current application mode (Normal or Teaching).
     /// </summary>
     public AppMode CurrentMode { get; init; } = AppMode.Normal;
