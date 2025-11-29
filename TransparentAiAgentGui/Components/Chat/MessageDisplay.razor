@@ -4,7 +4,7 @@
 @implements IDisposable
 @inject IUIControlService UIControlService
 
-<div class="message @Message.CssClass" title="@Message.ContextStatusTooltip">
+<div class="message @Message.CssClass">
     <div class="message-header">
         <span class="message-role">@GetRoleDisplayName()</span>
         @if (Message.IsToolCall)

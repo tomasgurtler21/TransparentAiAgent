@@ -22,9 +22,6 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 - Configuration overlay in app still writes to main app settings when changing context limit size.
 - UserSetting are actually never created.
 
-## Long term memory
-- Long term memory tool has no confirmation dialog for clear.
-
 ## Chat window
 - No auto scroll.
 - In Teaching mode, when LLM changes any filter, all filters become visible to user.
@@ -39,7 +36,6 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 ## UI  chat window
 - After scenario changes filters, UI is not updated immediately.
 - Tool result with error shows extra duplicate error UI component. `Error: tool message`, should be removed.
-- Messages have tooltip showing In LLM context status, duplicate of already existing status indicators, should be removed.
 
 ## Scenarios
 - To stop scenario, stop button must be clicked twice
