@@ -28,6 +28,7 @@ public class AnthropicProvider : ILLMProvider
     private readonly string _modelName;
     private readonly ITransparencyService _transparencyService;
     private readonly AppConfiguration _appConfig;
+    private readonly bool _isReasoningModel;
 
     public string ProviderName => "Anthropic";
 
@@ -61,6 +62,7 @@ public class AnthropicProvider : ILLMProvider
         _modelName = modelName;
         _transparencyService = transparencyService;
         _appConfig = appConfig;
+        _isReasoningModel = appConfig.LLM.Anthropic?.IsReasoningModel ?? false;
 
         // Initialize Anthropic client
         var apiKey = authProvider.GetApiKey("Anthropic");
@@ -597,14 +599,25 @@ public class AnthropicProvider : ILLMProvider
         };
 
         // Set optional parameters - only set if they have values
+        // ✅ Temperature is always allowed for Anthropic (even for reasoning models)
         if (request.Temperature.HasValue)
         {
             messageParams.Temperature = request.Temperature.Value;
         }
 
-        if (request.TopP.HasValue)
+        // ✅ TopP is only set for non-reasoning models
+        // Anthropic reasoning models don't support TopP - silently ignore it if present
+        if (!_isReasoningModel && request.TopP.HasValue)
         {
             messageParams.TopP = request.TopP.Value;
+        }
+        else if (_isReasoningModel && request.TopP.HasValue)
+        {
+            // Log info message that TopP is being ignored for reasoning model (not an error)
+            _transparencyService.LogEvent(new Domain.Transparency.TransparencyEvent(
+                Domain.Transparency.TransparencyEventType.Info,
+                $"TopP parameter (value: {request.TopP.Value}) is not supported by Anthropic reasoning model '{_modelName}' and will be ignored. This is expected behavior.",
+                "Parameter Ignored for Reasoning Model"));
         }
 
         if (finalSystemPrompt != null)

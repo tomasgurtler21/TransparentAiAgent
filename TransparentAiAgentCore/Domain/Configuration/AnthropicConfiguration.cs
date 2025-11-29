@@ -23,6 +23,14 @@ public class AnthropicConfiguration
     /// </summary>
     public ExtendedThinkingConfiguration? ExtendedThinking { get; set; }
 
+    /// <summary>
+    /// Indicates whether the model is a reasoning model.
+    /// Reasoning models do not support temperature/top_p parameters.
+    /// Set to true for models that use extended thinking or have built-in reasoning capabilities.
+    /// Default is false (standard Claude models).
+    /// </summary>
+    public bool IsReasoningModel { get; set; } = false;
+
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(ApiKey))

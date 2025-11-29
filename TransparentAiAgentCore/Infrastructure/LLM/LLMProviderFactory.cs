@@ -64,6 +64,17 @@ public class LLMProviderFactory : ILLMProviderFactory
             endpoint = endpointObj?.ToString();
         }
 
+        // Extract IsReasoningModel parameter - optional, defaults to false
+        // Note: For Anthropic, this is optional because most Claude models support temperature/top_p
+        // Only set to true if you're using a model that explicitly doesn't support these parameters
+        var isReasoningModel = false;
+        if (config.Parameters.TryGetValue("IsReasoningModel", out var reasoningObj))
+        {
+            // Support both boolean and string representations (from JSON deserialization)
+            isReasoningModel = reasoningObj is bool boolValue ? boolValue :
+                              bool.TryParse(reasoningObj?.ToString(), out var parsedValue) && parsedValue;
+        }
+
         // Create a temporary AppConfiguration with Anthropic config for the provider constructor
         var tempConfig = new AppConfiguration
         {
@@ -74,7 +85,8 @@ public class LLMProviderFactory : ILLMProviderFactory
                 {
                     ApiKey = apiKey,
                     Model = model,
-                    Endpoint = endpoint
+                    Endpoint = endpoint,
+                    IsReasoningModel = isReasoningModel
                 }
             }
         };
