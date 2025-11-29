@@ -27,6 +27,10 @@
         "{\"fileName\":\"AbsolutelyCorrectFile\"}": {
           "is_success": true,
           "content": "File contents: Hello from the correct file!"
+        },
+        "*": {
+          "is_success": false,
+          "error_message": "File not found: The specified file does not exist."
         }
       }
     },
@@ -76,8 +80,8 @@
     },
     {
       "type": "pause_for_user",
-      "contentKey": "scenarios.why-tool-visibility-matters.pause-revealed-error.content",
-      "content": "Check tool result again. This shows why Toll results should return descriptive errors. Now we know that file name is wrong."
+      "contentKey": "scenarios.why-tool-visibility-matters.pause-revealed-error-second.content",
+      "content": "Check tool result again. This shows why Tool results should return descriptive errors. Now we know that file name is wrong."
     },
     {
       "type": "ui_control",
@@ -89,7 +93,7 @@
     },
     {
       "type": "pause_for_user",
-      "contentKey": "TBD- make some proper key here",
+      "contentKey": "scenarios.why-tool-visibility-matters.pause-tool-call-visible.content",
       "content": "With tool call also visible now (above tool result), you can see exact input arguments provided by LLM. Arguments can be result of much more complex process than demonstrated in this demo, and being able to see them is important for Agent debugging."
     },
     {
@@ -104,7 +108,7 @@
     {
       "type": "pause_for_user",
       "contentKey": "scenarios.why-tool-visibility-matters.pause-final-takeaway.content",
-      "content": "With tool visibility, you see:\n• What tool was called\n• What arguments were passed\n• What the result was\n\nThis transparency helps debug agent behavior and understand MCP errors. Scenario complete!"
+      "content": "With tool visibility, you see:\n• What tool was called\n• What arguments were passed\n• What the result was\n\nThis transparency helps debug agent behavior and understand errors. Scenario complete!"
     },
     {
       "type": "unregister_mock_tool",

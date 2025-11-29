@@ -89,5 +89,16 @@
 
   "scenarios.why-multiple-models.name": "Warum mehrere KI-Modelle?",
   "scenarios.why-multiple-models.description": "Frage, warum die App mehrere KI-Modelle unterstützt",
-  "scenarios.why-multiple-models.user-question.content": "Warum unterstützt diese App mehrere KI-Modelle? Was ist der Unterschied zwischen ihnen?"
+  "scenarios.why-multiple-models.user-question.content": "Warum unterstützt diese App mehrere KI-Modelle? Was ist der Unterschied zwischen ihnen?",
+
+  "scenarios.why-tool-visibility-matters.name": "Warum Werkzeug-Sichtbarkeit wichtig ist",
+  "scenarios.why-tool-visibility-matters.description": "Demonstriert die Bedeutung der Sichtbarkeit von Werkzeug-Eingaben und -Ausgaben für Debugging und Verständnis von MCP-Fehlern",
+  "scenarios.why-tool-visibility-matters.step-first-query.content": "Lies die Datei namens 'FileA' für mich.",
+  "scenarios.why-tool-visibility-matters.pause-cryptic-error.content": "Etwas ist schiefgelaufen, aber was? Ohne Werkzeugaufruf und Ergebnis ist es fast unmöglich zu wissen. Viele KI-Agenten versuchen, als \"Zauberstab\" zu agieren, und fordern das LLM auf, keine Details zu den Werkzeugergebnissen zu teilen. Dann ist es fast unmöglich zu debuggen, wer versagt hat - Agent, Werkzeug, LLM?",
+  "scenarios.why-tool-visibility-matters.pause-revealed-error.content": "✅ JETZT siehst du, dass die Grundursache tatsächlich das MCP-Server-Werkzeug ist - viel klarer!\n Hinweis: Dieser interne MCP-Fehler ist ein Hinweis darauf, dass das verwendete MCP-Server-Werkzeug von niedriger Qualität ist. Ein guter MCP-Server sollte niemals eine unbehandelte interne Ausnahme zurückgeben.",
+  "scenarios.why-tool-visibility-matters.step-second-query.content": "Okay, lies stattdessen 'ImprovedFile1'.",
+  "scenarios.why-tool-visibility-matters.pause-revealed-error-second.content": "Überprüfe das Werkzeugergebnis erneut. Dies zeigt, warum Werkzeugergebnisse beschreibende Fehler zurückgeben sollten. Jetzt wissen wir, dass der Dateiname falsch ist.",
+  "scenarios.why-tool-visibility-matters.pause-tool-call-visible.content": "Mit dem Werkzeugaufruf jetzt auch sichtbar (über dem Werkzeugergebnis) siehst du die exakten Eingabeargumente, die vom LLM bereitgestellt wurden. Argumente können das Ergebnis eines viel komplexeren Prozesses sein als in dieser Demo gezeigt, und sie sehen zu können ist wichtig für das Agent-Debugging.",
+  "scenarios.why-tool-visibility-matters.step-success-query.content": "Großartig! Lies jetzt bitte 'AbsolutelyCorrectFile'.",
+  "scenarios.why-tool-visibility-matters.pause-final-takeaway.content": "Mit Werkzeug-Sichtbarkeit siehst du:\n• Welches Werkzeug aufgerufen wurde\n• Welche Argumente übergeben wurden\n• Was das Ergebnis war\n\nDiese Transparenz hilft beim Debuggen des Agentenverhaltens und Verstehen von Fehlern. Szenario abgeschlossen!"
 }

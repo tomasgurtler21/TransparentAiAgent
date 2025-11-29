@@ -7,7 +7,7 @@ namespace TransparentAiAgentCore.Application.Localization;
 public interface ILanguageService
 {
     /// <summary>
-    /// Gets the currently selected language code (e.g., "en", "de", "cz").
+    /// Gets the currently selected language code (e.g., "en", "de", "cs").
     /// </summary>
     string CurrentLanguage { get; }
 

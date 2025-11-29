@@ -89,5 +89,16 @@
 
   "scenarios.why-multiple-models.name": "Proč více AI modelů?",
   "scenarios.why-multiple-models.description": "Otázka, proč aplikace podporuje více AI modelů",
-  "scenarios.why-multiple-models.user-question.content": "Proč tato aplikace podporuje více AI modelů? Jaký je mezi nimi rozdíl?"
+  "scenarios.why-multiple-models.user-question.content": "Proč tato aplikace podporuje více AI modelů? Jaký je mezi nimi rozdíl?",
+
+  "scenarios.why-tool-visibility-matters.name": "Proč záleží na viditelnosti nástrojů",
+  "scenarios.why-tool-visibility-matters.description": "Demonstruje důležitost viditelnosti vstupů a výstupů nástrojů pro ladění a pochopení MCP chyb",
+  "scenarios.why-tool-visibility-matters.step-first-query.content": "Přečti mi soubor s názvem 'FileA'.",
+  "scenarios.why-tool-visibility-matters.pause-cryptic-error.content": "Něco se pokazilo, ale co? Bez volání nástroje a výsledku je téměř nemožné to poznat. Mnoho AI agentů se snaží působit jako \"kouzelná hůlka\" a přiměje LLM, aby nesdílel detaily výsledků nástrojů. Pak je téměř nemožné ladit, kdo selhal - Agent, nástroj, LLM?",
+  "scenarios.why-tool-visibility-matters.pause-revealed-error.content": "✅ NYNÍ vidíš, že hlavní příčinou je skutečně nástroj MCP serveru - mnohem jasnější!\n Poznámka: Tato interní MCP chyba je náznakem toho, že použitý nástroj MCP serveru má nízkou kvalitu. Dobrý MCP server by nikdy neměl vrátit neošetřenou interní výjimku.",
+  "scenarios.why-tool-visibility-matters.step-second-query.content": "Dobře, přečti místo toho 'ImprovedFile1'.",
+  "scenarios.why-tool-visibility-matters.pause-revealed-error-second.content": "Zkontroluj výsledek nástroje znovu. To ukazuje, proč by výsledky nástrojů měly vracet popisné chyby. Nyní víme, že název souboru je špatný.",
+  "scenarios.why-tool-visibility-matters.pause-tool-call-visible.content": "S volání nástroje nyní také viditelné (nad výsledkem nástroje) můžeš vidět přesné vstupní argumenty poskytnuté LLM. Argumenty mohou být výsledkem mnohem složitějšího procesu než zde demonstrováno, a možnost je vidět je důležitá pro ladění agenta.",
+  "scenarios.why-tool-visibility-matters.step-success-query.content": "Skvělé! Nyní prosím přečti 'AbsolutelyCorrectFile'.",
+  "scenarios.why-tool-visibility-matters.pause-final-takeaway.content": "S viditelností nástrojů vidíš:\n• Který nástroj byl volán\n• Jaké argumenty byly předány\n• Jaký byl výsledek\n\nTato transparentnost pomáhá ladit chování agenta a pochopit chyby. Scénář dokončen!"
 }

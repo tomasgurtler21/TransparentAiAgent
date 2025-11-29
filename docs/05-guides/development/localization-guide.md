@@ -13,7 +13,7 @@ This guide explains how to work with localization and translation files in the T
 Translation files are located in:
 ```
 TransparentAiAgentGui/data/translations/
-├── cz.json  (Czech)
+├── cs.json  (Czech)
 ├── de.json  (German)
 └── ...      (future languages)
 ```
@@ -163,7 +163,7 @@ For each step, choose a semantic name:
 
 ### 3. Add to All Translation Files
 
-Add entries to **each** translation file (`cz.json`, `de.json`, etc.):
+Add entries to **each** translation file (`cs.json`, `de.json`, etc.):
 
 ```json
 {
