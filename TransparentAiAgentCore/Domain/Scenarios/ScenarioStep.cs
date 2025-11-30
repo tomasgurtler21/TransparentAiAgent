@@ -83,6 +83,12 @@ public class ScenarioStep
     /// </summary>
     public IReadOnlyDictionary<string, MockToolResponseConfig>? MockToolResponseMap { get; }
 
+    /// <summary>
+    /// Optional tool name filter for WaitForToolCall and WaitForToolResponse steps.
+    /// If specified, waits only for the named tool. If null, waits for any tool.
+    /// </summary>
+    public string? ToolName { get; }
+
     public ScenarioStep(
         ScenarioStepType type,
         string? content = null,
@@ -98,7 +104,8 @@ public class ScenarioStep
         string? mockToolName = null,
         string? mockToolDescription = null,
         string? mockToolParametersSchema = null,
-        IReadOnlyDictionary<string, MockToolResponseConfig>? mockToolResponseMap = null)
+        IReadOnlyDictionary<string, MockToolResponseConfig>? mockToolResponseMap = null,
+        string? toolName = null)
     {
         // Validate content for step types that require it
         if (RequiresContent(type) && string.IsNullOrWhiteSpace(content))
@@ -134,6 +141,7 @@ public class ScenarioStep
         MockToolDescription = mockToolDescription;
         MockToolParametersSchema = mockToolParametersSchema;
         MockToolResponseMap = mockToolResponseMap;
+        ToolName = toolName;
     }
 
     private static bool RequiresContent(ScenarioStepType type)
@@ -147,7 +155,9 @@ public class ScenarioStep
             && type != ScenarioStepType.Delay
             && type != ScenarioStepType.UIControl
             && type != ScenarioStepType.RegisterMockTool
-            && type != ScenarioStepType.UnregisterMockTool;
+            && type != ScenarioStepType.UnregisterMockTool
+            && type != ScenarioStepType.WaitForToolCall
+            && type != ScenarioStepType.WaitForToolResponse;
     }
 
     private static void ValidateAdvancedStep(

@@ -81,5 +81,19 @@ public enum ScenarioStepType
     /// <summary>
     /// Unregisters a previously registered mock tool.
     /// </summary>
-    UnregisterMockTool
+    UnregisterMockTool,
+
+    /// <summary>
+    /// Waits for the LLM to request a tool call before allowing execution.
+    /// Optional ToolName filter waits for specific tool; if omitted, waits for any tool.
+    /// Pauses after LLM requests the tool but before the tool executes.
+    /// </summary>
+    WaitForToolCall,
+
+    /// <summary>
+    /// Waits for a tool execution to complete and return a response.
+    /// Optional ToolName filter waits for specific tool; if omitted, waits for any tool.
+    /// Pauses after tool completes execution.
+    /// </summary>
+    WaitForToolResponse
 }

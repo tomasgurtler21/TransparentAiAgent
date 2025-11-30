@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "why-tool-visibility-matters",
   "version": "1.0",
   "nameKey": "scenarios.why-tool-visibility-matters.name",

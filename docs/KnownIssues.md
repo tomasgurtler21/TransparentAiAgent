@@ -35,7 +35,6 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 
 ## UI  chat window
 - After scenario changes filters, UI is not updated immediately.
-- Tool result with error shows extra duplicate error UI component. `Error: tool message`, should be removed.
 
 ## Scenarios
 - To stop scenario, stop button must be clicked twice

@@ -30,6 +30,13 @@ public class ScenarioExecutor : IScenarioExecutor
     private string? _pauseMessage = null;
     private int _initialOverlayCount = 0;
     private readonly HashSet<string> _registeredMockTools = new();
+    private readonly SemaphoreSlim _toolCallWaitSemaphore = new(0);
+    private readonly SemaphoreSlim _toolResponseWaitSemaphore = new(0);
+    private readonly SemaphoreSlim _orchestratorContinueSemaphore = new(0);
+    private string? _waitingForToolName = null;
+    private bool _isWaitingForToolCall = false;
+    private bool _isWaitingForToolResponse = false;
+    private bool _orchestratorWaiting = false;
 
     public ScenarioDefinition? CurrentScenario { get; private set; }
     public bool IsExecuting { get; private set; }
@@ -163,6 +170,14 @@ public class ScenarioExecutor : IScenarioExecutor
         }
         finally
         {
+            // CRITICAL: Release orchestrator if it's waiting (scenario ended while orchestrator blocked)
+            if (_orchestratorWaiting)
+            {
+                _logger.LogInformation("Scenario ended while orchestrator was waiting - releasing orchestrator");
+                _orchestratorContinueSemaphore.Release();
+                _orchestratorWaiting = false;
+            }
+
             // Cleanup mock tools
             foreach (var toolName in _registeredMockTools)
             {
@@ -227,7 +242,15 @@ public class ScenarioExecutor : IScenarioExecutor
                 return; // Can only resume if paused
 
             _state = ScenarioExecutionState.Running;
-            _pauseSemaphore.Release(); // Unblock the waiting task
+            _pauseSemaphore.Release(); // Unblock the waiting scenario task
+
+            // If orchestrator is waiting (due to WaitForToolCall/Response), release it too
+            if (_orchestratorWaiting)
+            {
+                _orchestratorContinueSemaphore.Release();
+                _logger.LogInformation("Resuming orchestrator - allowing tool execution to continue");
+            }
+
             ScenarioResumed?.Invoke(this, new ScenarioExecutionEventArgs(CurrentScenario!));
         }
     }
@@ -307,6 +330,14 @@ public class ScenarioExecutor : IScenarioExecutor
                     ExecuteUnregisterMockToolStep(step);
                     break;
 
+                case ScenarioStepType.WaitForToolCall:
+                    await ExecuteWaitForToolCallStepAsync(step, cancellationToken);
+                    break;
+
+                case ScenarioStepType.WaitForToolResponse:
+                    await ExecuteWaitForToolResponseStepAsync(step, cancellationToken);
+                    break;
+
                 default:
                     throw new InvalidOperationException($"Unknown scenario step type: {step.Type}");
             }
@@ -345,8 +376,8 @@ public class ScenarioExecutor : IScenarioExecutor
     private async Task ExecuteWaitForResponseStepAsync(ScenarioStep step, CancellationToken cancellationToken)
     {
         // Wait for any pending responses to complete
-        // We poll the conversation to check if the last message is from the assistant
-        // This ensures the agent has finished responding before continuing
+        // We poll the conversation to check if the last message is a TEXT response from the assistant
+        // (NOT a tool call request - only completes when LLM gives final text answer)
 
         var maxWaitMs = 30000; // 30 second timeout
         var pollIntervalMs = 100;
@@ -356,10 +387,18 @@ public class ScenarioExecutor : IScenarioExecutor
         {
             var messages = _orchestrator.ConversationManager.GetAllMessages();
 
-            // If we have messages and the last one is from the assistant, we're done waiting
-            if (messages.Count > 0 && messages[messages.Count - 1].Role == MessageRole.Assistant)
+            // Only complete when last message is a TEXT response (not tool call)
+            if (messages.Count > 0)
             {
-                break;
+                var lastMessage = messages[messages.Count - 1];
+
+                // Check if it's a text-only assistant message (LlmTextMessage)
+                // NOT a tool call message (LlmToolCallMessage)
+                if (lastMessage.Role == MessageRole.Assistant && lastMessage is LlmTextMessage)
+                {
+                    _logger.LogInformation("WaitForResponse: Completed - LLM sent text-only response");
+                    break;
+                }
             }
 
             await Task.Delay(pollIntervalMs, cancellationToken);
@@ -390,17 +429,35 @@ public class ScenarioExecutor : IScenarioExecutor
         // This uses the proper ApplicationMessage routing through ProcessApplicationMessageAsync
         var scenarioMessage = new ScenarioUserMessage(step.Content, step.Annotation);
 
-        // Process through the application message pipeline (not user input pipeline)
-        await foreach (var chunk in _orchestrator.ProcessApplicationMessageAsync(scenarioMessage, cancellationToken))
-        {
-            // Forward streaming chunks as events for UI to consume
-            StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
-                chunk.ContentDeltaSafe,
-                chunk.IsComplete));
+        // IMPORTANT: scenario_user_message does NOT wait for orchestrator to complete
+        // It just sends the message and returns immediately
+        // Use wait_for_response if you need to wait for the LLM's response
+        // Use wait_for_tool_call/wait_for_tool_response to intercept tool execution
+        _logger.LogInformation("ScenarioUserMessage: Sending message and continuing without waiting");
 
-            if (chunk.IsComplete)
-                break;
-        }
+        // Start orchestrator processing in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var chunk in _orchestrator.ProcessApplicationMessageAsync(scenarioMessage, cancellationToken))
+                {
+                    StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
+                        chunk.ContentDeltaSafe,
+                        chunk.IsComplete));
+
+                    if (chunk.IsComplete)
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in background orchestrator processing for scenario user message");
+            }
+        }, cancellationToken);
+
+        // Small delay to ensure orchestrator starts processing before we move to next step
+        await Task.Delay(100, cancellationToken);
 
         // Fire event to notify that an auto-message was sent
         AutoMessageSent?.Invoke(this, new AutoMessageSentEventArgs(step.Content, DateTime.UtcNow));
@@ -679,5 +736,131 @@ public class ScenarioExecutor : IScenarioExecutor
         _registeredMockTools.Remove(step.MockToolName);
 
         _logger.LogInformation("Unregistered mock tool '{ToolName}'", step.MockToolName);
+    }
+
+    private async Task ExecuteWaitForToolCallStepAsync(ScenarioStep step, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "WaitForToolCall: waiting for{ToolFilter}",
+            step.ToolName != null ? $" tool '{step.ToolName}'" : " any tool call");
+
+        _waitingForToolName = step.ToolName;
+        _isWaitingForToolCall = true;
+
+        try
+        {
+            await _toolCallWaitSemaphore.WaitAsync(cancellationToken);
+            _logger.LogInformation(
+                "WaitForToolCall: completed{ToolFilter}",
+                step.ToolName != null ? $" for '{step.ToolName}'" : "");
+        }
+        finally
+        {
+            _isWaitingForToolCall = false;
+            _waitingForToolName = null;
+        }
+    }
+
+    private async Task ExecuteWaitForToolResponseStepAsync(ScenarioStep step, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "WaitForToolResponse: waiting for{ToolFilter}",
+            step.ToolName != null ? $" tool '{step.ToolName}'" : " any tool response");
+
+        _waitingForToolName = step.ToolName;
+        _isWaitingForToolResponse = true;
+
+        try
+        {
+            await _toolResponseWaitSemaphore.WaitAsync(cancellationToken);
+            _logger.LogInformation(
+                "WaitForToolResponse: completed{ToolFilter}",
+                step.ToolName != null ? $" for '{step.ToolName}'" : "");
+        }
+        finally
+        {
+            _isWaitingForToolResponse = false;
+            _waitingForToolName = null;
+        }
+    }
+
+    /// <summary>
+    /// Hook called by orchestrator BEFORE executing a tool.
+    /// Orchestrator will WAIT here if scenario is on a WaitForToolCall step.
+    /// </summary>
+    public async Task WaitBeforeToolExecutionAsync(string toolName, CancellationToken cancellationToken = default)
+    {
+        // Only wait if scenario is currently on a WaitForToolCall step
+        if (!_isWaitingForToolCall)
+            return;
+
+        // Only wait if this is the tool we're waiting for (or waiting for any tool)
+        if (_waitingForToolName != null && _waitingForToolName != toolName)
+            return;
+
+        _logger.LogInformation(
+            "Orchestrator paused BEFORE executing tool '{ToolName}' - waiting for scenario to allow continuation",
+            toolName);
+
+        // Release the scenario step's semaphore so it can complete
+        _toolCallWaitSemaphore.Release();
+
+        // Mark that orchestrator is waiting
+        _orchestratorWaiting = true;
+
+        try
+        {
+            // BLOCK orchestrator until scenario signals it can continue
+            // This will be released when user resumes the scenario
+            await _orchestratorContinueSemaphore.WaitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Orchestrator resuming - will now execute tool '{ToolName}'",
+                toolName);
+        }
+        finally
+        {
+            _orchestratorWaiting = false;
+        }
+    }
+
+    /// <summary>
+    /// Hook called by orchestrator AFTER executing a tool.
+    /// Orchestrator will WAIT here if scenario is on a WaitForToolResponse step.
+    /// </summary>
+    public async Task WaitAfterToolExecutionAsync(string toolName, CancellationToken cancellationToken = default)
+    {
+        // Only wait if scenario is currently on a WaitForToolResponse step
+        if (!_isWaitingForToolResponse)
+            return;
+
+        // Only wait if this is the tool we're waiting for (or waiting for any tool)
+        if (_waitingForToolName != null && _waitingForToolName != toolName)
+            return;
+
+        _logger.LogInformation(
+            "Orchestrator paused AFTER executing tool '{ToolName}' - waiting for scenario to allow continuation",
+            toolName);
+
+        // Release the scenario step's semaphore so it can complete
+        _toolResponseWaitSemaphore.Release();
+
+        // Mark that orchestrator is waiting
+        _orchestratorWaiting = true;
+
+        try
+        {
+            // BLOCK orchestrator until scenario signals it can continue
+            // This will be released when user resumes the scenario
+            await _orchestratorContinueSemaphore.WaitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Orchestrator resuming - tool '{ToolName}' execution completed",
+                toolName);
+        }
+        finally
+        {
+            _orchestratorWaiting = false;
+        }
     }
 }

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "what-is-system-message",
   "version": "1.0",
   "nameKey": "scenarios.what-is-system-message.name",

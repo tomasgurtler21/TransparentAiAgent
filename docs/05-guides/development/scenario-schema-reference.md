@@ -1,8 +1,8 @@
-# Teaching Scenario JSON Schema
+# Teaching Scenario JSON Schema Reference
 
-**Status**: Design Phase
+**Status**: Reference Guide
 **Created**: 2025-11-09
-**Target**: Phase 10a (Basic), Phase 10b (Advanced)
+**Last Updated**: 2025-11-29
 
 ---
 
@@ -12,12 +12,12 @@
 - Complete JSON schema for teaching scenarios
 - Step type definitions and examples
 - Validation rules
-- Extensibility patterns
+- JSON authoring guidelines
 
 **❌ NOT in this document**:
-- Scenario executor implementation (TBD at implementation phase)
-- Specific scenario examples (see [reference-scenarios/](reference-scenarios/))
-- UI component designs (TBD at implementation phase)
+- Source code implementation details (see component documentation in `04-components/`)
+- Specific scenario examples (see `TransparentAiAgentGui/data/scenarios/`)
+- UI component designs (see `04-components/ui/`)
 
 ---
 
@@ -35,28 +35,17 @@ Teaching scenarios are defined using JSON files that describe a sequence of step
 
 ---
 
-## Schema Version
-
-**Current Version**: 1.0 (Draft)
-
-**Schema Identifier**: `https://transparentaiagent.dev/schemas/teaching-scenario/v1`
-
-**Note:** Schema will evolve based on implementation experience. Versioning enables backward compatibility.
-
----
-
 ## Root Scenario Object
 
 ```json
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "unique-scenario-id",
   "version": "1.0",
   "name": "Human-Readable Scenario Name",
   "description": "Brief description of what this scenario teaches",
   "category": "context-management | tools | transparency | configuration",
   "difficulty": "beginner | intermediate | advanced",
-  "estimatedDuration": 180,
+  "estimatedDurationSeconds": 180,
   "tags": ["context", "truncation", "windows"],
   "prerequisites": ["basic-transparency"],
   "requiresAdvancedFeatures": false,
@@ -70,17 +59,16 @@ Teaching scenarios are defined using JSON files that describe a sequence of step
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `$schema` | string | No | Schema version identifier |
 | `id` | string | Yes | Unique scenario identifier (kebab-case) |
 | `version` | string | Yes | Scenario version (semver) |
 | `name` | string | Yes | Display name for scenario selector |
 | `description` | string | Yes | Brief explanation (1-2 sentences) |
 | `category` | string | No | Grouping category for UI |
 | `difficulty` | string | No | Beginner, intermediate, or advanced |
-| `estimatedDuration` | number | No | Expected duration in seconds |
+| `estimatedDurationSeconds` | number | No | Expected duration in seconds |
 | `tags` | string[] | No | Searchable tags |
 | `prerequisites` | string[] | No | IDs of scenarios that should be completed first |
-| `requiresAdvancedFeatures` | boolean | No | If true, needs config overlay and advanced executor |
+| `requiresAdvancedFeatures` | boolean | No | If true, needs config overlay and advanced features |
 | `steps` | Step[] | Yes | Ordered list of scenario steps |
 
 ---
@@ -127,10 +115,26 @@ Sends a user-like message with annotation (advanced scenarios).
 - `annotation` (string, optional): Explanation shown to real user, hidden from model
 - `delay` (number, optional): Delay in milliseconds before sending (default: 0)
 
+**Behavior:**
+- Sends the message to the orchestrator and returns immediately (does NOT wait for response)
+- To wait for the LLM's response, add a `wait_for_response` step after this
+- To intercept tool calls, use `wait_for_tool_call` or `wait_for_tool_response`
+
 **Rendering:**
 - Shows 🎬 icon
 - Lighter color than normal user messages
 - Annotation expandable below message
+
+**Important:** Always follow `scenario_user_message` with an explicit wait step if you need to wait:
+```json
+{
+  "type": "scenario_user_message",
+  "content": "What is 2+2?"
+},
+{
+  "type": "wait_for_response"  // ← Required if you want to wait for answer!
+}
+```
 
 ---
 
@@ -161,7 +165,7 @@ Sends a system message with visibility control (advanced scenarios).
 
 #### 4. `wait_for_response`
 
-Pauses scenario until model responds.
+Pauses scenario until model responds with a **text-only message** (no tool calls).
 
 ```json
 {
@@ -174,9 +178,25 @@ Pauses scenario until model responds.
 - `timeout` (number, optional): Max wait time in milliseconds (default: 30000)
 
 **Behavior:**
-- Waits for model to send assistant message
-- Continues to next step after response received
+- Waits for model to send a **text-only** assistant message (LlmTextMessage)
+- Does NOT complete on tool call requests (LlmToolCallMessage)
+- Continues to next step after final text response received
 - If timeout exceeded, scenario may fail or skip to next step (implementation-defined)
+
+**Important:** This step only completes when the LLM sends a final answer without requesting tool calls. If the LLM requests tools, the scenario continues waiting until it sends a text-only response after processing the tool results.
+
+**Example - Waiting for Final Answer:**
+```json
+{
+  "type": "scenario_user_message",
+  "content": "What's the weather in Paris?"
+},
+{
+  "type": "wait_for_response"  // Waits for LLM to finish calling get_weather AND respond with text
+}
+```
+
+**For Tool Interception:** Use `wait_for_tool_call` or `wait_for_tool_response` instead if you want to pause during tool execution.
 
 ---
 
@@ -269,8 +289,6 @@ Pauses scenario execution and waits for user to click Resume button. This allows
 }
 ```
 
-**Note:** This step type was implemented and is fully functional. See `SCENARIO_PAUSE_RESUME_DESIGN.md` for technical details.
-
 ---
 
 #### 7. `completion_message`
@@ -325,7 +343,7 @@ Temporarily overrides system configuration.
 | `toolsAvailable` | string[] | Override available tool names |
 | `maxTokens` | number | Override max tokens per request |
 
-**Note:** Additional overlay properties can be added as needed during implementation.
+**Note:** Additional overlay properties can be added as needed.
 
 ---
 
@@ -470,6 +488,32 @@ Each key in `mock_tool_response_map` must be an exact JSON string matching the t
 - `error_message` (string, optional): Error message to return for failed responses (required if `is_success` is false)
 - `simulated_execution_time_ms` (number, optional): Artificial delay in milliseconds
 
+**Wildcard Support:**
+The response map supports a wildcard key `"*"` that matches any input arguments not explicitly defined:
+
+```json
+"mock_tool_response_map": {
+  "{\"status\":\"archived\"}": {
+    "is_success": true,
+    "content": "List of archived items"
+  },
+  "*": {
+    "is_success": false,
+    "error_message": "Invalid status. Valid options are: pending, in_progress, archived"
+  }
+}
+```
+
+**Matching Priority:**
+1. Exact match: Checks for exact JSON string match first
+2. Wildcard match: Falls back to `"*"` if no exact match found
+3. No match: Returns error if neither exact nor wildcard match exists
+
+**Use Cases for Wildcard:**
+- Provide consistent error messages for all invalid inputs
+- Reduce response map size when most inputs should return the same error
+- Guide the LLM to correct parameter values regardless of what invalid value it tries
+
 **Use Cases:**
 - Demonstrate tool calling behavior without requiring real MCP tools
 - Show error handling by returning specific error responses
@@ -482,31 +526,6 @@ Each key in `mock_tool_response_map` must be an exact JSON string matching the t
 - Mock tools take precedence over real tools with the same name during scenario execution
 - The response map uses exact JSON string matching, so `{"path":"FileA"}` will NOT match `{"path": "FileA"}` (different spacing)
 - Tools are visible in the Tools page while the scenario is running
-
-**Example - Teaching Tool Visibility:**
-```json
-{
-  "type": "register_mock_tool",
-  "mock_tool_name": "read_file",
-  "mock_tool_description": "Reads the contents of a file",
-  "mock_tool_parameters_schema": "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}",
-  "mock_tool_response_map": {
-    "{\"path\":\"cryptic-error-file\"}": {
-      "is_success": false,
-      "error_message": "{\"code\":-32603,\"message\":\"Internal error\"}"
-    },
-    "{\"path\":\"clear-error-file\"}": {
-      "is_success": false,
-      "error_message": "File not found: clear-error-file. Please check the path and try again."
-    },
-    "{\"path\":\"success-file\"}": {
-      "is_success": true,
-      "content": "File contents: This is the file content!",
-      "simulated_execution_time_ms": 100
-    }
-  }
-}
-```
 
 ---
 
@@ -532,18 +551,125 @@ Unregisters a previously registered mock tool.
 
 ---
 
+#### 15. `wait_for_tool_call`
+
+Waits for the LLM to request a tool call before allowing execution to begin.
+
+```json
+{
+  "type": "wait_for_tool_call",
+  "tool_name": "read_file",
+  "annotation": "Waiting for LLM to attempt reading the file..."
+}
+```
+
+**Fields:**
+- `tool_name` (string, optional): If specified, waits only for this tool. If omitted, waits for any tool call.
+- `annotation` (string, optional): Explanation for scenario observer
+
+**Behavior:**
+- Pauses after LLM requests the tool but before the tool executes
+- If `tool_name` is specified, only that tool triggers the wait to complete
+- If `tool_name` is omitted, any tool call triggers the wait to complete
+
+**Use Cases:**
+- Teaching about tool selection
+- Demonstrating tool call inspection before execution
+- Pausing to let users examine what the LLM wants to do
+- Showing tool call arguments
+
+**Example:**
+```json
+{
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "content": "What's the weather in Paris?",
+      "annotation": "LLM should call get_weather tool"
+    },
+    {
+      "type": "wait_for_tool_call",
+      "tool_name": "get_weather",
+      "annotation": "Pausing before tool execution"
+    },
+    {
+      "type": "pause_for_user",
+      "content": "Notice the tool call request above. Click Resume to execute."
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}
+```
+
+---
+
+#### 16. `wait_for_tool_response`
+
+Waits for a tool to execute and return a response.
+
+```json
+{
+  "type": "wait_for_tool_response",
+  "tool_name": "read_file",
+  "annotation": "Waiting for file read to complete..."
+}
+```
+
+**Fields:**
+- `tool_name` (string, optional): If specified, waits only for this tool's response. If omitted, waits for any tool response.
+- `annotation` (string, optional): Explanation for scenario observer
+
+**Behavior:**
+- Pauses after tool completes execution
+- If `tool_name` is specified, only that tool's response triggers the wait to complete
+- If `tool_name` is omitted, any tool response triggers the wait to complete
+
+**Use Cases:**
+- Teaching about tool results
+- Demonstrating error handling from tools
+- Pausing after tool execution to examine results
+- Showing tool response data
+
+**Example:**
+```json
+{
+  "steps": [
+    {
+      "type": "scenario_user_message",
+      "content": "Read the config file",
+      "annotation": "LLM should call read_file tool"
+    },
+    {
+      "type": "wait_for_tool_response",
+      "tool_name": "read_file",
+      "annotation": "Tool execution completed"
+    },
+    {
+      "type": "pause_for_user",
+      "content": "Examine the tool result above. Click Resume to continue."
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}
+```
+
+---
+
 ## Complete Example: Context Limits Scenario
 
 ```json
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "context-limits-advanced",
   "version": "1.0",
   "name": "Context Limits (Advanced)",
   "description": "Experience genuine context window truncation",
   "category": "context-management",
   "difficulty": "intermediate",
-  "estimatedDuration": 180,
+  "estimatedDurationSeconds": 180,
   "tags": ["context", "truncation", "windows", "memory"],
   "requiresAdvancedFeatures": true,
   "steps": [
@@ -590,31 +716,6 @@ Unregisters a previously registered mock tool.
     },
     {
       "type": "scenario_user_message",
-      "content": "Demo message, just respond 'Confirmed'.",
-      "delay": 1000
-    },
-    {
-      "type": "wait_for_response"
-    },
-    {
-      "type": "scenario_user_message",
-      "content": "Demo message, just respond 'Confirmed'.",
-      "delay": 1000
-    },
-    {
-      "type": "wait_for_response"
-    },
-    {
-      "type": "scenario_user_message",
-      "content": "How many demo messages did I send you?",
-      "annotation": "Testing if model tracked the count.",
-      "delay": 1500
-    },
-    {
-      "type": "wait_for_response"
-    },
-    {
-      "type": "scenario_user_message",
       "content": "What is my name?",
       "annotation": "The name should now be truncated. Model genuinely won't know.",
       "delay": 2000
@@ -629,21 +730,12 @@ Unregisters a previously registered mock tool.
       "annotation": "Waiting for model to indicate it doesn't know..."
     },
     {
-      "type": "scenario_user_message",
-      "content": "How do you not know my name?? I told you it several messages ago! What is going on??",
-      "annotation": "Expressing confusion - this should be a teaching moment.",
-      "delay": 2000
-    },
-    {
-      "type": "wait_for_response"
-    },
-    {
       "type": "restore_config_overlay",
       "annotation": "Message limit restored. Model can now access more context and teach effectively."
     },
     {
       "type": "scenario_system_message",
-      "content": "Scenario 'Context Limits' has ended. The conversation message limit was temporarily reduced to 10 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please:\n1. Explain what happened (context truncation)\n2. Use ui_control_context_indicators tool to highlight the context status indicators\n3. Explain why the system message and recent messages remain in context\n4. Offer to show the configuration where message limits can be adjusted using ui_control_configuration",
+      "content": "Scenario 'Context Limits' has ended. The conversation message limit was temporarily reduced to 10 messages to demonstrate context window truncation. The user's name (John Doe) from an earlier message was genuinely removed from your context. Please explain what happened and use ui_control_context_indicators tool to highlight the context status indicators.",
       "visibleTo": "model_only",
       "role": "system"
     },
@@ -684,93 +776,6 @@ Unregisters a previously registered mock tool.
 - Use `annotation` fields liberally to help users understand what's happening
 - Always `restore_config_overlay` before scenario ends if overlay was applied
 - Always `enable_user_input` at end if it was disabled
-
----
-
-## Extensibility
-
-### Adding New Step Types
-
-The schema is designed to be extended easily:
-
-1. **Define new step type**: Add to step type enum
-2. **Specify fields**: Document required/optional fields
-3. **Implement executor logic**: Handle new type in scenario executor
-4. **Update schema version**: Bump minor version if backward compatible
-
-**Example: Adding a `pause_for_user_action` step:**
-
-```json
-{
-  "type": "pause_for_user_action",
-  "message": "Click 'Continue' when ready to proceed.",
-  "buttonText": "Continue"
-}
-```
-
-**Steps to implement:**
-1. Add `pause_for_user_action` to step type enum
-2. Document fields in this schema
-3. Implement in executor: show button, wait for click
-4. Bump schema to v1.1
-
-### Adding New Condition Types
-
-New conditions for `wait_for_condition` can be added:
-
-**Example: `tool_call_made`**
-
-```json
-{
-  "type": "wait_for_condition",
-  "condition": "tool_call_made",
-  "parameters": {
-    "toolName": "ui_control_context_indicators",
-    "timeout": 20000
-  }
-}
-```
-
-### Adding New Config Overlay Properties
-
-Config overlay can be extended with new properties:
-
-**Example: `overrideModelName`**
-
-```json
-{
-  "type": "apply_config_overlay",
-  "overlay": {
-    "messageLimit": 10,
-    "overrideModelName": "claude-3-haiku-20240307"
-  }
-}
-```
-
----
-
-## Error Handling
-
-### Malformed JSON
-- Scenario fails to load
-- User shown error message
-- Scenario not added to available list
-
-### Missing Required Fields
-- Validation error before execution
-- Clear error message indicating missing field
-
-### Runtime Errors
-- If step fails (e.g., wait_for_response timeout), scenario can:
-  1. **Fail**: Stop and show error
-  2. **Skip**: Continue to next step
-  3. **Retry**: Attempt step again
-- Behavior configurable per step via `onError` field (future enhancement)
-
-### Config Overlay Cleanup
-- Overlays automatically removed when scenario ends
-- Overlays removed on scenario failure
-- Overlays removed if user aborts scenario
 
 ---
 
@@ -828,45 +833,16 @@ wwwroot/scenarios/
 - ✅ Supports both linear and conditional flows
 - ✅ Composable (steps can be reused across scenarios)
 
-### Open Questions for Implementation
-- Should scenarios support branching (if-else based on user response)?
-- Should scenarios support loops (repeat steps N times)?
-- Should scenarios support variables (e.g., store user's name, reuse later)?
-- Should scenarios support includes (reference other scenario fragments)?
-
----
-
-## Next Steps
-
-**Before Implementation:**
-1. Create 5-10 example scenarios to validate schema
-2. Identify any missing step types or fields
-3. Prototype scenario executor with subset of step types
-4. Iterate on schema based on prototype learnings
-
-**During Implementation (Phase 10a/10b):**
-1. Implement scenario loader and validator
-2. Implement executor for each step type incrementally
-3. Test each step type independently
-4. Build UI components for scenario selection and display
-5. Create initial scenario library
-
-**After Initial Implementation:**
-6. Gather user feedback on scenarios
-7. Identify commonly needed step types not yet supported
-8. Extend schema based on real usage
-9. Version schema appropriately
-
 ---
 
 ## Related Documentation
 
-- [future-enhancements.md](future-enhancements.md) - Overall scenarios concept
-- [config-overlay-service.md](config-overlay-service.md) - Config manipulation API
-- [reference-scenarios/](reference-scenarios/) - Example scenario implementations
+- **Concept Documentation**: `docs/03-concepts/teaching-mode/` - Overall vision and architecture
+- **Source Code**: `TransparentAiAgentCore/Domain/Scenarios/` - Domain models
+- **Source Code**: `TransparentAiAgentCore/Application/Scenarios/` - Execution logic
+- **Localization**: `docs/05-guides/development/localization-guide.md` - Multi-language support
 
 ---
 
-**Document Version:** 1.1
-**Last Updated:** 2025-11-27
-**Status:** Implemented (Mock Tools feature added)
+**Document Version:** 1.2
+**Last Updated:** 2025-11-29

@@ -1,0 +1,58 @@
+{
+  "id": "error-recovery-patterns",
+  "version": "1.0",
+  "name": "Error Recovery Patterns",
+  "description": "Watch how agents use error messages to self-correct and retry with proper parameters",
+  "category": "tools",
+  "difficulty": "intermediate",
+  "estimatedDurationSeconds": 180,
+  "steps": [
+    {
+      "type": "register_mock_tool",
+      "mock_tool_name": "get_todo_list",
+      "mock_tool_description": "Retrieve todo items from the list",
+      "mock_tool_parameters_schema": "{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\",\"description\":\"Filter todos by status\"}},\"required\":[\"status\"]}",
+      "mock_tool_response_map": {
+        "{\"status\":\"done\"}": {
+          "is_success": true,
+          "content": "We just finished scenario demonstrating agent self correction. Explain to the user how you self-corrected the tool input based on the tool's error response"
+        },
+        "{\"status\":\"pending\"}": {
+          "is_success": true,
+          "content": "Here are your pending todos:\n• Review API documentation"
+        },
+        "{\"status\":\"in_progress\"}": {
+          "is_success": true,
+          "content": "Here are your in-progress todos:\n• Write unit tests for new feature"
+        },
+        "*": {
+          "is_success": false,
+          "error_message": "Invalid status. Valid status values are: pending, in_progress, done"
+        }
+      }
+    },
+    {
+      "type": "ui_control",
+      "tool": "ui_control_chat_filter",
+      "arguments": {
+        "show_tool_calls": true,
+        "show_tool_results": true
+      }
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "Check all the completed tasks from my todo list",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_tool_response"
+    },
+    {
+      "type": "pause_for_user",
+      "content": "The agent tried 'completed' (a logical choice!), but the tool expects 'done' instead.\n\nLook at the tool error message - it tells the agent exactly what values are valid. Watch how the agent corrects itself..."
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

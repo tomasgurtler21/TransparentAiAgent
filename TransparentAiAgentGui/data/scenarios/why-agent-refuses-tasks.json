@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "why-agent-refuses-tasks",
   "version": "1.0",
   "nameKey": "scenarios.why-agent-refuses-tasks.name",

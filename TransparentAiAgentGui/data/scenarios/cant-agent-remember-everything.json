@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "cant-agent-remember-everything",
   "version": "1.0",
   "nameKey": "scenarios.cant-agent-remember-everything.name",

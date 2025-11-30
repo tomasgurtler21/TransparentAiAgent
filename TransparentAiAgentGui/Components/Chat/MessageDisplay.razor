@@ -25,7 +25,6 @@
                 @Message.ContextStatusIcon
             </span>
         }
-        <span class="message-timestamp">@Message.Timestamp.ToString("HH:mm:ss")</span>
     </div>
     <div class="message-content">
         @* Display thinking content if present *@
@@ -70,10 +69,6 @@
         {
             <div class="tool-result">
                 <div class="tool-name">Result from: <strong>@Message.ToolName</strong></div>
-                @if (!string.IsNullOrWhiteSpace(Message.ToolErrorMessage))
-                {
-                    <div class="tool-error">Error: @Message.ToolErrorMessage</div>
-                }
                 @if (!string.IsNullOrWhiteSpace(Message.Content))
                 {
                     <JsonDisplay Content="@Message.Content"

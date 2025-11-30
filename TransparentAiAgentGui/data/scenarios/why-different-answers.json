@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "why-different-answers",
   "version": "1.0",
   "nameKey": "scenarios.why-different-answers.name",

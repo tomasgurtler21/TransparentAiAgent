@@ -267,6 +267,9 @@ public class JsonScenarioLoader
         [JsonPropertyName("mock_tool_response_map")]
         public Dictionary<string, MockToolResponseConfigDto>? MockToolResponseMap { get; set; }
 
+        [JsonPropertyName("tool_name")]
+        public string? ToolName { get; set; }
+
         public ScenarioStep ToScenarioStep(ITranslationService translationService)
         {
             // Resolve content using translation key
@@ -297,6 +300,8 @@ public class JsonScenarioLoader
                 "pause_for_user" => ScenarioStepType.PauseForUser,
                 "register_mock_tool" => ScenarioStepType.RegisterMockTool,
                 "unregister_mock_tool" => ScenarioStepType.UnregisterMockTool,
+                "wait_for_tool_call" => ScenarioStepType.WaitForToolCall,
+                "wait_for_tool_response" => ScenarioStepType.WaitForToolResponse,
                 _ => throw new ArgumentException($"Unknown scenario step type: {Type}")
             };
 
@@ -345,7 +350,8 @@ public class JsonScenarioLoader
                 mockToolName: MockToolName,
                 mockToolDescription: MockToolDescription,
                 mockToolParametersSchema: MockToolParametersSchema,
-                mockToolResponseMap: mockToolResponseMap
+                mockToolResponseMap: mockToolResponseMap,
+                toolName: ToolName
             );
         }
     }

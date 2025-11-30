@@ -5,12 +5,14 @@ using TransparentAiAgentCore.Domain.Exceptions;
 using TransparentAiAgentCore.Domain.Tools;
 using TransparentAiAgentCore.Application.Conversation;
 using TransparentAiAgentCore.Application.Pipeline;
+using TransparentAiAgentCore.Application.Scenarios;
 using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentCore.Domain.Transparency;
 using TransparentAiAgentCore.Domain.Transparency.EventData;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TransparentAiAgentCore.Application.Agent;
 
@@ -24,6 +26,7 @@ public class AgentOrchestrator : IAgentOrchestrator
     private readonly IMessagePipeline _messagePipeline;
     private readonly ITransparencyService _transparencyService;
     private readonly IToolManager? _toolManager;
+    private readonly IServiceProvider? _serviceProvider;
     private readonly AgentConfiguration _agentConfig;
     private readonly LLMConfiguration _llmConfig;
     private readonly bool _useRest;
@@ -37,13 +40,15 @@ public class AgentOrchestrator : IAgentOrchestrator
         IMessagePipeline messagePipeline,
         ITransparencyService transparencyService,
         AppConfiguration configuration,
-        IToolManager? toolManager = null)
+        IToolManager? toolManager = null,
+        IServiceProvider? serviceProvider = null)
     {
         _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _messagePipeline = messagePipeline ?? throw new ArgumentNullException(nameof(messagePipeline));
         _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
         _toolManager = toolManager; // Optional - null if tools not configured
+        _serviceProvider = serviceProvider; // Optional - used for lazy scenario executor resolution
 
         if (configuration == null)
             throw new ArgumentNullException(nameof(configuration));
@@ -183,10 +188,25 @@ public class AgentOrchestrator : IAgentOrchestrator
         {
             try
             {
+                // Get scenario executor lazily (breaks circular dependency)
+                var scenarioExecutor = _serviceProvider?.GetService<IScenarioExecutor>();
+
+                // Hook: Wait for scenario to allow tool execution (if scenario is waiting)
+                if (scenarioExecutor != null)
+                {
+                    await scenarioExecutor.WaitBeforeToolExecutionAsync(toolCall.Name, cancellationToken);
+                }
+
                 // Execute tool
                 LogEvent("ToolExecutionStarted", $"Executing tool: {toolCall.Name}");
                 var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
                 LogEvent("ToolExecutionCompleted", $"Tool {toolCall.Name} completed. Success: {toolResult.IsSuccess}");
+
+                // Hook: Wait for scenario after tool execution (if scenario is waiting)
+                if (scenarioExecutor != null)
+                {
+                    await scenarioExecutor.WaitAfterToolExecutionAsync(toolCall.Name, cancellationToken);
+                }
 
                 // Add tool result message to conversation
                 var toolResultMessage = new ToolResultMessage(

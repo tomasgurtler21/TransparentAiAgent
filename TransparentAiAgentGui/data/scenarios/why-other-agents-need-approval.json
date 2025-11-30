@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "why-other-agents-need-approval",
   "version": "1.0",
   "nameKey": "scenarios.why-other-agents-need-approval.name",

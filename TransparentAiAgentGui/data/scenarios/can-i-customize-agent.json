@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "can-i-customize-agent",
   "version": "1.0",
   "nameKey": "scenarios.can-i-customize-agent.name",

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "difference-context-memory",
   "version": "1.0",
   "nameKey": "scenarios.difference-context-memory.name",

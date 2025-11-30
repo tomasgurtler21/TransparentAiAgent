@@ -99,6 +99,24 @@ public interface IScenarioExecutor
     /// Can only be called when state is Paused.
     /// </summary>
     void ResumeScenario();
+
+    /// <summary>
+    /// Hook called by orchestrator BEFORE executing a tool.
+    /// If scenario is waiting for this tool (WaitForToolCall step), orchestrator will pause here.
+    /// </summary>
+    /// <param name="toolName">Name of the tool about to be executed</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task that completes when scenario allows continuation</returns>
+    Task WaitBeforeToolExecutionAsync(string toolName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hook called by orchestrator AFTER executing a tool.
+    /// If scenario is waiting for this tool (WaitForToolResponse step), orchestrator will pause here.
+    /// </summary>
+    /// <param name="toolName">Name of the tool that was executed</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task that completes when scenario allows continuation</returns>
+    Task WaitAfterToolExecutionAsync(string toolName, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

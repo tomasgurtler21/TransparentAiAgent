@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "get-started",
   "version": "1.0",
   "nameKey": "scenarios.get-started.name",

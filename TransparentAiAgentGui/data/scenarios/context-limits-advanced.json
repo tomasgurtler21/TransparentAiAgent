@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "context-limits-advanced",
   "version": "1.0",
   "nameKey": "scenarios.context-limits-advanced.name",

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "coding-limits-question",
   "version": "1.0",
   "nameKey": "scenarios.coding-limits-question.name",

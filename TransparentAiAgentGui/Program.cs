@@ -409,7 +409,8 @@ try
                 messagePipeline,
                 transparencyService,
                 config,
-                toolMgr);
+                toolMgr,
+                sp); // Pass service provider for lazy scenario executor resolution
         });
 
             var activeProvider = llmConfig.ActiveProvider ?? llmConfig.Provider ?? "Unknown";

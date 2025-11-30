@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "can-agent-learn-from-me",
   "version": "1.0",
   "nameKey": "scenarios.can-agent-learn-from-me.name",

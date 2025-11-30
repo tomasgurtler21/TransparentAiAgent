@@ -1,5 +1,4 @@
 {
-  "$schema": "https://transparentaiagent.dev/schemas/teaching-scenario/v1",
   "id": "how-much-can-agent-remember",
   "version": "1.0",
   "nameKey": "scenarios.how-much-can-agent-remember.name",
