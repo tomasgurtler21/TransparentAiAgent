@@ -357,20 +357,36 @@ public class ScenarioExecutor : IScenarioExecutor
         if (string.IsNullOrWhiteSpace(step.Content))
             return;
 
-        // Process the user input through the orchestrator (streaming)
-        await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(step.Content), cancellationToken))
+        try
         {
-            // Forward streaming chunks as events for UI to consume
-            StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
-                chunk.ContentDeltaSafe,
-                chunk.IsComplete));
+            // Process the user input through the orchestrator (streaming)
+            await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(step.Content), cancellationToken))
+            {
+                // ✅ FIX: Forward streaming chunks with full chunk data for UI to consume
+                StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
+                    CurrentScenario!,
+                    CurrentStepIndex,
+                    chunk));
 
-            if (chunk.IsComplete)
-                break;
+                if (chunk.IsComplete)
+                    break;
+            }
+
+            // Fire event to notify that an auto-message was sent
+            AutoMessageSent?.Invoke(this, new AutoMessageSentEventArgs(step.Content, DateTime.UtcNow));
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in ExecuteAutoMessageStepAsync for scenario");
 
-        // Fire event to notify that an auto-message was sent
-        AutoMessageSent?.Invoke(this, new AutoMessageSentEventArgs(step.Content, DateTime.UtcNow));
+            // ✅ FIX: Send error chunk to UI so it can clean up streaming state
+            StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
+                CurrentScenario!,
+                CurrentStepIndex,
+                new StreamingResponseChunk(null, true, StreamingStatus.Error)));
+
+            throw; // Re-throw so scenario execution stops
+        }
     }
 
     private async Task ExecuteWaitForResponseStepAsync(ScenarioStep step, CancellationToken cancellationToken)
@@ -442,9 +458,11 @@ public class ScenarioExecutor : IScenarioExecutor
             {
                 await foreach (var chunk in _orchestrator.ProcessApplicationMessageAsync(scenarioMessage, cancellationToken))
                 {
+                    // ✅ FIX: Fire StreamingUpdate with full chunk so UI can handle all status changes
                     StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
-                        chunk.ContentDeltaSafe,
-                        chunk.IsComplete));
+                        CurrentScenario!,
+                        CurrentStepIndex,
+                        chunk));
 
                     if (chunk.IsComplete)
                         break;
@@ -453,6 +471,12 @@ public class ScenarioExecutor : IScenarioExecutor
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in background orchestrator processing for scenario user message");
+
+                // ✅ FIX: Send error chunk to UI so it can clean up streaming state
+                StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
+                    CurrentScenario!,
+                    CurrentStepIndex,
+                    new StreamingResponseChunk(null, true, StreamingStatus.Error)));
             }
         }, cancellationToken);
 
@@ -841,6 +865,14 @@ public class ScenarioExecutor : IScenarioExecutor
         _logger.LogInformation(
             "Orchestrator paused AFTER executing tool '{ToolName}' - waiting for scenario to allow continuation",
             toolName);
+
+        // CRITICAL: Fire streaming event to trigger UI refresh BEFORE blocking
+        // Tool result message was already added to conversation by orchestrator
+        // Now we need to tell UI to refresh and show it
+        StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
+            CurrentScenario!,
+            CurrentStepIndex,
+            new StreamingResponseChunk(null, IsComplete: false, Status: StreamingStatus.ToolResultsReady)));
 
         // Release the scenario step's semaphore so it can complete
         _toolResponseWaitSemaphore.Release();

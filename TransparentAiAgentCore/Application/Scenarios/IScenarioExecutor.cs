@@ -168,16 +168,22 @@ public class AutoMessageSentEventArgs : EventArgs
 
 /// <summary>
 /// Event args for scenario streaming update events.
+/// Allows UI to react to LLM responses in real-time during scenarios.
 /// </summary>
 public class ScenarioStreamingUpdateEventArgs : EventArgs
 {
-    public string ContentDelta { get; }
-    public bool IsComplete { get; }
+    public ScenarioDefinition Scenario { get; }
+    public int StepIndex { get; }
+    public Application.Agent.StreamingResponseChunk Chunk { get; }
 
-    public ScenarioStreamingUpdateEventArgs(string contentDelta, bool isComplete)
+    public ScenarioStreamingUpdateEventArgs(
+        ScenarioDefinition scenario,
+        int stepIndex,
+        Application.Agent.StreamingResponseChunk chunk)
     {
-        ContentDelta = contentDelta;
-        IsComplete = isComplete;
+        Scenario = scenario ?? throw new ArgumentNullException(nameof(scenario));
+        StepIndex = stepIndex;
+        Chunk = chunk ?? throw new ArgumentNullException(nameof(chunk));
     }
 }
 

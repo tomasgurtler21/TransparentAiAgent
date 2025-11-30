@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Extensions.Logging;
 using Moq;
 using TransparentAiAgentCore.Application.Agent;
 using TransparentAiAgentCore.Application.Conversation;
@@ -18,6 +19,7 @@ public class ConversationUIServiceTests
     private Mock<IConversationManager> _mockConversationManager = null!;
     private Mock<IScenarioExecutor> _mockScenarioExecutor = null!;
     private Mock<IConversationHistoryManager> _mockHistoryManager = null!;
+    private Mock<ILogger<ConversationUIService>> _mockLogger = null!;
     private ConversationUIService _service = null!;
 
     [TestInitialize]
@@ -27,6 +29,7 @@ public class ConversationUIServiceTests
         _mockConversationManager = new Mock<IConversationManager>();
         _mockScenarioExecutor = new Mock<IScenarioExecutor>();
         _mockHistoryManager = new Mock<IConversationHistoryManager>();
+        _mockLogger = new Mock<ILogger<ConversationUIService>>();
 
         // Setup default return for GetAllMessages
         _mockConversationManager.Setup(x => x.GetAllMessages())
@@ -34,7 +37,12 @@ public class ConversationUIServiceTests
 
         // Note: Constructor will fail until we update ConversationUIService to accept IConversationHistoryManager
         // This is expected in RED phase
-        _service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
+        _service = new ConversationUIService(
+            _mockOrchestrator.Object,
+            _mockConversationManager.Object,
+            _mockScenarioExecutor.Object,
+            _mockHistoryManager.Object,
+            logger: _mockLogger.Object);
     }
 
     [TestMethod]
@@ -45,7 +53,7 @@ public class ConversationUIServiceTests
 
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(null!, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object));
+            new ConversationUIService(null!, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object, logger: _mockLogger.Object));
     }
 
     [TestMethod]
@@ -53,7 +61,7 @@ public class ConversationUIServiceTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(_mockOrchestrator.Object, null!, _mockScenarioExecutor.Object, _mockHistoryManager.Object));
+            new ConversationUIService(_mockOrchestrator.Object, null!, _mockScenarioExecutor.Object, _mockHistoryManager.Object, logger: _mockLogger.Object));
     }
 
     [TestMethod]
@@ -61,7 +69,7 @@ public class ConversationUIServiceTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, null!));
+            new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, null!, logger: _mockLogger.Object));
     }
 
     [TestMethod]
@@ -416,6 +424,78 @@ public class ConversationUIServiceTests
             ),
             Times.Never
         );
+    }
+
+    [TestMethod]
+    public async Task SendMessageStreamingAsync_MultipleToolCalls_PlaceholderContentDoesNotAccumulate()
+    {
+        // Arrange: Simulate two sequential LLM responses with tool calls (error recovery scenario)
+        // This tests that streaming placeholders don't accumulate content across tool call cycles
+
+        var streamingChunks = new[]
+        {
+            // First LLM response with text before tool call
+            new StreamingResponseChunk("First response text", false, StreamingStatus.Streaming),
+            new StreamingResponseChunk(null, false, StreamingStatus.ExecutingTools),
+
+            // Second LLM response (after tool execution) with different text
+            new StreamingResponseChunk("Second response text", false, StreamingStatus.Streaming),
+            new StreamingResponseChunk(null, true, StreamingStatus.Completed)
+        };
+
+        _mockOrchestrator.Setup(x => x.ProcessUserInputStreamingAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(AsyncEnumerable(streamingChunks));
+
+        // Setup conversation manager to return appropriate messages
+        var messages = new List<IMessage>
+        {
+            new DirectUserMessage("test"),
+            new LlmToolCallMessage("First response text", new List<ToolCall>
+            {
+                new ToolCall("tool1", "test_tool", "{}")
+            }, null),
+            new ToolResultMessage("tool1", "test_tool", "result"),
+            new LlmTextMessage("Second response text")
+        };
+        _mockConversationManager.Setup(x => x.GetAllMessages())
+            .Returns(messages.AsReadOnly());
+
+        // Track streaming updates to verify content
+        var streamingUpdates = new List<(Guid MessageId, string Content)>();
+        _service.StreamingMessageUpdated += (s, e) => streamingUpdates.Add((e.MessageId, e.Content));
+
+        // Act
+        await _service.SendMessageStreamingAsync("test message");
+
+        // Assert: Verify that second streaming placeholder does NOT contain first response text
+        // Group updates by message ID to track each streaming placeholder separately
+        var updatesByMessage = streamingUpdates.GroupBy(u => u.MessageId).ToList();
+
+        // Should have updates for at least 2 different streaming placeholders
+        // (one before first tool call, one after first tool execution)
+        Assert.IsTrue(updatesByMessage.Count >= 2,
+            $"Expected at least 2 streaming placeholders, got {updatesByMessage.Count}");
+
+        // Get the second streaming placeholder's updates (after first tool execution)
+        var secondPlaceholderUpdates = updatesByMessage
+            .Skip(1)  // Skip first placeholder
+            .FirstOrDefault();
+
+        Assert.IsNotNull(secondPlaceholderUpdates, "Should have a second streaming placeholder");
+
+        // Verify that second placeholder's content does NOT contain first response text
+        foreach (var (_, content) in secondPlaceholderUpdates)
+        {
+            Assert.IsFalse(content.Contains("First response text"),
+                $"Second streaming placeholder should not contain 'First response text', but content was: '{content}'");
+
+            // It should only contain second response text
+            if (content.Contains("Second"))
+            {
+                Assert.IsTrue(content.Contains("Second response text") || content.StartsWith("Second"),
+                    "Second placeholder should contain 'Second response text'");
+            }
+        }
     }
 
     // Helper method to create async enumerable for streaming tests

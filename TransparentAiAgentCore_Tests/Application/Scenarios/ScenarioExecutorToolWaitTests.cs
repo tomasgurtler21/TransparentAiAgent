@@ -98,8 +98,8 @@ public class ScenarioExecutorToolWaitTests
         // Assert: Scenario is running and waiting
         Assert.IsTrue(executor.IsExecuting);
 
-        // Act: Notify that the correct tool was called
-        executor.NotifyToolCallRequested("get_weather");
+        // Act: Simulate orchestrator calling the wait hook for the correct tool
+        await executor.WaitBeforeToolExecutionAsync("get_weather");
         await executionTask; // Should complete now
 
         // Assert: Scenario completed
@@ -125,7 +125,7 @@ public class ScenarioExecutorToolWaitTests
         await Task.Delay(100); // Let it start waiting
 
         // Act: Notify that a DIFFERENT tool was called
-        executor.NotifyToolCallRequested("get_time");
+        await executor.WaitBeforeToolExecutionAsync("get_time");
         await Task.Delay(200); // Wait to see if it incorrectly releases
 
         // Assert: Scenario is still running and waiting (not completed)
@@ -133,7 +133,7 @@ public class ScenarioExecutorToolWaitTests
         Assert.AreEqual(ScenarioExecutionState.Running, executor.State);
 
         // Cleanup: Send correct tool to unblock
-        executor.NotifyToolCallRequested("get_weather");
+        await executor.WaitBeforeToolExecutionAsync("get_weather");
         await executionTask;
     }
 
@@ -156,7 +156,7 @@ public class ScenarioExecutorToolWaitTests
         await Task.Delay(100); // Let it start waiting
 
         // Act: Notify with any tool name
-        executor.NotifyToolCallRequested("some_random_tool");
+        await executor.WaitBeforeToolExecutionAsync("some_random_tool");
         await executionTask; // Should complete
 
         // Assert: Scenario completed
@@ -164,13 +164,13 @@ public class ScenarioExecutorToolWaitTests
     }
 
     [TestMethod]
-    public void NotifyToolCallRequested_WhenNotWaiting_NoEffect()
+    public async Task NotifyToolCallRequested_WhenNotWaiting_NoEffect()
     {
         // Arrange: Executor with no scenario running
         var executor = CreateExecutor();
 
         // Act: Send notification when not waiting
-        executor.NotifyToolCallRequested("get_weather");
+        await executor.WaitBeforeToolExecutionAsync("get_weather");
 
         // Assert: No exception thrown, executor still not executing
         Assert.IsFalse(executor.IsExecuting);
@@ -202,7 +202,7 @@ public class ScenarioExecutorToolWaitTests
         Assert.IsTrue(executor.IsExecuting);
 
         // Act: Notify that the correct tool responded
-        executor.NotifyToolResponseReceived("get_weather");
+        await executor.WaitAfterToolExecutionAsync("get_weather");
         await executionTask; // Should complete now
 
         // Assert: Scenario completed
@@ -228,7 +228,7 @@ public class ScenarioExecutorToolWaitTests
         await Task.Delay(100); // Let it start waiting
 
         // Act: Notify that a DIFFERENT tool responded
-        executor.NotifyToolResponseReceived("get_time");
+        await executor.WaitAfterToolExecutionAsync("get_time");
         await Task.Delay(200); // Wait to see if it incorrectly releases
 
         // Assert: Scenario is still running and waiting (not completed)
@@ -236,7 +236,7 @@ public class ScenarioExecutorToolWaitTests
         Assert.AreEqual(ScenarioExecutionState.Running, executor.State);
 
         // Cleanup: Send correct tool to unblock
-        executor.NotifyToolResponseReceived("get_weather");
+        await executor.WaitAfterToolExecutionAsync("get_weather");
         await executionTask;
     }
 
@@ -259,7 +259,7 @@ public class ScenarioExecutorToolWaitTests
         await Task.Delay(100); // Let it start waiting
 
         // Act: Notify with any tool name
-        executor.NotifyToolResponseReceived("some_random_tool");
+        await executor.WaitAfterToolExecutionAsync("some_random_tool");
         await executionTask; // Should complete
 
         // Assert: Scenario completed
@@ -267,13 +267,13 @@ public class ScenarioExecutorToolWaitTests
     }
 
     [TestMethod]
-    public void NotifyToolResponseReceived_WhenNotWaiting_NoEffect()
+    public async Task NotifyToolResponseReceived_WhenNotWaiting_NoEffect()
     {
         // Arrange: Executor with no scenario running
         var executor = CreateExecutor();
 
         // Act: Send notification when not waiting
-        executor.NotifyToolResponseReceived("get_weather");
+        await executor.WaitAfterToolExecutionAsync("get_weather");
 
         // Assert: No exception thrown, executor still not executing
         Assert.IsFalse(executor.IsExecuting);
@@ -314,14 +314,14 @@ public class ScenarioExecutorToolWaitTests
         Assert.AreEqual(1, stepIndices.Count); // Only step 0 executed
 
         // Act: Notify tool call requested
-        executor.NotifyToolCallRequested("get_weather");
+        await executor.WaitBeforeToolExecutionAsync("get_weather");
         await Task.Delay(200); // Let it advance to next wait
 
         // Assert: Steps 0, 1, 2 completed, now waiting at WaitForToolResponse (step 3)
         Assert.AreEqual(3, stepIndices.Count); // Steps 0, 1, 2 executed
 
         // Act: Notify tool response received
-        executor.NotifyToolResponseReceived("get_weather");
+        await executor.WaitAfterToolExecutionAsync("get_weather");
         await executionTask; // Should complete
 
         // Assert: All steps completed
@@ -348,18 +348,18 @@ public class ScenarioExecutorToolWaitTests
         await Task.Delay(100);
 
         // Act: Call multiple wrong tools
-        executor.NotifyToolCallRequested("tool1");
+        await executor.WaitBeforeToolExecutionAsync("tool1");
         await Task.Delay(50);
-        executor.NotifyToolCallRequested("tool2");
+        await executor.WaitBeforeToolExecutionAsync("tool2");
         await Task.Delay(50);
-        executor.NotifyToolCallRequested("tool3");
+        await executor.WaitBeforeToolExecutionAsync("tool3");
         await Task.Delay(50);
 
         // Assert: Still waiting
         Assert.IsTrue(executor.IsExecuting);
 
         // Act: Call correct tool
-        executor.NotifyToolCallRequested("target_tool");
+        await executor.WaitBeforeToolExecutionAsync("target_tool");
         await executionTask;
 
         // Assert: Completed

@@ -112,11 +112,15 @@ public class AgentOrchestrator : IAgentOrchestrator
         // Check if LLM wants to call tools
         if (llmResponse.ToolCalls != null && llmResponse.ToolCalls.Count > 0 && _toolManager != null)
         {
-            // Execute tools using extracted method
-            await ExecuteToolCallsAsync(
+            // Add tool call message to conversation first
+            AddToolCallMessageToConversation(
                 llmResponse.Content ?? string.Empty,
                 llmResponse.ToolCalls,
-                llmResponse.Thinking,
+                llmResponse.Thinking);
+
+            // Then execute tools and add result messages
+            await ExecuteToolCallsAsync(
+                llmResponse.ToolCalls,
                 cancellationToken);
 
             // Continue loop with tool results
@@ -141,24 +145,14 @@ public class AgentOrchestrator : IAgentOrchestrator
     }
 
     /// <summary>
-    /// Executes tool calls from LLM response and adds messages to conversation.
-    /// Extracted method to be reused by both streaming and non-streaming paths.
+    /// Adds the tool call message to the conversation.
+    /// This should be called BEFORE yielding ExecutingTools status so the UI can show the tool calls immediately.
     /// </summary>
-    /// <param name="assistantContent">The text content from the LLM response</param>
-    /// <param name="llmToolCalls">List of tool calls from the LLM</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    private async Task ExecuteToolCallsAsync(
+    private void AddToolCallMessageToConversation(
         string assistantContent,
         List<LLMToolCall> llmToolCalls,
-        string? thinking,
-        CancellationToken cancellationToken)
+        string? thinking)
     {
-        if (_toolManager == null)
-        {
-            LogEvent("ToolExecutionSkipped", "Tool manager not available");
-            return;
-        }
-
         try
         {
             // DIAGNOSTIC: Log LLMToolCalls BEFORE conversion
@@ -182,6 +176,21 @@ public class AgentOrchestrator : IAgentOrchestrator
             LogEvent("ToolCallConversionError", $"Failed to convert tool calls: {ex.Message}");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Executes the tool calls and adds result messages to the conversation.
+    /// Note: The tool call message should already be added via AddToolCallMessageToConversation.
+    /// </summary>
+    private async Task ExecuteToolCallsAsync(
+        List<LLMToolCall> llmToolCalls,
+        CancellationToken cancellationToken)
+    {
+        if (_toolManager == null)
+        {
+            LogEvent("ToolExecutionSkipped", "Tool manager not available");
+            return;
+        }
 
         // Execute each tool and add result messages
         foreach (var toolCall in llmToolCalls)
@@ -202,32 +211,41 @@ public class AgentOrchestrator : IAgentOrchestrator
                 var toolResult = await _toolManager.ExecuteToolCallAsync(toolCall, cancellationToken);
                 LogEvent("ToolExecutionCompleted", $"Tool {toolCall.Name} completed. Success: {toolResult.IsSuccess}");
 
-                // Hook: Wait for scenario after tool execution (if scenario is waiting)
-                if (scenarioExecutor != null)
-                {
-                    await scenarioExecutor.WaitAfterToolExecutionAsync(toolCall.Name, cancellationToken);
-                }
-
-                // Add tool result message to conversation
+                // Add tool result message to conversation FIRST (before scenario hook)
+                // This ensures the message is visible when scenario pauses
                 var toolResultMessage = new ToolResultMessage(
                     toolCall.Id,
                     toolCall.Name,
                     toolResult.Content,
                     !toolResult.IsSuccess); // IsError = !IsSuccess
                 _conversationManager.AddMessage(toolResultMessage);
+
+                // Hook: Wait for scenario after tool execution AND result message added
+                if (scenarioExecutor != null)
+                {
+                    await scenarioExecutor.WaitAfterToolExecutionAsync(toolCall.Name, cancellationToken);
+                }
             }
             catch (Exception ex)
             {
                 // Log error but continue with other tools
                 LogEvent("ToolExecutionError", $"Error executing tool {toolCall.Name}: {ex.Message}");
 
-                // Add error result message with error description as content
+                // Add error result message FIRST (before scenario hook, if it's waiting)
                 var errorResultMessage = new ToolErrorMessage(
                     toolCall.Id,
                     toolCall.Name,
                     ex.Message,
                     ex);
                 _conversationManager.AddMessage(errorResultMessage);
+
+                // Hook: Wait for scenario after tool error (if scenario is waiting for this tool)
+                // Get scenario executor lazily
+                var scenarioExecutor = _serviceProvider?.GetService<IScenarioExecutor>();
+                if (scenarioExecutor != null)
+                {
+                    await scenarioExecutor.WaitAfterToolExecutionAsync(toolCall.Name, cancellationToken);
+                }
             }
         }
     }
@@ -328,18 +346,26 @@ public class AgentOrchestrator : IAgentOrchestrator
         // Check if LLM wants to call tools
         if (accumulatedToolCalls.Count > 0 && _toolManager != null)
         {
-            // Yield status update: executing tools
+            // FIRST: Add tool call message to conversation so UI can display it
+            AddToolCallMessageToConversation(
+                contentBuilder.ToString(),
+                accumulatedToolCalls,
+                accumulatedThinking);
+
+            // THEN: Yield status update so UI refreshes and shows the tool calls
             yield return new StreamingResponseChunk(null, IsComplete: false, Status: StreamingStatus.ExecutingTools);
             LogEvent("ToolExecutionStarting", $"Starting execution of {accumulatedToolCalls.Count} tool(s) in streaming mode");
 
-            // Execute tools using extracted method
+            // FINALLY: Execute tools and add result messages
             await ExecuteToolCallsAsync(
-                contentBuilder.ToString(),
                 accumulatedToolCalls,
-                accumulatedThinking,
                 cancellationToken);
 
             LogEvent("ToolExecutionCompleted", $"Completed execution of {accumulatedToolCalls.Count} tool(s)");
+
+            // Yield status update so UI can refresh and show tool results
+            // This is especially important for scenarios that pause after tool execution
+            yield return new StreamingResponseChunk(null, IsComplete: false, Status: StreamingStatus.ToolResultsReady);
 
             // Recursive call to continue tool loop
             await foreach (var chunk in ProcessStreamingToolLoopAsync(depth + 1, cancellationToken))

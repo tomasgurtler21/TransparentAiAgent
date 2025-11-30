@@ -38,7 +38,7 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 
 ## Scenarios
 - To stop scenario, stop button must be clicked twice
-
+- Provider API erorrs are not displayed during scenarios
 ---
 
 ## Future Issues

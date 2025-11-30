@@ -28,6 +28,11 @@ public enum StreamingStatus
     ExecutingTools,
 
     /// <summary>
+    /// Tool execution completed, results are ready and added to conversation
+    /// </summary>
+    ToolResultsReady,
+
+    /// <summary>
     /// All streaming and tool execution completed
     /// </summary>
     Completed,
