@@ -87,3 +87,100 @@ window.downloadFile = function(filename, content) {
     link.click();
     URL.revokeObjectURL(url);
 };
+
+// Chat auto-scroll functionality
+window.chatAutoScroll = {
+    _scrollContainers: new Map(),
+
+    // Initialize auto-scroll for a container
+    init: function(containerElement, dotNetRef) {
+        if (!containerElement) return;
+
+        const containerId = containerElement.id || this._generateId();
+        if (!containerElement.id) {
+            containerElement.id = containerId;
+        }
+
+        // Store container state
+        this._scrollContainers.set(containerId, {
+            element: containerElement,
+            dotNetRef: dotNetRef,
+            autoScrollEnabled: true,
+            isUserScrolling: false,
+            scrollTimeout: null
+        });
+
+        // Add scroll event listener
+        containerElement.addEventListener('scroll', (e) => this._handleScroll(containerId, e));
+
+        // Initial scroll to bottom
+        this.scrollToBottom(containerId);
+    },
+
+    // Handle user scroll events
+    _handleScroll: function(containerId, event) {
+        const state = this._scrollContainers.get(containerId);
+        if (!state) return;
+
+        const element = state.element;
+        const isAtBottom = Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 5;
+
+        // Clear existing timeout
+        if (state.scrollTimeout) {
+            clearTimeout(state.scrollTimeout);
+        }
+
+        // If user scrolled away from bottom, disable auto-scroll
+        if (!isAtBottom && !state.isUserScrolling) {
+            state.autoScrollEnabled = false;
+            state.isUserScrolling = true;
+        }
+
+        // Set timeout to detect end of scroll
+        state.scrollTimeout = setTimeout(() => {
+            state.isUserScrolling = false;
+
+            // If user scrolled back to bottom, re-enable auto-scroll
+            const stillAtBottom = Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) < 5;
+            if (stillAtBottom) {
+                state.autoScrollEnabled = true;
+            }
+        }, 150);
+    },
+
+    // Scroll to bottom if auto-scroll is enabled
+    scrollToBottom: function(containerId) {
+        const state = this._scrollContainers.get(containerId);
+        if (!state) return;
+
+        if (state.autoScrollEnabled) {
+            state.element.scrollTop = state.element.scrollHeight;
+        }
+    },
+
+    // Force enable auto-scroll and scroll to bottom (called when user sends message)
+    enableAndScroll: function(containerId) {
+        const state = this._scrollContainers.get(containerId);
+        if (!state) return;
+
+        state.autoScrollEnabled = true;
+        state.isUserScrolling = false;
+        state.element.scrollTop = state.element.scrollHeight;
+    },
+
+    // Cleanup
+    dispose: function(containerId) {
+        const state = this._scrollContainers.get(containerId);
+        if (state) {
+            if (state.scrollTimeout) {
+                clearTimeout(state.scrollTimeout);
+            }
+            this._scrollContainers.delete(containerId);
+        }
+    },
+
+    // Generate unique ID
+    _generateId: function() {
+        return 'chat-scroll-' + Math.random().toString(36).substr(2, 9);
+    }
+};

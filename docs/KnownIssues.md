@@ -23,7 +23,6 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 - UserSetting are actually never created.
 
 ## Chat window
-- No auto scroll.
 - In Teaching mode, when LLM changes any filter, all filters become visible to user.
 
 ## Overlays
@@ -33,12 +32,11 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 ## Logging
 - Only processed stream chunks are logged. When app fails to parse chunk, root cause is almost untraceable.
 
-## UI  chat window
-- After scenario changes filters, UI is not updated immediately.
-
 ## Scenarios
 - To stop scenario, stop button must be clicked twice
 - Provider API erorrs are not displayed during scenarios
+- Real tools might conflict with mock tools. Real tools should be removed and blocked during scenario execution.
+
 ---
 
 ## Future Issues

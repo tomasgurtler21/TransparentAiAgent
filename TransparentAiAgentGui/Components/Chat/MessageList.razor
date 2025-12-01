@@ -1,10 +1,13 @@
 @using TransparentAiAgentGui.Models
 @using TransparentAiAgentCore.Domain.UIControl
 @using TransparentAiAgentCore.Domain.Enums
+@using Microsoft.JSInterop
 @inject IUIControlService UIControlService
+@inject IJSRuntime JSRuntime
 @implements IDisposable
+@implements IAsyncDisposable
 
-<div class="message-list">
+<div class="message-list" @ref="_messageListElement">
     @* Show filter controls if visible in UI state *@
     @if (_uiState.ChatFilter.FilterControlsVisible)
     {
@@ -42,6 +45,9 @@
     public bool IsProcessing { get; set; }
 
     private UIState _uiState = UIState.DefaultNormalMode();
+    private ElementReference _messageListElement;
+    private string? _containerId;
+    private bool _isInitialized = false;
 
     private IEnumerable<UIMessage> FilteredMessages =>
         Messages?.Where(ShouldDisplayMessage) ?? Enumerable.Empty<UIMessage>();
@@ -50,6 +56,58 @@
     {
         UIControlService.UIStateChanged += OnUIStateChanged;
         _uiState = UIControlService.GetCurrentState();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Initialize auto-scroll
+                await JSRuntime.InvokeVoidAsync("chatAutoScroll.init", _messageListElement, null);
+                _isInitialized = true;
+
+                // Generate a container ID for future reference
+                _containerId = await JSRuntime.InvokeAsync<string>(
+                    "eval",
+                    $"document.querySelector('.message-list').id"
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing auto-scroll: {ex.Message}");
+            }
+        }
+        else if (_isInitialized && _containerId != null)
+        {
+            // ALWAYS try to scroll after every render (including streaming updates)
+            // The JavaScript will check if auto-scroll is enabled before actually scrolling
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("chatAutoScroll.scrollToBottom", _containerId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error scrolling to bottom: {ex.Message}");
+            }
+        }
+    }
+
+    public async Task ScrollToBottomAsync()
+    {
+        if (_isInitialized && _containerId != null)
+        {
+            try
+            {
+                // Force enable auto-scroll and scroll to bottom (called when user sends message)
+                await JSRuntime.InvokeVoidAsync("chatAutoScroll.enableAndScroll", _containerId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ScrollToBottomAsync: {ex.Message}");
+            }
+        }
     }
 
     private void OnUIStateChanged(object? sender, UIState newState)
@@ -105,5 +163,20 @@
     public void Dispose()
     {
         UIControlService.UIStateChanged -= OnUIStateChanged;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_isInitialized && _containerId != null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("chatAutoScroll.dispose", _containerId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disposing auto-scroll: {ex.Message}");
+            }
+        }
     }
 }

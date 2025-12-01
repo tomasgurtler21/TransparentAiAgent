@@ -65,7 +65,7 @@
         }
     </div>
 
-    <MessageList Messages="ConversationService.Messages" IsProcessing="ConversationService.IsProcessing" />
+    <MessageList @ref="_messageList" Messages="ConversationService.Messages" IsProcessing="ConversationService.IsProcessing" />
 
     <ChatInput OnSend="HandleSendMessage" IsDisabled="ConversationService.IsProcessing" />
 
@@ -88,6 +88,9 @@
     private bool hasMemory = false;
     private bool hasLoadedFromStorage = false;
     private MemoryViewerOverlay memoryViewer = default!;
+
+    // Message list reference for auto-scroll
+    private MessageList _messageList = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,6 +138,12 @@
 
         try
         {
+            // Trigger auto-scroll when user sends a message
+            if (_messageList != null)
+            {
+                await _messageList.ScrollToBottomAsync();
+            }
+
             // Use streaming mode with full tool call support
             await ConversationService.SendMessageStreamingAsync(message);
         }
