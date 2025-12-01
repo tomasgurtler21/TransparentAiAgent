@@ -121,6 +121,12 @@ public class UIControlService : IUIControlService
         {
             lock (_stateLock)
             {
+                // Close other overlays if opening this one
+                if (visible == true)
+                {
+                    CloseAllOverlaysExcept("TransparencyViewer");
+                }
+
                 var newViewer = _currentState.TransparencyViewer with
                 {
                     Visible = visible ?? _currentState.TransparencyViewer.Visible,
@@ -158,6 +164,12 @@ public class UIControlService : IUIControlService
         {
             lock (_stateLock)
             {
+                // Close other overlays if opening this one
+                if (visible == true)
+                {
+                    CloseAllOverlaysExcept("ToolsPanel");
+                }
+
                 var newPanel = _currentState.ToolsPanel with
                 {
                     Visible = visible ?? _currentState.ToolsPanel.Visible,
@@ -228,6 +240,12 @@ public class UIControlService : IUIControlService
         {
             lock (_stateLock)
             {
+                // Close other overlays if opening this one
+                if (visible == true)
+                {
+                    CloseAllOverlaysExcept("ConfigurationPage");
+                }
+
                 var newConfigPage = _currentState.ConfigurationPage with
                 {
                     Visible = visible ?? _currentState.ConfigurationPage.Visible,
@@ -260,6 +278,12 @@ public class UIControlService : IUIControlService
         {
             lock (_stateLock)
             {
+                // Close other overlays if opening this one
+                if (visible == true)
+                {
+                    CloseAllOverlaysExcept("ScenarioSelector");
+                }
+
                 var newSelector = _currentState.ScenarioSelector with
                 {
                     Visible = visible ?? _currentState.ScenarioSelector.Visible
@@ -339,5 +363,33 @@ public class UIControlService : IUIControlService
             jsonData,
             $"UI Control: {eventName}");
         _transparencyService.LogEvent(evt);
+    }
+
+    private void CloseAllOverlaysExcept(string overlayToKeepOpen)
+    {
+        // This runs within a lock, so thread-safe
+        var updates = _currentState;
+
+        if (overlayToKeepOpen != "TransparencyViewer" && _currentState.TransparencyViewer.Visible)
+        {
+            updates = updates with { TransparencyViewer = updates.TransparencyViewer with { Visible = false } };
+        }
+
+        if (overlayToKeepOpen != "ToolsPanel" && _currentState.ToolsPanel.Visible)
+        {
+            updates = updates with { ToolsPanel = updates.ToolsPanel with { Visible = false } };
+        }
+
+        if (overlayToKeepOpen != "ConfigurationPage" && _currentState.ConfigurationPage.Visible)
+        {
+            updates = updates with { ConfigurationPage = updates.ConfigurationPage with { Visible = false } };
+        }
+
+        if (overlayToKeepOpen != "ScenarioSelector" && _currentState.ScenarioSelector.Visible)
+        {
+            updates = updates with { ScenarioSelector = updates.ScenarioSelector with { Visible = false } };
+        }
+
+        _currentState = updates;
     }
 }

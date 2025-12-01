@@ -1,14 +1,13 @@
 .chat-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+    margin: 0;
+    padding: var(--spacing-md);
 }
 
 .chat-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-md);
 }
 
 .chat-header h1 {
@@ -51,7 +50,7 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0;
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-md);
 }
 
 .conversation-selector-container {
