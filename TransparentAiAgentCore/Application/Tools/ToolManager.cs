@@ -183,7 +183,7 @@ public class ToolManager : IToolManager
             // Get current mode (default to Normal if mode service not available)
             var currentMode = _appModeService?.CurrentMode ?? AppMode.Normal;
 
-            // DEBUG: Log registry type and tool count
+            // Log registry type and tool count for transparency
             var registryType = _registry.GetType().Name;
             var tools = _registry.GetAllTools();
             var toolCount = tools?.Count ?? 0;

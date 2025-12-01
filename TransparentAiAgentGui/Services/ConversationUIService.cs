@@ -193,7 +193,6 @@ public class ConversationUIService : IConversationUIService
 
             // ✅ FIX: Create buffer for the initial streaming placeholder
             MarkdownStreamingBuffer? buffer = new MarkdownStreamingBuffer();
-            _logger?.LogWarning("🔵 [BUG2-DEBUG] Starting SendMessageStreamingAsync - created fresh buffer for initial placeholder");
             var lastUpdate = DateTime.UtcNow;
             const int ThrottleMilliseconds = 30; // ~33 updates/second for smooth streaming
 
@@ -202,9 +201,6 @@ public class ConversationUIService : IConversationUIService
             {
                 if (!string.IsNullOrEmpty(chunk.ContentDelta))
                 {
-                    _logger?.LogWarning("🔵 [BUG2-DEBUG] Content delta received: '{Delta}'",
-                        chunk.ContentDelta.Length > 50 ? chunk.ContentDelta.Substring(0, 50) + "..." : chunk.ContentDelta);
-
                     // Use buffer to get renderable content (buffer created when placeholder created)
                     var renderableContent = buffer?.AppendAndGetRenderable(chunk.ContentDelta);
 
@@ -220,7 +216,6 @@ public class ConversationUIService : IConversationUIService
                             {
                                 // ✅ FIX: Create a FRESH buffer for this new placeholder
                                 buffer = new MarkdownStreamingBuffer();
-                                _logger?.LogWarning("🟡 [BUG2-DEBUG] Creating NEW streaming placeholder with FRESH buffer");
 
                                 var newStreamingMessage = new UIMessage
                                 {
@@ -258,8 +253,6 @@ public class ConversationUIService : IConversationUIService
                 // Handle status changes - refresh messages when tools are being executed
                 if (chunk.Status == StreamingStatus.ExecutingTools)
                 {
-                    _logger?.LogWarning("🔴 [BUG2-DEBUG] ExecutingTools status received - resetting buffer and placeholder");
-
                     // CRITICAL: Stop updating the streaming placeholder since we're switching to tool execution
                     // The streaming placeholder was for the LLM's text response, but now we have tool calls
                     lock (_streamingLock)
@@ -272,26 +265,18 @@ public class ConversationUIService : IConversationUIService
                     // Refresh messages to show tool calls that were just added to conversation
                     // This will clear the streaming placeholder and show the real tool call messages
                     RefreshMessages();
-
-                    _logger?.LogWarning("🔴 [BUG2-DEBUG] After RefreshMessages - placeholder and buffer reset complete");
                 }
 
                 // Handle ToolResultsReady status - refresh messages to show tool results
                 if (chunk.Status == StreamingStatus.ToolResultsReady)
                 {
-                    _logger?.LogWarning("🟡 [BUG2-DEBUG] ToolResultsReady status received - refreshing to show tool results");
-
                     // Refresh messages to show tool results that were just added to conversation
                     RefreshMessages();
-
-                    _logger?.LogWarning("🟡 [BUG2-DEBUG] After RefreshMessages - tool results should now be visible");
                 }
 
                 // ✅ FIX: Handle Error status - clean up on API errors
                 if (chunk.Status == StreamingStatus.Error)
                 {
-                    _logger?.LogError("❌ [BUG2-DEBUG] Error status received - cleaning up streaming state");
-
                     lock (_streamingLock)
                     {
                         _currentStreamingMessage = null;
@@ -336,8 +321,6 @@ public class ConversationUIService : IConversationUIService
 
             // Refresh messages from conversation manager to sync state
             RefreshMessages();
-
-            _logger?.LogWarning("🟢 [BUG2-DEBUG] SendMessageStreamingAsync completed - all buffers were created per placeholder");
 
             // Refresh memory state (in case LLM updated memory via tool)
             await RefreshMemoryStateAsync();
@@ -481,7 +464,6 @@ public class ConversationUIService : IConversationUIService
 
                 // ✅ Create fresh buffer for this scenario streaming session
                 _scenarioStreamingBuffer = new MarkdownStreamingBuffer();
-                _logger?.LogWarning("🟣 [SCENARIO-DEBUG] Starting scenario streaming - created fresh buffer");
 
                 // Create streaming assistant message placeholder
                 var streamingMessage = new UIMessage
@@ -506,9 +488,6 @@ public class ConversationUIService : IConversationUIService
         // Handle content deltas - update streaming placeholder
         if (!string.IsNullOrEmpty(chunk.ContentDelta))
         {
-            _logger?.LogWarning("🟣 [SCENARIO-DEBUG] Content delta received: '{Delta}'",
-                chunk.ContentDelta.Length > 50 ? chunk.ContentDelta.Substring(0, 50) + "..." : chunk.ContentDelta);
-
             var renderableContent = _scenarioStreamingBuffer?.AppendAndGetRenderable(chunk.ContentDelta);
 
             if (renderableContent != null)
@@ -520,7 +499,6 @@ public class ConversationUIService : IConversationUIService
                     {
                         // ✅ Create fresh buffer for new placeholder (Bug 2 fix for scenarios)
                         _scenarioStreamingBuffer = new MarkdownStreamingBuffer();
-                        _logger?.LogWarning("🟡 [SCENARIO-DEBUG] Creating NEW scenario streaming placeholder with FRESH buffer");
 
                         var newStreamingMessage = new UIMessage
                         {
@@ -557,8 +535,6 @@ public class ConversationUIService : IConversationUIService
         // ✅ FIX: Handle ExecutingTools status - show tool calls immediately!
         if (chunk.Status == StreamingStatus.ExecutingTools)
         {
-            _logger?.LogWarning("🔴 [SCENARIO-DEBUG] ExecutingTools status - resetting buffer and placeholder");
-
             lock (_streamingLock)
             {
                 _currentStreamingMessage = null;
@@ -568,26 +544,18 @@ public class ConversationUIService : IConversationUIService
 
             // Refresh messages to show tool calls that were just added to conversation
             RefreshMessages();
-
-            _logger?.LogWarning("🔴 [SCENARIO-DEBUG] After RefreshMessages - tool calls should now be visible");
         }
 
         // Handle ToolResultsReady status - refresh messages to show tool results
         if (chunk.Status == StreamingStatus.ToolResultsReady)
         {
-            _logger?.LogWarning("🟡 [SCENARIO-DEBUG] ToolResultsReady status - refreshing to show tool results");
-
             // Refresh messages to show tool results that were just added to conversation
             RefreshMessages();
-
-            _logger?.LogWarning("🟡 [SCENARIO-DEBUG] After RefreshMessages - tool results should now be visible");
         }
 
         // ✅ FIX: Handle Error status - clean up UI state on API errors
         if (chunk.Status == StreamingStatus.Error)
         {
-            _logger?.LogError("❌ [SCENARIO-DEBUG] Error status received - cleaning up streaming state");
-
             lock (_streamingLock)
             {
                 _isScenarioStreaming = false;
@@ -603,8 +571,6 @@ public class ConversationUIService : IConversationUIService
         // If streaming is complete, finalize
         if (chunk.IsComplete)
         {
-            _logger?.LogWarning("🟢 [SCENARIO-DEBUG] Scenario streaming completed");
-
             // Flush any remaining buffered content
             var remainingContent = _scenarioStreamingBuffer?.Flush();
             if (!string.IsNullOrEmpty(remainingContent))

@@ -74,14 +74,7 @@ public class UIControlService : IUIControlService
                     newChatFilter.ShowTruncatedMessages
                 });
 
-                // DEBUG: Log event firing
-                var subscriberCount = UIStateChanged?.GetInvocationList().Length ?? 0;
-                _logger.LogInformation("UpdateChatFilter: Firing UIStateChanged event to {Count} subscribers on thread {ThreadId}",
-                    subscriberCount, Environment.CurrentManagedThreadId);
-
                 UIStateChanged?.Invoke(this, _currentState);
-
-                _logger.LogInformation("UpdateChatFilter: Event invocation completed");
 
                 return Result<UIState>.Ok(_currentState);
             }
