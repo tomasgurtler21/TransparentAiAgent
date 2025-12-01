@@ -451,6 +451,12 @@ public class ScenarioExecutor : IScenarioExecutor
         // Use wait_for_tool_call/wait_for_tool_response to intercept tool execution
         _logger.LogInformation("ScenarioUserMessage: Sending message and continuing without waiting");
 
+        // ✅ FIX: Capture scenario context in local variables BEFORE starting background task
+        // This prevents race condition where scenario completes and nulls CurrentScenario
+        // while background task is still processing the LLM response
+        var capturedScenario = CurrentScenario!;
+        var capturedStepIndex = CurrentStepIndex;
+
         // Start orchestrator processing in background
         _ = Task.Run(async () =>
         {
@@ -460,8 +466,8 @@ public class ScenarioExecutor : IScenarioExecutor
                 {
                     // ✅ FIX: Fire StreamingUpdate with full chunk so UI can handle all status changes
                     StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
-                        CurrentScenario!,
-                        CurrentStepIndex,
+                        capturedScenario,
+                        capturedStepIndex,
                         chunk));
 
                     if (chunk.IsComplete)
@@ -474,8 +480,8 @@ public class ScenarioExecutor : IScenarioExecutor
 
                 // ✅ FIX: Send error chunk to UI so it can clean up streaming state
                 StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
-                    CurrentScenario!,
-                    CurrentStepIndex,
+                    capturedScenario,
+                    capturedStepIndex,
                     new StreamingResponseChunk(null, true, StreamingStatus.Error)));
             }
         }, cancellationToken);
