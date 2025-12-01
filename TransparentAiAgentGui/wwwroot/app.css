@@ -272,21 +272,34 @@ h1:focus {
     pointer-events: auto;
 }
 
-/* Resize Handle */
-.overlay-resize-handle {
-    position: absolute;
-    left: 0;
+/* Grid Column Resize Handle - Between main content and overlay column */
+.grid-resize-handle {
+    position: fixed;
+    right: 400px; /* Positioned at left edge of overlay column */
     top: 0;
     bottom: 0;
     width: 8px;
     cursor: ew-resize;
-    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.05));
-    transition: background 0.2s;
-    z-index: 1;
+    background: linear-gradient(to right, transparent, rgba(93, 156, 236, 0.1));
+    transition: background 0.2s, opacity var(--transition-normal), right var(--transition-normal);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
 }
 
-.overlay-resize-handle:hover {
-    background: linear-gradient(to right, transparent, rgba(0, 0, 255, 0.15));
+/* Show handle only when overlay is visible */
+.page:has(.overlay-panel.visible) .grid-resize-handle {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.grid-resize-handle:hover {
+    background: linear-gradient(to right, transparent, rgba(93, 156, 236, 0.3));
+}
+
+/* Old overlay resize handle styles (kept for backwards compatibility but unused) */
+.overlay-resize-handle {
+    display: none; /* Hidden - grid resize is used instead */
 }
 
 /* Responsive */
@@ -295,8 +308,7 @@ h1:focus {
         width: 90vw;
     }
 
-    /* Disable resize on mobile */
-    .overlay-resize-handle {
+    .grid-resize-handle {
         display: none;
     }
 }
@@ -314,8 +326,15 @@ h1:focus {
     right: 0;
     bottom: 0;
     display: grid !important;
-    grid-template-columns: 250px 1fr 400px !important;
+    grid-template-columns: 250px 1fr 0px !important;
     grid-template-rows: 100%;
+    transition: grid-template-columns var(--transition-normal);
+}
+
+/* Expand third column when ANY overlay is visible */
+.page[b-cyjavitole]:has(.overlay-panel.visible),
+.page:has(.overlay-panel.visible) {
+    grid-template-columns: 250px 1fr 400px !important;
 }
 
 .sidebar[b-cyjavitole],

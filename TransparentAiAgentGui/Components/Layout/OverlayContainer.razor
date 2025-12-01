@@ -13,28 +13,27 @@
 <div class="overlay-container">
     <!-- TransparencyViewer as overlay -->
     <div class="overlay-panel overlay-panel-right @(GetTransparencyOverlayVisibilityClass())">
-        <div class="overlay-resize-handle"></div>
         <TransparencyViewer />
     </div>
 
     <!-- ToolsOverview as overlay -->
     <div class="overlay-panel overlay-panel-right @(GetToolsOverlayVisibilityClass())">
-        <div class="overlay-resize-handle"></div>
         <ToolsOverview />
     </div>
 
     <!-- Configuration as overlay -->
     <div class="overlay-panel overlay-panel-right @(GetConfigurationOverlayVisibilityClass())">
-        <div class="overlay-resize-handle"></div>
         <Configuration />
     </div>
 
     <!-- ScenarioSelector as overlay -->
     <div class="overlay-panel overlay-panel-right @(GetScenarioSelectorOverlayVisibilityClass())">
-        <div class="overlay-resize-handle"></div>
         <ScenarioSelector />
     </div>
 </div>
+
+<!-- Grid Column Resize Handle (between main content and overlay column) -->
+<div class="grid-resize-handle" id="gridResizeHandle"></div>
 
 @code {
     private UIState _uiState = UIState.DefaultNormalMode();
@@ -51,7 +50,7 @@
         {
             try
             {
-                await JSRuntime.InvokeVoidAsync("overlayResize.init");
+                await JSRuntime.InvokeVoidAsync("gridColumnResize.init");
             }
             catch (Exception)
             {

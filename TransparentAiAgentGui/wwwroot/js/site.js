@@ -5,14 +5,16 @@ window.scrollToBottom = function(element) {
     }
 };
 
-// Overlay resize functionality
-window.overlayResize = {
-    // Shared state for resize operation
+// Grid column resize functionality - Resizes the third column (overlay column)
+window.gridColumnResize = {
     _isResizing: false,
     _startX: 0,
     _startWidth: 0,
-    _currentOverlay: null,
+    _pageElement: null,
+    _resizeHandle: null,
     _initialized: false,
+    _observer: null,
+    _savedWidth: 400, // Default width
 
     init: function() {
         // Prevent multiple initializations
@@ -21,58 +23,119 @@ window.overlayResize = {
         }
         this._initialized = true;
 
-        // Add mousedown listeners to each handle
-        const handles = document.querySelectorAll('.overlay-resize-handle');
-        handles.forEach(handle => {
-            handle.addEventListener('mousedown', (e) => {
-                this._isResizing = true;
-                this._startX = e.clientX;
-                this._currentOverlay = handle.closest('.overlay-panel-right');
+        this._resizeHandle = document.getElementById('gridResizeHandle');
+        this._pageElement = document.querySelector('.page');
 
-                if (this._currentOverlay) {
-                    this._startWidth = this._currentOverlay.offsetWidth;
-                    document.body.style.cursor = 'ew-resize';
-                    document.body.style.userSelect = 'none';
-                }
-                e.preventDefault();
-            });
+        if (!this._resizeHandle || !this._pageElement) {
+            console.warn('Grid resize: Required elements not found');
+            return;
+        }
+
+        // Restore saved width
+        const savedWidth = localStorage.getItem('gridOverlayColumnWidth');
+        if (savedWidth) {
+            this._savedWidth = parseInt(savedWidth);
+        }
+
+        // Set up mutation observer to watch for overlay visibility changes
+        this._setupOverlayObserver();
+
+        // Apply initial state
+        this._updateGridBasedOnOverlayState();
+
+        // Add mousedown listener to resize handle
+        this._resizeHandle.addEventListener('mousedown', (e) => {
+            this._isResizing = true;
+            this._startX = e.clientX;
+
+            // Get current width from computed style
+            const currentGridColumns = window.getComputedStyle(this._pageElement).gridTemplateColumns;
+            const columns = currentGridColumns.split(' ');
+            this._startWidth = parseInt(columns[2]) || 400; // Default to 400px if parsing fails
+
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
         });
 
-        // Single mousemove listener on document
+        // Mousemove listener on document
         document.addEventListener('mousemove', (e) => {
-            if (!this._isResizing || !this._currentOverlay) return;
+            if (!this._isResizing) return;
 
+            // Calculate new width (drag left = increase width, drag right = decrease width)
             const deltaX = this._startX - e.clientX;
             const newWidth = this._startWidth + deltaX;
 
-            // Min width: 300px, Max width: 80vw
+            // Clamp width between 300px and 60% of window width
             const minWidth = 300;
-            const maxWidth = window.innerWidth * 0.8;
+            const maxWidth = window.innerWidth * 0.6;
             const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
 
-            this._currentOverlay.style.width = clampedWidth + 'px';
+            this._applyColumnWidth(clampedWidth);
         });
 
-        // Single mouseup listener on document
+        // Mouseup listener on document
         document.addEventListener('mouseup', () => {
-            if (this._isResizing && this._currentOverlay) {
-                // Store width preference
-                localStorage.setItem('overlayWidth', this._currentOverlay.style.width);
-            }
+            if (this._isResizing) {
+                // Get final width from computed style
+                const currentGridColumns = window.getComputedStyle(this._pageElement).gridTemplateColumns;
+                const columns = currentGridColumns.split(' ');
+                const finalWidth = parseInt(columns[2]) || 400;
 
-            // Reset state
-            this._isResizing = false;
-            this._currentOverlay = null;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
+                // Store width preference (both in memory and localStorage)
+                this._savedWidth = finalWidth;
+                localStorage.setItem('gridOverlayColumnWidth', finalWidth);
+
+                // Reset state
+                this._isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    },
+
+    _applyColumnWidth: function(width) {
+        if (!this._pageElement) return;
+
+        // Update grid template columns: 250px (sidebar) 1fr (main) [width]px (overlay)
+        // Use setProperty with 'important' to override CSS !important
+        this._pageElement.style.setProperty('grid-template-columns', `250px 1fr ${width}px`, 'important');
+
+        // Update resize handle position to match
+        if (this._resizeHandle) {
+            this._resizeHandle.style.right = `${width}px`;
+        }
+    },
+
+    _setupOverlayObserver: function() {
+        // Watch for changes to overlay-panel elements (class changes)
+        const overlayContainer = document.querySelector('.overlay-container');
+        if (!overlayContainer) return;
+
+        this._observer = new MutationObserver(() => {
+            this._updateGridBasedOnOverlayState();
         });
 
-        // Restore saved width
-        const savedWidth = localStorage.getItem('overlayWidth');
-        if (savedWidth) {
-            document.querySelectorAll('.overlay-panel-right').forEach(overlay => {
-                overlay.style.width = savedWidth;
-            });
+        // Observe the overlay container for attribute changes (class changes on children)
+        this._observer.observe(overlayContainer, {
+            attributes: true,
+            attributeFilter: ['class'],
+            subtree: true
+        });
+    },
+
+    _updateGridBasedOnOverlayState: function() {
+        // Check if any overlay is visible
+        const hasVisibleOverlay = document.querySelector('.overlay-panel.visible') !== null;
+
+        if (hasVisibleOverlay) {
+            // Expand to saved width (or current width if user is resizing)
+            if (!this._isResizing) {
+                this._applyColumnWidth(this._savedWidth);
+            }
+        } else {
+            // Collapse to 0px when no overlay is visible
+            this._applyColumnWidth(0);
         }
     }
 };
