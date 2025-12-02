@@ -96,6 +96,22 @@ public class ScenarioExecutor : IScenarioExecutor
                 _state = ScenarioExecutionState.Running;
             }
 
+            // Reset UI filters to teaching mode defaults when scenario starts
+            // This ensures tool calls/responses are hidden by default for clean learning experience
+            _logger.LogInformation("Resetting UI filters to teaching mode defaults for scenario");
+            var filterResult = _uiControlService.UpdateChatFilter(
+                showUserMessages: true,
+                showAssistantMessages: true,
+                showSystemMessages: false,
+                showToolCalls: false,
+                showToolResults: false,
+                showTruncatedMessages: true);
+
+            if (filterResult != null && !filterResult.Success)
+            {
+                _logger.LogWarning("Failed to reset chat filters: {Error}", filterResult.Error);
+            }
+
             _logger.LogInformation("Scenario STARTED: '{ScenarioName}' (ID: {ScenarioId}) with {StepCount} steps",
                 scenario.Name, scenario.Id, scenario.Steps.Count);
 
