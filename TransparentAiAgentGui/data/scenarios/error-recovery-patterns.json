@@ -1,7 +1,9 @@
 {
   "id": "error-recovery-patterns",
   "version": "1.0",
+  "nameKey": "scenarios.error-recovery-patterns.name",
   "name": "Error Recovery Patterns",
+  "descriptionKey": "scenarios.error-recovery-patterns.description",
   "description": "Watch how agents use error messages to self-correct and retry with proper parameters",
   "category": "tools",
   "difficulty": "intermediate",
@@ -41,6 +43,7 @@
     },
     {
       "type": "scenario_user_message",
+      "contentKey": "scenarios.error-recovery-patterns.check-completed-tasks.content",
       "content": "Check all the completed tasks from my todo list",
       "delay": 500
     },
@@ -49,7 +52,8 @@
     },
     {
       "type": "pause_for_user",
-      "content": "The agent tried 'completed' (a logical choice!), but the tool expects 'done' instead.\n\nLook at the tool error message - it tells the agent exactly what values are valid. Good reasoning LLM should be able to correct itself."
+      "contentKey": "scenarios.error-recovery-patterns.pause-explain-error.content",
+      "content": "The agent tried 'completed' (a logical choice), but the tool expects 'done' instead.\n\nLook at the tool error message - it tells the agent exactly what values are valid. Good reasoning LLM should be able to correct itself."
     },
     {
       "type": "wait_for_response"

@@ -21,7 +21,7 @@
         }
         @if (_uiState.ContextIndicators.Visible)
         {
-            <span class="message-context-status @(_uiState.ContextIndicators.Highlighted ? "highlighted" : "")">
+            <span class="message-context-status @(_uiState.ContextIndicators.Highlighted ? "highlighted" : "")" title="@Message.ContextStatusTooltip">
                 @Message.ContextStatusIcon
             </span>
         }

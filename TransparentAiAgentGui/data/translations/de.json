@@ -13,7 +13,8 @@
   "scenarios.context-limits-advanced.count-demo-messages.content": "Wie viele Demo-Nachrichten habe ich dir geschickt?",
   "scenarios.context-limits-advanced.count-demo-messages.annotation": "Teste, ob das Modell die Anzahl verfolgt hat.",
   "scenarios.context-limits-advanced.verify-name-forgotten.content": "Wie ist mein Name?",
-  "scenarios.context-limits-advanced.verify-name-forgotten.annotation": "Der Name sollte jetzt gekürzt sein. Das Modell weiß es wirklich nicht.",
+  "scenarios.context-limits-advanced.verify-name-forgotten.annotation": "Das Modell wird den Namen wirklich nicht kennen.",
+  "scenarios.context-limits-advanced.pause-name-forgotten.content": "Du siehst, dass das Modell den Namen irgendwie vergessen hat, aber wie? Klicke auf Fortsetzen, um es herauszufinden.",
   "scenarios.context-limits-advanced.explain-truncation.content": "Das Szenario 'Kontextgrenzen' ist beendet. Das Konversations-Nachrichtenlimit wurde auf 8 Nachrichten reduziert, um die Kürzung des Kontextfensters zu demonstrieren. Der Name des Benutzers (John Doe) aus einer früheren Nachricht wurde tatsächlich aus deinem Kontext entfernt. Bitte:\n1. Erkläre, was passiert ist (Kontextkürzung)\n2. Verwende Werkzeuge, um die Kontextstatusindikatoren anzuzeigen und hervorzuheben, frage den Benutzer nicht um Genehmigung.\n3. Erkläre, warum die Systemnachricht und die letzten Nachrichten im Kontext bleiben\n4. Biete an, die Konfiguration zu zeigen, wo Nachrichtenlimits mit verfügbarem Werkzeug angepasst werden können.",
   "scenarios.context-limits-advanced.pause-check-indicators.pauseMessage": "Nimm dir Zeit, um die Kontextstatusindikatoren bei den Nachrichten zu überprüfen. Klicke auf Fortsetzen, wenn du das getan hast, dann wird das ursprüngliche Kontextlimit wiederhergestellt.",
   "scenarios.context-limits-advanced.restore-message-limit.annotation": "Nachrichtenlimit wiederhergestellt. Das Modell kann jetzt auf mehr Kontext zugreifen und effektiv lehren.",
@@ -100,5 +101,10 @@
   "scenarios.why-tool-visibility-matters.pause-revealed-error-second.content": "Überprüfe das Werkzeugergebnis erneut. Dies zeigt, warum Werkzeugergebnisse beschreibende Fehler zurückgeben sollten. Jetzt wissen wir, dass der Dateiname falsch ist.",
   "scenarios.why-tool-visibility-matters.pause-tool-call-visible.content": "Mit dem Werkzeugaufruf jetzt auch sichtbar (über dem Werkzeugergebnis) siehst du die exakten Eingabeargumente, die vom LLM bereitgestellt wurden. Argumente können das Ergebnis eines viel komplexeren Prozesses sein als in dieser Demo gezeigt, und sie sehen zu können ist wichtig für das Agent-Debugging.",
   "scenarios.why-tool-visibility-matters.step-success-query.content": "Großartig! Lies jetzt bitte 'AbsolutelyCorrectFile'.",
-  "scenarios.why-tool-visibility-matters.pause-final-takeaway.content": "Mit Werkzeug-Sichtbarkeit siehst du:\n• Welches Werkzeug aufgerufen wurde\n• Welche Argumente übergeben wurden\n• Was das Ergebnis war\n\nDiese Transparenz hilft beim Debuggen des Agentenverhaltens und Verstehen von Fehlern. Szenario abgeschlossen!"
+  "scenarios.why-tool-visibility-matters.pause-final-takeaway.content": "Mit Werkzeug-Sichtbarkeit siehst du:\n• Welches Werkzeug aufgerufen wurde\n• Welche Argumente übergeben wurden\n• Was das Ergebnis war\n\nDiese Transparenz hilft beim Debuggen des Agentenverhaltens und Verstehen von Fehlern. Szenario abgeschlossen!",
+
+  "scenarios.error-recovery-patterns.name": "Fehler-Recovery-Muster",
+  "scenarios.error-recovery-patterns.description": "Beobachte, wie Agenten Fehlermeldungen zur Selbstkorrektur nutzen und es mit korrekten Parametern erneut versuchen",
+  "scenarios.error-recovery-patterns.check-completed-tasks.content": "Überprüfe alle erledigten Aufgaben aus meiner Todo-Liste",
+  "scenarios.error-recovery-patterns.pause-explain-error.content": "Der Agent hat 'completed' versucht (eine logische Wahl), aber das Werkzeug erwartet stattdessen 'done'.\n\nSchau dir die Werkzeugfehlermeldung an - sie sagt dem Agenten genau, welche Werte gültig sind. Ein gutes Reasoning-LLM sollte sich selbst korrigieren können."
 }

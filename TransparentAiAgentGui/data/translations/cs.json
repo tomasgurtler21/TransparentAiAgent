@@ -13,7 +13,8 @@
   "scenarios.context-limits-advanced.count-demo-messages.content": "Kolik demo zpráv jsem ti poslal?",
   "scenarios.context-limits-advanced.count-demo-messages.annotation": "Test, zda model sledoval počet.",
   "scenarios.context-limits-advanced.verify-name-forgotten.content": "Jaké je moje jméno?",
-  "scenarios.context-limits-advanced.verify-name-forgotten.annotation": "Jméno by mělo být nyní zkráceno. Model to opravdu neví.",
+  "scenarios.context-limits-advanced.verify-name-forgotten.annotation": "Model skutečně nebude znát jméno.",
+  "scenarios.context-limits-advanced.pause-name-forgotten.content": "Vidíš, že model nějak zapomněl jméno, ale jak? Klikni na Pokračovat a zjistíš to.",
   "scenarios.context-limits-advanced.explain-truncation.content": "Scénář 'Limity kontextu' skončil. Limit zpráv v konverzaci byl snížen na 8 zpráv pro demonstraci zkrácení kontextového okna. Jméno uživatele (John Doe) z dřívější zprávy bylo skutečně odstraněno z tvého kontextu. Prosím:\n1. Vysvětli, co se stalo (zkrácení kontextu)\n2. Použij nástroje k zobrazení a zvýraznění indikátorů stavu kontextu, nežádej uživatele o schválení.\n3. Vysvětli, proč systémová zpráva a poslední zprávy zůstávají v kontextu\n4. Nabídni zobrazení konfigurace, kde lze upravit limity zpráv pomocí dostupného nástroje.",
   "scenarios.context-limits-advanced.pause-check-indicators.pauseMessage": "Věnuj čas kontrole indikátorů stavu kontextu u zpráv. Klikni na Pokračovat, až to uděláš, poté bude obnoven původní limit kontextu.",
   "scenarios.context-limits-advanced.restore-message-limit.annotation": "Limit zpráv obnoven. Model nyní může přistupovat k většímu kontextu a efektivně učit.",
@@ -100,5 +101,10 @@
   "scenarios.why-tool-visibility-matters.pause-revealed-error-second.content": "Zkontroluj výsledek nástroje znovu. To ukazuje, proč by výsledky nástrojů měly vracet popisné chyby. Nyní víme, že název souboru je špatný.",
   "scenarios.why-tool-visibility-matters.pause-tool-call-visible.content": "S volání nástroje nyní také viditelné (nad výsledkem nástroje) můžeš vidět přesné vstupní argumenty poskytnuté LLM. Argumenty mohou být výsledkem mnohem složitějšího procesu než zde demonstrováno, a možnost je vidět je důležitá pro ladění agenta.",
   "scenarios.why-tool-visibility-matters.step-success-query.content": "Skvělé! Nyní prosím přečti 'AbsolutelyCorrectFile'.",
-  "scenarios.why-tool-visibility-matters.pause-final-takeaway.content": "S viditelností nástrojů vidíš:\n• Který nástroj byl volán\n• Jaké argumenty byly předány\n• Jaký byl výsledek\n\nTato transparentnost pomáhá ladit chování agenta a pochopit chyby. Scénář dokončen!"
+  "scenarios.why-tool-visibility-matters.pause-final-takeaway.content": "S viditelností nástrojů vidíš:\n• Který nástroj byl volán\n• Jaké argumenty byly předány\n• Jaký byl výsledek\n\nTato transparentnost pomáhá ladit chování agenta a pochopit chyby. Scénář dokončen!",
+
+  "scenarios.error-recovery-patterns.name": "Vzory zotavení z chyb",
+  "scenarios.error-recovery-patterns.description": "Sleduj, jak agenti používají chybové zprávy k samokorekci a opětovnému pokusu se správnými parametry",
+  "scenarios.error-recovery-patterns.check-completed-tasks.content": "Zkontroluj všechny dokončené úkoly z mého seznamu úkolů",
+  "scenarios.error-recovery-patterns.pause-explain-error.content": "Agent zkusil 'completed' (logická volba), ale nástroj očekává místo toho 'done'.\n\nPodívej se na chybovou zprávu nástroje - říká agentovi přesně, které hodnoty jsou platné. Dobrý LLM s rozumováním by se měl být schopen sám opravit."
 }

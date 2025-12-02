@@ -84,11 +84,16 @@
       "contentKey": "scenarios.context-limits-advanced.verify-name-forgotten.content",
       "content": "What is my name?",
       "annotationKey": "scenarios.context-limits-advanced.verify-name-forgotten.annotation",
-      "annotation": "The name should now be truncated. Model genuinely won't know.",
+      "annotation": "Model genuinely won't know the name.",
       "delay": 3000
     },
     {
       "type": "wait_for_response"
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.context-limits-advanced.pause-name-forgotten.content",
+      "content": "You can see that model somehow forgot the name, but how?. Click Resume to continue."
     },
     {
       "type": "scenario_user_message",
