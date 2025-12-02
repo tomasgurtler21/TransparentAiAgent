@@ -6,9 +6,6 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 
 ---
 
-## OpenAi LLM Response missing in Transparent events
-- Anthropic LLM responses are shown correctly in events, but OpenAi (most likely AzureOpenAi too) are not shown at all.
-
 ## Tools
 - tools overlay UI needs refactor
 - especially window with tool details (after click on tool) is really bad. Could it be pushed outside overlay to have more space?

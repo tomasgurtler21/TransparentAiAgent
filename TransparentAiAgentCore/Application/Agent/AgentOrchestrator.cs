@@ -335,7 +335,7 @@ public class AgentOrchestrator : IAgentOrchestrator
                 if (chunk.IsComplete && accumulatedToolCalls == null)
                 {
                     LogEvent("LLMStreamCompleted", $"Stream completed (depth: {depth}). Content length: {contentBuilder.Length}, No tool calls");
-                    break;
+                    // Loop will naturally exit - no break needed to allow provider cleanup
                 }
             }
         }
