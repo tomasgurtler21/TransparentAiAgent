@@ -43,15 +43,48 @@ public class KnowledgeLibraryTool : ITool
     private static string BuildDescription(IReadOnlyList<KnowledgeEntrySummary> availableTopics)
     {
         var sb = new StringBuilder();
-        sb.Append("Retrieve critical guardrails from the knowledge library for a specific topic. ");
-        sb.Append("Returns essential principles and red lines. Use when teaching security, privacy, or safety-critical concepts. ");
-        sb.Append("The guardrails guide your teaching; fill in details using your own knowledge.");
+
+        // Overview
+        sb.AppendLine("Retrieve critical guardrails from the knowledge library for a specific topic.");
+        sb.AppendLine("Returns essential principles, red lines, and corrections - NOT comprehensive documentation.");
+        sb.AppendLine();
+
+        // When to use
+        sb.AppendLine("WHEN TO USE:");
+        sb.AppendLine("- Teaching security, privacy, or safety-critical topics (ALWAYS query for guardrails)");
+        sb.AppendLine("- Application-specific features (context windows, MCP, teaching mode)");
+        sb.AppendLine("- When you need to correct potential misconceptions");
+        sb.AppendLine("- Before teaching best practices (get the \"must-dos\" and \"must-not-dos\")");
+        sb.AppendLine();
+
+        // How to use
+        sb.AppendLine("HOW TO USE:");
+        sb.AppendLine("1. Query the library to get critical guardrails on a topic");
+        sb.AppendLine("2. Use the guardrails to guide your teaching");
+        sb.AppendLine("3. Fill in details using your built-in knowledge");
+        sb.AppendLine("4. The library tells you what's CRITICAL; you provide the comprehensive teaching");
+        sb.AppendLine();
+
+        // After querying
+        sb.AppendLine("AFTER QUERYING:");
+        sb.AppendLine("- Treat the entry as GUARDRAILS, not exhaustive content");
+        sb.AppendLine("- Teach comprehensively using the guardrails + your knowledge");
+        sb.AppendLine("- Always respect warnings and red lines from the library");
+        sb.AppendLine("- Use your judgment to expand on principles with relevant details");
+        sb.AppendLine();
+
+        // Knowledge Gap Likelihood explanation
+        sb.AppendLine("KNOWLEDGE GAP LIKELIHOOD:");
+        sb.AppendLine("Each topic includes a \"knowledgeGapLikelihood\" field indicating how reliable your built-in knowledge is:");
+        sb.AppendLine("- Low: Your training data is likely current - rely on inner knowledge confidently");
+        sb.AppendLine("- Medium: Your knowledge may be partially outdated - cross-reference with library");
+        sb.AppendLine("- High: Your knowledge is very likely outdated - prefer web search if available");
 
         if (availableTopics.Count > 0)
         {
             sb.AppendLine();
             sb.AppendLine();
-            sb.AppendLine("Available topics:");
+            sb.AppendLine("AVAILABLE TOPICS:");
 
             // Group by category for better organization
             var byCategory = availableTopics
@@ -63,7 +96,7 @@ public class KnowledgeLibraryTool : ITool
                 sb.AppendLine($"  {category.Key}:");
                 foreach (var topic in category.OrderBy(t => t.Topic))
                 {
-                    sb.AppendLine($"    - {topic.Id}: {topic.Topic}");
+                    sb.AppendLine($"    - {topic.Id}: {topic.Topic} (gap likelihood: {topic.KnowledgeGapLikelihood})");
                 }
             }
         }

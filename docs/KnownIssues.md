@@ -12,19 +12,11 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 - enable/disable tool should be available in Tools overlay. User preference should be saved to appsettings.
 
 ## System message refactor
-- A mess. Should have clean responsibility, no tools description, that belongs to tools.
-- Maybe does not reflect latest state of UI, should be updated.
+- Does not reflect latest state of UI, should be updated.
 
 ## Configuration refactor unifinished
 - Configuration overlay in app still writes to main app settings when changing context limit size.
 - UserSetting are actually never created.
-
-## Chat window
-- In Teaching mode, when LLM changes any filter, all filters become visible to user.
-
-## Overlays
-- Sometimes overlay edge is not dragable - widht can not be changed. **Workaround**: Close and open overlay again, then it works.
-- When one overlay is open, opening second just opens it over it. Better would be to close first overlay - only one can beopen at a time.
 
 ## Logging
 - Only processed stream chunks are logged. When app fails to parse chunk, root cause is almost untraceable.

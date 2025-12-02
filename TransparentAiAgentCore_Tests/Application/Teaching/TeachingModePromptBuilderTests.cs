@@ -15,91 +15,93 @@ public class TeachingModePromptBuilderTests
     }
 
     [TestMethod]
-    public void BuildKnowledgeLibrarySection_EmptyLibrary_ReturnsHeaderOnly()
+    public void BuildCompletePrompt_EmptyLibrary_ContainsKnowledgeSourcesSection()
     {
         // Arrange
         var library = new FakeKnowledgeLibrary(); // Empty library
         var builder = new TeachingModePromptBuilder(library);
 
         // Act
-        var result = builder.BuildKnowledgeLibrarySection();
+        var result = builder.BuildCompletePrompt();
 
         // Assert
-        Assert.IsTrue(result.Contains("# Knowledge Library"));
-        Assert.IsTrue(result.Contains("How to use:"));
-        Assert.IsFalse(result.Contains("- `")); // No topic entries
+        Assert.IsTrue(result.Contains("# KNOWLEDGE SOURCES"));
+        Assert.IsTrue(result.Contains("Inner Knowledge"));
+        Assert.IsTrue(result.Contains("Knowledge Library Tool"));
+        Assert.IsTrue(result.Contains("Web Search"));
     }
 
     [TestMethod]
-    public void BuildKnowledgeLibrarySection_WithTopics_ListsAllTopics()
+    public void BuildCompletePrompt_WithTopics_DoesNotListTopics()
     {
-        // Arrange
+        // Arrange - Topics are now in tool description, not system prompt
         var library = new FakeKnowledgeLibrary();
         library.AddTopic(CreateSummary("api-key-security", "API Key Security", "Security", "Critical security guardrails", "low"));
         library.AddTopic(CreateSummary("context-windows", "Context Windows", "LLM Concepts", "Context window limits", "low"));
         var builder = new TeachingModePromptBuilder(library);
 
         // Act
-        var result = builder.BuildKnowledgeLibrarySection();
+        var result = builder.BuildCompletePrompt();
 
-        // Assert
-        Assert.IsTrue(result.Contains("- `api-key-security`:"));
-        Assert.IsTrue(result.Contains("- `context-windows`:"));
-        Assert.IsTrue(result.Contains("API Key Security"));
-        Assert.IsTrue(result.Contains("Context Windows"));
+        // Assert - Topics should NOT be in system prompt (they're in tool description now)
+        Assert.IsTrue(result.Contains("# KNOWLEDGE SOURCES"));
+        Assert.IsTrue(result.Contains("Knowledge Library Tool"));
+        // Topics themselves should not be listed in the prompt
+        Assert.IsFalse(result.Contains("api-key-security"));
+        Assert.IsFalse(result.Contains("context-windows"));
     }
 
     [TestMethod]
-    public void BuildKnowledgeLibrarySection_IncludesGapLikelihoodGuidance()
+    public void BuildCompletePrompt_ReferencesKnowledgeGapLikelihood()
     {
         // Arrange
         var library = new FakeKnowledgeLibrary();
         var builder = new TeachingModePromptBuilder(library);
 
         // Act
-        var result = builder.BuildKnowledgeLibrarySection();
+        var result = builder.BuildCompletePrompt();
 
-        // Assert
-        Assert.IsTrue(result.Contains("Understanding Knowledge Gap Likelihood"));
-        Assert.IsTrue(result.Contains("Low"));
-        Assert.IsTrue(result.Contains("Medium"));
-        Assert.IsTrue(result.Contains("High"));
+        // Assert - Prompt should mention knowledgeGapLikelihood concept
+        Assert.IsTrue(result.Contains("knowledgeGapLikelihood"));
+        Assert.IsTrue(result.Contains("Knowledge Library Tool"));
     }
 
     [TestMethod]
-    public void BuildKnowledgeLibrarySection_IncludesUsageInstructions()
+    public void BuildCompletePrompt_IncludesPrioritizationStrategy()
     {
         // Arrange
         var library = new FakeKnowledgeLibrary();
         var builder = new TeachingModePromptBuilder(library);
 
         // Act
-        var result = builder.BuildKnowledgeLibrarySection();
+        var result = builder.BuildCompletePrompt();
 
         // Assert
-        Assert.IsTrue(result.Contains("How to use:"));
-        Assert.IsTrue(result.Contains("Query the library"));
-        Assert.IsTrue(result.Contains("When to query the library"));
-        Assert.IsTrue(result.Contains("After querying"));
+        Assert.IsTrue(result.Contains("Prioritization Strategy"));
+        Assert.IsTrue(result.Contains("Combine sources intelligently"));
+        Assert.IsTrue(result.Contains("web search"));
     }
 
     [TestMethod]
-    public void BuildKnowledgeLibrarySection_IncludesGapLikelihoodInTopicList()
+    public void BuildCompletePrompt_DoesNotIncludeSpecificTopicsInPrompt()
     {
-        // Arrange
+        // Arrange - Topics moved to tool description, not system prompt
         var library = new FakeKnowledgeLibrary();
         library.AddTopic(CreateSummary("test-topic", "Test Topic", "Testing", "Test summary", "medium"));
         var builder = new TeachingModePromptBuilder(library);
 
         // Act
-        var result = builder.BuildKnowledgeLibrarySection();
+        var result = builder.BuildCompletePrompt();
 
-        // Assert
-        Assert.IsTrue(result.Contains("gap likelihood: medium"));
+        // Assert - Specific topics should not be in system prompt
+        Assert.IsFalse(result.Contains("test-topic"));
+        Assert.IsFalse(result.Contains("Testing:"));
+        // But should reference the knowledge library system
+        Assert.IsTrue(result.Contains("Knowledge Library Tool"));
     }
 
     [TestMethod]
-    public void BuildKnowledgeLibrarySection_FormatsCorrectlyForLLM()
+    public void BuildCompletePrompt_IncludesAllThreeKnowledgeSources()
     {
         // Arrange
         var library = new FakeKnowledgeLibrary();
@@ -107,15 +109,13 @@ public class TeachingModePromptBuilderTests
         var builder = new TeachingModePromptBuilder(library);
 
         // Act
-        var result = builder.BuildKnowledgeLibrarySection();
+        var result = builder.BuildCompletePrompt();
 
-        // Assert - Verify markdown structure
-        Assert.IsTrue(result.Contains("# Knowledge Library"));
-        Assert.IsTrue(result.Contains("**How to use:**"));
-        Assert.IsTrue(result.Contains("**Available knowledge topics:**"));
-        Assert.IsTrue(result.Contains("**When to query the library:**"));
-        Assert.IsTrue(result.Contains("**After querying:**"));
-        Assert.IsTrue(result.Contains("**Understanding Knowledge Gap Likelihood:**"));
+        // Assert - Verify all three sources mentioned
+        Assert.IsTrue(result.Contains("Inner Knowledge"));
+        Assert.IsTrue(result.Contains("Knowledge Library Tool"));
+        Assert.IsTrue(result.Contains("Web Search"));
+        Assert.IsTrue(result.Contains("Optional - May Not Be Available"));
     }
 
     // Helper method to create test summaries

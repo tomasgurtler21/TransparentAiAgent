@@ -67,7 +67,7 @@ public class KnowledgeLibraryToolTests
         var tool = new KnowledgeLibraryTool(topics);
 
         // Assert
-        Assert.IsTrue(tool.Description.Contains("Available topics:"));
+        Assert.IsTrue(tool.Description.Contains("AVAILABLE TOPICS:"));
         Assert.IsTrue(tool.Description.Contains("api-key-security"));
         Assert.IsTrue(tool.Description.Contains("llm-basics"));
         Assert.IsTrue(tool.Description.Contains("Security:"));
@@ -150,5 +150,22 @@ public class KnowledgeLibraryToolTests
         Assert.IsTrue(metadata.ContainsKey("SourceType"));
         Assert.AreEqual("BuiltInKnowledge", metadata["SourceType"]);
         Assert.IsTrue(metadata.ContainsKey("Category"));
+    }
+
+    [TestMethod]
+    public void Description_IncludesKnowledgeGapLikelihood()
+    {
+        // Arrange
+        var topics = CreateTestTopics();
+
+        // Act
+        var tool = new KnowledgeLibraryTool(topics);
+
+        // Assert - Gap likelihood should be included for each topic
+        Assert.IsTrue(tool.Description.Contains("gap likelihood: HIGH", StringComparison.OrdinalIgnoreCase) ||
+                      tool.Description.Contains("gap likelihood: high", StringComparison.OrdinalIgnoreCase));
+        Assert.IsTrue(tool.Description.Contains("gap likelihood: MEDIUM", StringComparison.OrdinalIgnoreCase) ||
+                      tool.Description.Contains("gap likelihood: medium", StringComparison.OrdinalIgnoreCase));
+        Assert.IsTrue(tool.Description.Contains("KNOWLEDGE GAP LIKELIHOOD:"));
     }
 }

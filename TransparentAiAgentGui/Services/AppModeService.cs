@@ -3,6 +3,7 @@ using TransparentAiAgentCore.Infrastructure.Configuration;
 using TransparentAiAgentCore.Domain.Configuration;
 using TransparentAiAgentCore.Application.Conversation;
 using TransparentAiAgentCore.Application.Teaching;
+using TransparentAiAgentCore.Domain.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace TransparentAiAgentGui.Services;
@@ -19,6 +20,7 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
     private readonly IConversationManager _conversationManager;
     private readonly AppConfiguration _appConfiguration;
     private readonly TeachingModePromptBuilder _promptBuilder;
+    private readonly ILongTermMemoryService _memoryService;
     private readonly ILogger<AppModeService> _logger;
     private readonly object _modeLock = new object();
 
@@ -32,6 +34,7 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
         IConversationManager conversationManager,
         AppConfiguration appConfiguration,
         TeachingModePromptBuilder promptBuilder,
+        ILongTermMemoryService memoryService,
         ILogger<AppModeService> logger)
     {
         _uiControlService = uiControlService ?? throw new ArgumentNullException(nameof(uiControlService));
@@ -39,12 +42,13 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
+        _memoryService = memoryService ?? throw new ArgumentNullException(nameof(memoryService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _logger.LogInformation("AppModeService created (Scoped)");
     }
 
-    public Task SwitchModeAsync(AppMode newMode, bool clearConversation = false)
+    public async Task SwitchModeAsync(AppMode newMode, bool clearConversation = false)
     {
         lock (_modeLock)
         {
@@ -54,7 +58,7 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
             if (currentMode == newMode)
             {
                 _logger.LogInformation("Already in {Mode} mode, skipping switch", newMode);
-                return Task.CompletedTask;
+                return;
             }
 
             _logger.LogInformation("Switching from {CurrentMode} to {NewMode} mode", currentMode, newMode);
@@ -70,7 +74,7 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
             }
 
             // Step 2: Get the appropriate system prompt for the new mode
-            var systemPrompt = GetSystemPromptForMode(newMode);
+            var systemPrompt = await GetSystemPromptForModeAsync(newMode);
 
             // Step 3: Update system prompt in conversation manager (in-memory only)
             // IMPORTANT: We do NOT persist to configuration here. Teaching mode uses a hardcoded
@@ -90,8 +94,6 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
             // Step 5: Fire mode changed event
             ModeChanged?.Invoke(this, newMode);
             _logger.LogInformation("Successfully switched to {Mode} mode", newMode);
-
-            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -100,12 +102,12 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
         }
     }
 
-    private string GetSystemPromptForMode(AppMode mode)
+    private async Task<string> GetSystemPromptForModeAsync(AppMode mode)
     {
         return mode switch
         {
             AppMode.Normal => GetNormalModePrompt(),
-            AppMode.Teaching => GetTeachingModePrompt(),
+            AppMode.Teaching => await GetTeachingModePromptAsync(),
             _ => throw new ArgumentException($"Unknown mode: {mode}", nameof(mode))
         };
     }
@@ -116,13 +118,26 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
         return _appConfiguration.Agent.SystemPrompt;
     }
 
-    private string GetTeachingModePrompt()
+    private async Task<string> GetTeachingModePromptAsync()
     {
         // Use hardcoded teaching mode prompt (not user-configurable for security)
-        // Append knowledge library section dynamically
-        var basePrompt = TeachingModeConstants.TEACHING_MODE_SYSTEM_PROMPT;
-        var knowledgeSection = _promptBuilder.BuildKnowledgeLibrarySection();
+        // Built dynamically by TeachingModePromptBuilder including knowledge library section
 
-        return basePrompt + "\n\n---\n\n" + knowledgeSection;
+        // Read long-term memory for teaching mode (if available)
+        string? longTermMemory = null;
+        try
+        {
+            longTermMemory = await _memoryService.ReadMemoryAsync(AppMode.Teaching);
+            if (!string.IsNullOrWhiteSpace(longTermMemory))
+            {
+                _logger.LogInformation("Loaded long-term memory for teaching mode ({Length} characters)", longTermMemory.Length);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load long-term memory for teaching mode, continuing without it");
+        }
+
+        return _promptBuilder.BuildCompletePrompt(longTermMemory);
     }
 }
