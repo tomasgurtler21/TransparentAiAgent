@@ -56,8 +56,8 @@ Detailed component documentation (**✅ Complete - 30 docs**)
 
 ### 5. [Guides](05-guides/) 📖
 Step-by-step how-to documentation
-- [Development](05-guides/development/) - Adding components, providers, testing, [knowledge entries](05-guides/development/adding-knowledge-entries.md)
-- [Deployment](05-guides/deployment/) - [Configuration](05-guides/deployment/configuration-guide.md), [Troubleshooting](05-guides/deployment/troubleshooting.md)
+- [Installation](05-guides/installation/) - [Installation](05-guides/installation/installation-guide.md), [Configuration](05-guides/installation/llm-provider-selector.md), [Troubleshooting](05-guides/installation/troubleshooting.md)
+- [Development](05-guides/development/) - [Building](05-guides/development/building-for-deployment.md), [Knowledge entries](05-guides/development/adding-knowledge-entries.md), [Testing](.claude/skills/tdd/)
 - [Features](05-guides/features/) - [Using Long-Term Memory](05-guides/features/using-long-term-memory.md)
 - [Integration](05-guides/integration/) - MCP servers, custom tools, OAuth
 
@@ -108,12 +108,18 @@ Historical and session-specific docs
 **Learn about Long-Term Memory**
 → [Long-Term Memory Concept](03-concepts/long-term-memory.md) and [Using Long-Term Memory](05-guides/features/using-long-term-memory.md)
 
+**Install the application**
+→ [Installation Guide](05-guides/installation/installation-guide.md)
+
 **Configure the application**
-→ [LLM Provider Selector Guide](05-guides/deployment/llm-provider-selector.md) (current)
-→ [Configuration Guide](05-guides/deployment/configuration-guide.md) (archived)
+→ [LLM Provider Selector Guide](05-guides/installation/llm-provider-selector.md) (current)
+→ [Configuration Guide](05-guides/installation/configuration-guide.md) (archived)
 
 **Manage user data and storage**
-→ [Data Storage Guide](05-guides/deployment/data-storage.md)
+→ [Data Storage Guide](05-guides/installation/data-storage.md)
+
+**Build a release package**
+→ [Building for Deployment](05-guides/development/building-for-deployment.md)
 
 **Understand a component**
 → [Components](04-components/)
@@ -122,7 +128,7 @@ Historical and session-specific docs
 → [Anthropic Reference](06-reference/providers/anthropic/)
 
 **Troubleshoot an issue**
-→ [Troubleshooting Guide](05-guides/deployment/troubleshooting.md)
+→ [Troubleshooting Guide](05-guides/installation/troubleshooting.md)
 
 **See the implementation plan**
 → [Roadmap](07-planning/roadmap.md)

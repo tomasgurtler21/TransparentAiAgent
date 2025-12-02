@@ -102,12 +102,10 @@ Make sure `ActiveProvider` matches one of your configured providers:
 
 1. Double-click `TransparentAiAgentGui.exe` to start the application
 2. A command prompt window will open showing startup logs
-3. Wait for the message: "Now listening on: http://localhost:5000"
-4. Your default web browser will automatically open to `http://localhost:5000`
+3. Wait for the message showing which port the server is listening on (e.g., "Now listening on: http://localhost:54321")
+4. Your default web browser will automatically open to the correct URL
 
-If the browser doesn't open automatically, manually navigate to:
-- http://localhost:5000
-- or http://127.0.0.1:5000
+**Note:** The application automatically selects an available port at startup. The port number will be shown in the console window and your browser will open to the correct URL automatically.
 
 ### 4. Verify Installation
 
@@ -215,13 +213,15 @@ See [Configuration Guide](configuration-guide.md) for more details.
 
 ### "Connection refused" or "Cannot connect"
 
-**Issue:** Browser shows connection error at http://localhost:5000
+**Issue:** Browser shows connection error
 
 **Solutions:**
-1. Check the console window - look for error messages
-2. Ensure another application isn't using port 5000
-3. Try a different port by editing `appsettings.json` (not recommended for first-time users)
+1. Check the console window - look for error messages and note the actual port being used
+2. Verify the application started successfully (look for "Now listening on..." message)
+3. Manually navigate to the URL shown in the console window
 4. Check Windows Firewall settings
+
+**Note:** The application automatically selects an available port, so port conflicts should be rare. If the browser doesn't open automatically, check the console for the actual URL.
 
 ### "API key invalid" or LLM errors
 
@@ -269,7 +269,7 @@ To remove TransparentAiAgent:
    - Simply delete the folder where you extracted the application
 
 4. **Optional: Clean up browser data**:
-   - Clear browser cache/cookies for `localhost:5000` (if desired)
+   - Clear browser cache/cookies for `localhost` (if desired)
 
 No registry entries or system files are created outside the application folder.
 

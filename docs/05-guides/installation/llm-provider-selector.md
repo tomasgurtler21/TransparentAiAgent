@@ -481,7 +481,7 @@ Reasoning models have **special requirements**:
 
 ### Anthropic Extended Thinking
 
-**Note**: Anthropic's Extended Thinking mode does **NOT** have the same restrictions as OpenAI reasoning models. You **CAN** use Temperature and TopP with Extended Thinking.
+**Note**: Anthropic's Extended Thinking mode does **NOT** have the same restrictions as OpenAI reasoning models. You **CAN** use Temperature  with Extended Thinking.
 
 ```json
 {
@@ -496,8 +496,7 @@ Reasoning models have **special requirements**:
         "BudgetTokens": 10000
       }
     }
-    // ℹ️ No IsReasoningModel needed for Anthropic
-    // ℹ️ Temperature/TopP work normally with Extended Thinking
+    // ℹ️ Temperature work normally with Extended Thinking
   }
 }
 ```
