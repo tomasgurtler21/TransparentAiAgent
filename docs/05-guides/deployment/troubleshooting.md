@@ -1,481 +1,364 @@
-# Deployment & Troubleshooting Guide
+# Troubleshooting Guide
 
-Guide for running and troubleshooting TransparentAiAgent locally.
+This guide helps you diagnose and fix common issues when running TransparentAiAgent.
 
-## Quick Start (Once Built)
-
-```bash
-# Navigate to solution directory
-cd C:\programming\TransparentAiAgent\TransparentAiAgent
-
-# Run the application
-dotnet run --project TransparentAiAgentGui
-
-# Or in Visual Studio: Press F5
-
-# Open browser to: http://localhost:5000
-```
-
-**Expected output**:
-```
-info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: http://localhost:5000
-info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: https://localhost:5001
-info: Microsoft.Hosting.Lifetime[0]
-      Application started. Press Ctrl+C to shutdown.
-```
+**For installation issues**, see the [Installation Guide](installation-guide.md).
 
 ---
 
-## First-Time Setup Checklist
+## Quick Reference
 
-### 1. Prerequisites
-
-- [ ] **.NET 8.0 SDK** installed
-  ```bash
-  dotnet --version
-  # Should show: 8.0.x
-  ```
-
-- [ ] **Visual Studio 2022** (or VS Code with C# extension)
-
-- [ ] **Browser** (Edge, Chrome, or Firefox)
-
-- [ ] **Azure OpenAI credentials** (for testing on other station)
-  - Endpoint URL
-  - API key
-  - Deployment name
-
-### 2. Configuration Files
-
-**Create**: `TransparentAiAgentGui/appsettings.Development.json`
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "Agent": {
-    "SystemPrompt": "You are a helpful, transparent AI assistant.",
-    "ContextWindowSize": 20
-  },
-  "LLM": {
-    "Provider": "AzureOpenAI",
-    "Temperature": 0.7,
-    "TopP": 1.0,
-    "AzureOpenAI": {
-      "Endpoint": "https://YOUR-RESOURCE.openai.azure.com/",
-      "ApiKey": "YOUR-API-KEY-HERE",
-      "DeploymentName": "gpt-4",
-      "ApiVersion": "2024-02-15-preview"
-    }
-  },
-  "MCP": {
-    "Servers": [
-      {
-        "Name": "todo-list",
-        "Command": "C:\\programming\\MCP\\TODO list\\MCP-SimpleTodoList\\McpTodoList\\bin\\Release\\net8.0\\McpTodoList.exe",
-        "Args": [],
-        "Transport": "stdio"
-      }
-    ]
-  }
-}
-```
-
-**Security Note**: Never commit `appsettings.Development.json` with real API keys!
-
-**Add to `.gitignore`**:
-```
-appsettings.Development.json
-appsettings.*.json
-```
-
-### 3. Build Solution
-
-```bash
-# Restore dependencies
-dotnet restore
-
-# Build all projects
-dotnet build
-
-# Expected: Build succeeded. 0 Error(s)
-```
-
-### 4. Run Tests
-
-```bash
-# Run all tests
-dotnet test
-
-# Expected: All tests passing
-```
+| Issue | Quick Fix | Section |
+|-------|-----------|---------|
+| Port already in use | Kill process or use different port | [Port Conflicts](#issue-1-port-already-in-use) |
+| Can't connect in browser | Check server running, firewall | [Connection Issues](#issue-2-signalr-connection-failed) |
+| API authentication failed | Verify API key in appsettings.json | [API Authentication](#issue-3-api-authentication-failed) |
+| MCP server not starting | Check executable path and permissions | [MCP Servers](#issue-4-mcp-server-not-starting) |
+| Streaming not working | Check provider support | [Streaming](#issue-5-streaming-not-working) |
+| High memory usage | Start new conversation or restart | [Memory Issues](#issue-6-high-memory-usage) |
+| Slow UI | Reduce update frequency | [Performance](#issue-7-slow-ui-updates) |
+| Context not updating | Verify context management | [Context Issues](#issue-8-context-not-updating) |
+| Can't find data | Check AppData folder | [Data Location](#issue-9-cant-find-user-data) |
+| Settings not persisting | Check folder permissions | [Data Persistence](#issue-10-data-not-persisting-after-restart) |
 
 ---
 
-## Port Configuration
-
-### Default Ports
-
-- **HTTP**: 5000
-- **HTTPS**: 5001
-
-### Change Ports
-
-**Option 1**: Command line
-```bash
-dotnet run --project TransparentAiAgentGui --urls "http://localhost:8080;https://localhost:8081"
-```
-
-**Option 2**: `launchSettings.json`
-
-**File**: `TransparentAiAgentGui/Properties/launchSettings.json`
-
-```json
-{
-  "profiles": {
-    "TransparentAiAgentGui": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "applicationUrl": "https://localhost:5001;http://localhost:5000",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    }
-  }
-}
-```
-
----
-
-## MCP Server Configuration
-
-### Verify MCP Server Paths
-
-**Test MCP server manually**:
-
-```bash
-# Navigate to MCP server directory
-cd C:\programming\MCP\TODO list\MCP-SimpleTodoList\McpTodoList\bin\Release\net8.0
-
-# Run server
-McpTodoList.exe
-
-# Should start and show MCP protocol messages
-```
-
-### Common MCP Server Issues
-
-**Problem**: "MCP server not found"
-
-**Solutions**:
-1. Verify path in `appsettings.json`
-2. Check if server executable exists
-3. Ensure server is built (Release or Debug)
-
-**Example MCP server configuration**:
-
-```json
-{
-  "MCP": {
-    "Servers": [
-      {
-        "Name": "todo-list",
-        "Command": "C:\\path\\to\\McpTodoList.exe",
-        "Args": [],
-        "Transport": "stdio",
-        "Enabled": true
-      },
-      {
-        "Name": "context7",
-        "Command": "npx",
-        "Args": ["-y", "@upstash/context7-mcp"],
-        "Transport": "stdio",
-        "Enabled": true
-      }
-    ]
-  }
-}
-```
-
-**Note**: Paths must use double backslashes (`\\`) in JSON.
-
----
-
-## Troubleshooting Common Issues
+## Common Runtime Issues
 
 ### Issue 1: Port Already in Use
 
-**Error**:
-```
-Failed to bind to address http://127.0.0.1:5000: address already in use.
-```
+**Good News**: As of the latest version, the application **automatically finds an available port** at startup. You should no longer encounter port conflict issues!
 
-**Solutions**:
+**How it works**:
+- The application requests an available port from the operating system
+- The OS assigns an available port automatically
+- The console will show the actual port being used (e.g., "Server is listening on http://localhost:54321")
+- Your browser will open automatically to the correct URL
 
-**A. Find and kill process using port**:
+**If you still see a port conflict error**:
+
+This might happen if you're running an older version or using custom launch settings.
+
+**Solution A**: Update to the latest version
+
+Ensure you're running the latest version of TransparentAiAgent which includes automatic port selection.
+
+**Solution B**: Find and kill the conflicting process (for debugging)
+
 ```bash
-# Windows
+# Find process using a specific port
 netstat -ano | findstr :5000
-# Note the PID (last column)
 
+# Note the PID (last column) and kill it
 taskkill /PID <PID> /F
 ```
 
-**B. Use different port**:
-```bash
-dotnet run --project TransparentAiAgentGui --urls "http://localhost:5050"
+**Solution C**: Force a specific port (advanced users only)
+
+If you need to use a specific port for testing or development:
+
+**Windows Command Prompt**:
+```cmd
+set ASPNETCORE_URLS=http://localhost:5050
+TransparentAiAgentGui.exe
 ```
+
+**Windows PowerShell**:
+```powershell
+$env:ASPNETCORE_URLS="http://localhost:5050"
+.\TransparentAiAgentGui.exe
+```
+
+Then navigate to `http://localhost:5050` in your browser.
+
+**Note**: With automatic port selection, these manual workarounds are rarely needed.
 
 ---
 
 ### Issue 2: SignalR Connection Failed
 
-**Error in Browser Console**:
+**Symptom**: Browser shows "Disconnected" or connection errors in the console.
+
+**Error in Browser Console** (Press F12 to open):
 ```
 Failed to start the connection: Error: WebSocket failed to connect.
 ```
 
-**Solutions**:
+**Solution A**: Verify the application is running
 
-**A. Check if server is running**:
-```bash
-# Should see server logs in terminal
-```
+1. Check the console/terminal window where you started the application
+2. You should see messages like "Now listening on: http://localhost:5000"
+3. If not running, start it by double-clicking the `.exe` file
 
-**B. Browser is connecting to wrong URL**:
-- Verify URL: `http://localhost:5000`
-- Check if HTTPS redirect is forcing https://localhost:5001
+**Solution B**: Check the URL
 
-**C. Firewall blocking localhost**:
-- Temporarily disable firewall
-- Add exception for Kestrel/dotnet.exe
+1. Ensure you're navigating to `http://localhost:5000` (not HTTPS)
+2. If using HTTPS (`https://localhost:5001`), make sure the certificate is trusted
+
+**Solution C**: Check Windows Firewall
+
+1. Open **Windows Defender Firewall**
+2. Click **Allow an app through firewall**
+3. Find `TransparentAiAgentGui.exe` and ensure it's allowed for "Private" networks
+4. If not listed, click **Allow another app** and browse to the executable
+
+**Solution D**: Try a different browser
+
+Some browsers may have stricter WebSocket policies. Try:
+- Edge
+- Chrome
+- Firefox
 
 ---
 
-### Issue 3: Azure OpenAI Authentication Failed
+### Issue 3: API Authentication Failed
 
-**Error**:
+**Symptom**: Application starts, but messages fail to send with authentication errors.
+
+**Common error messages**:
 ```
 401 Unauthorized
+403 Forbidden
+Invalid API key
 ```
 
-**Solutions**:
+**Solution A**: Verify your API key in appsettings.json
 
-**A. Verify credentials**:
+1. Open `appsettings.json` in your application folder
+2. Find your active LLM provider (check `"ActiveProvider"` setting)
+3. Verify the API key:
+   - No extra spaces before/after the key
+   - No quotes around the key (unless part of the actual key)
+   - Complete key copied correctly
+
+**Solution B**: Check your LLM provider account
+
+- **Anthropic**: Visit https://console.anthropic.com/
+  - Check if you have available credits
+  - Verify the API key is active
+  - Regenerate key if necessary
+
+- **OpenAI**: Visit https://platform.openai.com/
+  - Check if you have available credits
+  - Verify the API key hasn't been revoked
+  - Check usage limits
+
+**Solution C**: Test your API key manually
+
+**For Anthropic**:
 ```bash
-# Test with curl
-curl -X POST https://YOUR-RESOURCE.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview \
-  -H "api-key: YOUR-API-KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"Test"}]}'
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d '{"model":"claude-haiku-4-5-20251001","max_tokens":10,"messages":[{"role":"user","content":"Hi"}]}'
 ```
 
-**B. Check configuration**:
-- Endpoint URL correct?
-- API key correct?
-- Deployment name correct?
-- API version supported?
+**For OpenAI**:
+```bash
+curl https://api.openai.com/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4","messages":[{"role":"user","content":"Hi"}],"max_tokens":10}'
+```
 
-**C. Azure portal check**:
-- Is resource active?
-- Are keys regenerated?
-- Is quota available?
+If these commands fail, the issue is with your API key or account.
 
 ---
 
 ### Issue 4: MCP Server Not Starting
 
-**Error**:
+**Symptom**: MCP tools (like todo-list, context7, etc.) are not available in the application.
+
+**Error in application console**:
 ```
 Failed to start MCP server: todo-list
 ```
 
-**Solutions**:
+**Solution A**: Verify the MCP server configuration
 
-**A. Verify server executable**:
-```bash
-# Try running manually
-C:\path\to\McpTodoList.exe
+1. Open `appsettings.json`
+2. Find the `"MCP"` section
+3. Check the server configuration:
+   - **Command**: Path to executable (use `\\` for Windows paths in JSON)
+   - **Args**: Command arguments as array
+   - **Enabled**: Must be `true`
 
-# Should start without errors
-```
-
-**B. Check permissions**:
-- Can your app spawn child processes?
-- Antivirus blocking?
-
-**C. Check server logs**:
-- MCP servers should log to stderr
-- Check TransparentAiAgent logs for MCP output
-
-**D. Verify transport**:
+**Example configuration**:
 ```json
-{
-  "Transport": "stdio"  // Must be "stdio" for local servers
+"MCP": {
+  "Servers": [
+    {
+      "Name": "todo-list",
+      "Command": "npx",
+      "Args": ["-y", "@anthropic/mcp-server-todo-list"],
+      "Enabled": true
+    }
+  ]
 }
 ```
+
+**Solution B**: Test the MCP server manually
+
+For NPX-based servers:
+```bash
+npx -y @anthropic/mcp-server-todo-list
+```
+
+For executable-based servers:
+```bash
+C:\path\to\McpServer.exe
+```
+
+The server should start and show protocol messages. If it crashes or shows errors, the issue is with the MCP server itself, not TransparentAiAgent.
+
+**Solution C**: Check antivirus/security software
+
+Some security software blocks applications from spawning child processes. Temporarily disable antivirus or add an exception for `TransparentAiAgentGui.exe`.
+
+**Solution D**: Verify Node.js/npx is installed (for NPX-based servers)
+
+Many MCP servers use NPX. Ensure Node.js is installed:
+```bash
+node --version
+npx --version
+```
+
+If not installed, download from https://nodejs.org/
 
 ---
 
 ### Issue 5: Streaming Not Working
 
-**Symptom**: Response appears all at once, not incrementally.
+**Symptom**: AI responses appear all at once instead of word-by-word.
 
-**Solutions**:
+**Solution A**: Check if your LLM provider supports streaming
 
-**A. Check LLM provider streaming support**:
-```csharp
-// In your LLM provider
-public async IAsyncEnumerable<StreamChunk> StreamCompletionAsync(...)
-{
-    // Must actually stream, not batch
-    await foreach (var chunk in actualStream)
-    {
-        yield return chunk; // ✅
-    }
-}
-```
+Not all LLM providers or models support streaming. Check the provider documentation:
+- **Anthropic Claude**: ✅ Supports streaming
+- **OpenAI**: ✅ Supports streaming
+- **Azure OpenAI**: ✅ Supports streaming (if enabled in deployment)
 
-**B. Check SignalR buffering**:
-```csharp
-// In Blazor component
-await foreach (var chunk in stream)
-{
-    message += chunk;
-    StateHasChanged(); // Must call after each chunk
-    await Task.Yield(); // Allow SignalR to send
-}
-```
+**Solution B**: Check browser console for errors
 
-**C. Browser dev tools**:
-- Open Network tab
-- Filter: WS (WebSocket)
-- Check SignalR messages flowing
+1. Press **F12** to open browser developer tools
+2. Go to **Console** tab
+3. Look for WebSocket or SignalR errors
+4. Try refreshing the page
+
+**Solution C**: Network issues
+
+If on a slow or unstable network connection:
+- Streaming chunks may arrive slowly
+- May appear as "all at once" if delays are short
+- Try testing on a faster connection
 
 ---
 
 ### Issue 6: High Memory Usage
 
-**Symptom**: App uses excessive RAM.
+**Symptom**: Application uses excessive RAM (over 1 GB or causing system slowdown).
 
-**Solutions**:
+**Understanding memory usage**: The application loads conversations on-demand from JSON files. Only the current conversation is kept in memory, not all conversations. High memory usage is typically caused by:
+- A very large current conversation (hundreds of messages with long content)
+- Browser memory accumulation (especially in long-running sessions)
+- Memory leaks in browser or application
 
-**A. Check conversation history**:
-```csharp
-// Implement cleanup
-if (conversationHistory.Count > 1000)
-{
-    // Remove old messages (keep context)
-    conversationHistory.RemoveRange(0, 500);
-}
-```
+**Solution A**: Start a new conversation
 
-**B. Check transparency event storage**:
-```csharp
-// Limit event storage
-if (events.Count > 10000)
-{
-    events.RemoveRange(0, 5000);
-}
-```
+If your current conversation has become very large:
+1. Start a new conversation from the conversation selector
+2. The previous conversation will be automatically saved to disk
+3. Memory should drop back to baseline
 
-**C. Check for memory leaks**:
-- SignalR connections not disposed?
-- HTTP clients not disposed?
-- Event handlers not unsubscribed?
+**Solution B**: Restart the application
+
+Simply closing and reopening the application will clear memory:
+1. Close the browser tab
+2. Close the console window (or press Ctrl+C)
+3. Restart the application
+
+**Solution C**: Clear browser cache and restart browser
+
+Browser memory can accumulate over time:
+1. Clear browser cache (Ctrl+Shift+Delete)
+2. Close all browser windows
+3. Reopen browser and navigate to the application
+
+**Solution D**: Check for multiple instances
+
+Ensure you don't have multiple instances of the application running:
+1. Open Task Manager (Ctrl+Shift+Esc)
+2. Look for multiple `TransparentAiAgentGui.exe` processes
+3. End extra processes
+
+**Expected memory usage**:
+- Fresh start: ~100-200 MB
+- After 50 messages in current conversation: ~200-400 MB
+- After 500 messages in current conversation: ~500-800 MB
+
+If significantly higher, something may be wrong.
+
+**Note**: Deleting old conversations will NOT reduce memory usage since only the current conversation is loaded into memory.
 
 ---
 
 ### Issue 7: Slow UI Updates
 
-**Symptom**: UI feels sluggish.
+**Symptom**: User interface feels sluggish or unresponsive.
 
-**Solutions**:
+**Solution A**: Check browser performance
 
-**A. Reduce StateHasChanged() calls**:
-```csharp
-// Bad: Call for every character
-foreach (var char in text)
-{
-    message += char;
-    StateHasChanged(); // Too frequent!
-}
+1. Try a different browser (Chrome, Edge, Firefox)
+2. Close other tabs to free up memory
+3. Disable browser extensions temporarily
+4. Clear browser cache
 
-// Good: Batch updates
-foreach (var chunk in chunks)
-{
-    message += chunk;
-    if (chunk.EndsWith(" ")) // Update per word
-    {
-        StateHasChanged();
-    }
-}
-```
+**Solution B**: Check system resources
 
-**B. Check browser performance**:
-- Open browser dev tools
-- Check Performance tab
-- Look for long tasks
+1. Open Task Manager
+2. Check CPU and Memory usage
+3. Close other applications if system is under load
 
-**C. Optimize rendering**:
-```razor
-@* Use @key for list items *@
-@foreach (var message in messages)
-{
-    <MessageComponent @key="message.Id" Message="@message" />
-}
-```
+**Solution C**: Reduce conversation size
+
+Large conversations with hundreds of messages can slow the UI:
+1. Start a new conversation for better performance
+2. Archive old conversations
+3. Consider adjusting the context window size in settings (if available in UI)
 
 ---
 
-### Issue 8: Context Not Updating
+### Issue 8: Context Status Not Updating
 
-**Symptom**: Messages marked as "In Context" when they should be truncated.
+**Symptom**: Messages show "In Context" when they should be marked as "Truncated" or "Excluded".
 
-**Solutions**:
+**Solution A**: Adjust context window size
 
-**A. Verify context management**:
-```csharp
-public void TruncateContext(int maxMessages)
-{
-    var messagesInContext = messages.Where(m => m.ContextStatus == InContext).ToList();
+1. Open the application settings (if available in UI)
+2. Reduce the context window size
+3. Send a new message to trigger context recalculation
 
-    if (messagesInContext.Count > maxMessages)
-    {
-        var toTruncate = messagesInContext.Count - maxMessages;
-        for (int i = 0; i < toTruncate; i++)
-        {
-            messagesInContext[i].ContextStatus = TruncatedFromContext; // ✅
-        }
-    }
+**Solution B**: Restart the conversation
+
+Context calculations happen when messages are sent:
+1. Start a new conversation
+2. The context management should work correctly in the new conversation
+
+**Solution C**: Check appsettings.json
+
+Verify the context window configuration:
+```json
+"Agent": {
+  "ContextWindowSize": 20  ← Adjust this number
 }
 ```
 
-**B. Check UI binding**:
-```razor
-@* Ensure UI reflects status *@
-<div class="message @GetContextClass(message)">
-    @message.Content
-</div>
-
-@code {
-    string GetContextClass(Message msg)
-    {
-        return msg.ContextStatus == InContext ? "in-context" : "truncated";
-    }
-}
-```
+Lower numbers = fewer messages in context = more aggressive truncation.
 
 ---
 
-### Issue 9: Can't Find User Data or Settings
+### Issue 9: Can't Find User Data
 
 **Symptom**: Need to locate conversation history, user settings, or long-term memory files.
 
@@ -483,23 +366,12 @@ public void TruncateContext(int maxMessages)
 
 **A. Find user data directory**:
 
-**Windows**:
 ```bash
 # Open Run dialog (Win + R) and enter:
 %AppData%\TransparentAiAgent
 
 # Or in PowerShell:
 explorer "$env:APPDATA\TransparentAiAgent"
-```
-
-**macOS/Linux**:
-```bash
-# Open in terminal:
-open ~/.config/TransparentAiAgent
-
-# Or navigate manually:
-cd ~/.config/TransparentAiAgent
-ls -la
 ```
 
 **B. Data directory structure**:
@@ -581,382 +453,92 @@ mkdir "$env:APPDATA\TransparentAiAgent\memory"
 
 ---
 
-## Debugging Tips
+## General Troubleshooting Tips
 
-### Enable Verbose Logging
+### Using Browser Developer Tools
 
-**In `appsettings.Development.json`**:
+Press **F12** to open developer tools in your browser:
 
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Debug",
-      "Microsoft.AspNetCore": "Information",
-      "Microsoft.AspNetCore.SignalR": "Debug",
-      "TransparentAiAgent": "Trace"
-    }
-  }
-}
-```
-
-### Browser Developer Tools
-
-**F12** to open dev tools:
-
-1. **Console**: Check for JavaScript errors
-2. **Network**:
-   - WS tab: SignalR WebSocket messages
+1. **Console tab**: Check for JavaScript errors or warnings
+2. **Network tab**:
+   - Filter by "WS" to see WebSocket/SignalR messages
    - Check connection status
-3. **Application**: Check local storage, session storage
+3. **Application tab**: Check local storage if issues with persistence
 
-### Visual Studio Debugging
+### Check Application Logs
 
-**Breakpoints**:
-```csharp
-private async Task SendMessage()
-{
-    // Set breakpoint here ← F9
-    var response = await orchestrator.ProcessAsync(message);
-}
-```
+The application outputs logs to the console window:
+1. Look for error messages in red
+2. Check for warnings in yellow
+3. Note any stack traces for reporting issues
 
-**Watch variables**:
-- `conversationManager.Messages`
-- `message.ContextStatus`
-- `llmProvider.CurrentState`
+Common log messages:
+- "Now listening on..." = Application started successfully
+- "Failed to start MCP server..." = MCP configuration issue
+- "401 Unauthorized" = API key problem
 
-**Output window**:
-- Shows all logs
-- Filter by "TransparentAiAgent"
+### Performance Monitoring
 
----
+**Check memory usage**:
+1. Open Task Manager (Ctrl+Shift+Esc)
+2. Find `TransparentAiAgentGui.exe`
+3. Check memory column
 
-## Performance Monitoring
+**Expected performance**:
+- Memory: 100-500 MB (depending on conversation size)
+- CPU: <1% idle, 5-20% during AI responses
+- Response time: 500-3000ms (depends on LLM provider)
 
-### Check Localhost Latency
-
-**In browser console**:
-
-```javascript
-// Measure SignalR round-trip
-let start = performance.now();
-// Trigger button click
-// When response arrives:
-let latency = performance.now() - start;
-console.log(`Latency: ${latency}ms`);
-
-// Expected: 1-10ms for localhost
-```
-
-### Monitor Memory
-
-**Task Manager** (Windows):
-- Find `TransparentAiAgentGui.exe`
-- Check memory usage
-- Should be < 500MB typically
-
-### Monitor SignalR
-
-**In `Startup.cs` / `Program.cs`**:
-
-```csharp
-builder.Services.AddSignalR(options =>
-{
-    options.EnableDetailedErrors = true; // Development only
-    options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
-});
-```
+If significantly different, see [Issue 6: High Memory Usage](#issue-6-high-memory-usage) or [Issue 7: Slow UI Updates](#issue-7-slow-ui-updates).
 
 ---
 
-## Development Workflow
+## Security Best Practices
 
-### Typical Development Session
+### Protecting Your API Keys
 
-```bash
-# 1. Start the app
-dotnet run --project TransparentAiAgentGui
+1. **Never share appsettings.json** - It contains your API keys
+2. **Rotate keys regularly** - Change them every few months
+3. **Monitor usage** - Check your LLM provider dashboard for unexpected usage
+4. **Use HTTPS** - Navigate to `https://localhost:5001` instead of HTTP
 
-# 2. Make code changes
-# (Edit files in Visual Studio)
+### Local Network Security
 
-# 3. Hot reload (if supported)
-# Or Ctrl+C and restart
+The application runs on localhost only, meaning:
+- ✅ Not accessible from other devices on your network
+- ✅ Not accessible from the internet
+- ⚠️ Other applications on your computer can access it
+- ⚠️ Browser extensions can access it
 
-# 4. Run tests
-dotnet test
-
-# 5. Commit changes
-git add .
-git commit -m "Add feature X"
-```
-
-### Watch Mode (Auto-Rebuild)
-
-```bash
-dotnet watch run --project TransparentAiAgentGui
-
-# Automatically rebuilds and restarts on file changes
-```
+For maximum security, use HTTPS: `https://localhost:5001`
 
 ---
 
-## Security Considerations
+## Getting Additional Help
 
-### Local Deployment Security
+### Before Reporting Issues
 
-**Good**:
-- ✅ API keys in local config files (not committed)
-- ✅ Running on localhost (not exposed to network)
-- ✅ HTTPS available (localhost:5001)
+1. Check this troubleshooting guide
+2. Review the [Installation Guide](installation-guide.md)
+3. Check the [Configuration Guide](llm-provider-selector.md)
+4. Try restarting the application
+5. Collect error messages from console and browser
 
-**Be aware**:
-- ⚠️ Other processes on your machine can access localhost
-- ⚠️ Browser extensions can access localhost
-- ⚠️ Malware could intercept localhost traffic
+### Where to Get Help
 
-**Best practices**:
-1. Don't commit API keys
-2. Use HTTPS even for localhost
-3. Rotate API keys regularly
-4. Use environment variables for sensitive data
+- **Installation issues**: See [Installation Guide](installation-guide.md)
+- **Configuration issues**: See [LLM Provider Selector Guide](llm-provider-selector.md)
+- **Data management**: See [Data Storage Guide](data-storage.md)
+- **Report bugs**: [GitHub Issues](https://github.com/tomasgurtler21/TransparentAiAgent/issues)
 
-### Environment Variables
+### What to Include When Reporting
 
-**Instead of `appsettings.json`**:
-
-```bash
-# Set environment variables
-set LLM__AzureOpenAI__ApiKey=your-key-here
-set LLM__AzureOpenAI__Endpoint=https://your-resource.openai.azure.com/
-
-# Run app
-dotnet run --project TransparentAiAgentGui
-```
-
-**In code**:
-```csharp
-var apiKey = configuration["LLM:AzureOpenAI:ApiKey"];
-// Reads from environment variable if set
-```
+1. **Operating System**: Windows version
+2. **Error message**: Exact text from console/browser
+3. **Steps to reproduce**: What you did before the error
+4. **LLM provider**: Which provider you're using (don't include API key!)
+5. **Application version**: If available
 
 ---
 
-## Network Configuration
-
-### Firewall Rules
-
-**If Windows Firewall blocks app**:
-
-1. Open Windows Defender Firewall
-2. Advanced Settings → Inbound Rules
-3. New Rule → Program
-4. Select: `C:\Program Files\dotnet\dotnet.exe`
-5. Allow connection
-6. Apply to all profiles
-
-### CORS (If Needed Later)
-
-**If you add external API calls**:
-
-```csharp
-// In Program.cs
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowLocalhost",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:5000", "https://localhost:5001")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
-
-// Use CORS
-app.UseCors("AllowLocalhost");
-```
-
----
-
-## Testing on Other Station (Azure OpenAI)
-
-### Preparing for Other Station
-
-**1. Export configuration** (without secrets):
-
-**File**: `config-template.json`
-```json
-{
-  "LLM": {
-    "AzureOpenAI": {
-      "Endpoint": "https://YOUR-RESOURCE.openai.azure.com/",
-      "ApiKey": "*** SET THIS ON OTHER STATION ***",
-      "DeploymentName": "gpt-4"
-    }
-  }
-}
-```
-
-**2. Document credentials needed**:
-- Azure OpenAI resource name
-- Deployment name
-- API version
-
-**3. Copy code to other station**:
-```bash
-# Commit and push to Git
-git push origin main
-
-# On other station, clone
-git clone <repository-url>
-```
-
-**4. Set up on other station**:
-```bash
-cd TransparentAiAgent
-dotnet restore
-dotnet build
-
-# Add API key to appsettings.Development.json
-# Run
-dotnet run --project TransparentAiAgentGui
-```
-
----
-
-## Useful Commands Reference
-
-### Build & Run
-
-```bash
-# Clean build
-dotnet clean
-dotnet build
-
-# Run (Development)
-dotnet run --project TransparentAiAgentGui --environment Development
-
-# Run (Production)
-dotnet run --project TransparentAiAgentGui --environment Production
-
-# Watch mode (auto-reload)
-dotnet watch run --project TransparentAiAgentGui
-```
-
-### Testing
-
-```bash
-# Run all tests
-dotnet test
-
-# Run specific test
-dotnet test --filter "FullyQualifiedName~MessageTests"
-
-# Run with coverage
-dotnet test /p:CollectCoverage=true
-
-# Verbose output
-dotnet test -v detailed
-```
-
-### Package Management
-
-```bash
-# Add package
-dotnet add package Microsoft.Extensions.Http
-
-# Update package
-dotnet add package Microsoft.Extensions.Http --version 8.0.0
-
-# List packages
-dotnet list package
-```
-
-### Solution Management
-
-```bash
-# Add project to solution
-dotnet sln add TransparentAiAgentCore/TransparentAiAgentCore.csproj
-
-# List projects in solution
-dotnet sln list
-```
-
----
-
-## Health Check Endpoint
-
-### Add Health Check (Future)
-
-```csharp
-// In Program.cs
-builder.Services.AddHealthChecks()
-    .AddCheck("self", () => HealthCheckResult.Healthy())
-    .AddCheck("mcp-servers", <custom-health-check>)
-    .AddCheck("llm-provider", <custom-health-check>);
-
-app.MapHealthChecks("/health");
-```
-
-**Access**: http://localhost:5000/health
-
-**Response**:
-```json
-{
-  "status": "Healthy",
-  "totalDuration": "00:00:00.0123456",
-  "entries": {
-    "self": { "status": "Healthy" },
-    "mcp-servers": { "status": "Healthy" },
-    "llm-provider": { "status": "Healthy" }
-  }
-}
-```
-
----
-
-## Performance Benchmarks (Expected)
-
-### Localhost Performance
-
-- **SignalR round-trip**: 1-10ms
-- **Message processing** (no LLM): 1-5ms
-- **LLM call** (Azure OpenAI): 500-3000ms (varies)
-- **MCP tool call**: 10-100ms (depends on tool)
-- **UI update (SignalR)**: 1-5ms
-
-### Memory Usage (Expected)
-
-- **Initial**: ~100MB
-- **With 100 messages**: ~150MB
-- **With 1000 messages**: ~300MB
-- **Peak (streaming)**: ~500MB
-
-### CPU Usage (Expected)
-
-- **Idle**: <1%
-- **During LLM call**: 5-15%
-- **During streaming**: 10-20%
-
-**If you see significantly different numbers, something might be wrong.**
-
----
-
-## Quick Checklist Before Starting Development Tomorrow
-
-- [ ] .NET 8.0 SDK installed
-- [ ] Visual Studio 2022 ready
-- [ ] Solution builds without errors
-- [ ] Tests run and pass
-- [ ] Azure OpenAI credentials ready (for other station)
-- [ ] MCP server paths verified
-- [ ] Git repository set up
-- [ ] `appsettings.Development.json` created (not committed)
-- [ ] Documentation read and understood
-
-**Ready to code Phase 1!** 🚀
-
----
-
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-12-02

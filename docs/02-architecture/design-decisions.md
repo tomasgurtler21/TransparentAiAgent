@@ -900,7 +900,7 @@ Individual Providers (Anthropic, Azure OpenAI, OpenAI)
 
 6. **UI Placement**: Provider selector in header next to conversation selector
    - Layout: Conversation selector (left), Provider selector (right)
-   - Horizontal layout for desktop, stacked for mobile
+   - Horizontal layout
    - Rationale: Easy access, doesn't disrupt workflow
 
 7. **Persistence**: ActiveProvider stored in appsettings.json

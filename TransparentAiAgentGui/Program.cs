@@ -45,6 +45,10 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // Configure dynamic port selection - let OS choose an available port
+    // Port 0 tells the OS to automatically assign an available port
+    builder.WebHost.UseUrls("http://localhost:0");
+
     // Configure JSON options for HTTP/API endpoints to use InvariantCulture
     builder.Services.ConfigureHttpJsonOptions(options =>
     {
@@ -621,9 +625,17 @@ try
     {
         try
         {
-            // Get the URL from configuration or use default
-            var urls = app.Urls;
-            var url = urls.FirstOrDefault() ?? "http://localhost:5000";
+            // Get the actual URL that the server is listening on
+            // The OS will have assigned an available port (since we used port 0)
+            var url = app.Urls.FirstOrDefault();
+
+            if (string.IsNullOrEmpty(url))
+            {
+                Console.WriteLine("⚠ Could not determine server URL - browser will not open automatically");
+                return;
+            }
+
+            Console.WriteLine($"✓ Server is listening on {url}");
 
             // Open browser on Windows, macOS, or Linux
             var psi = new System.Diagnostics.ProcessStartInfo

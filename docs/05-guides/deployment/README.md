@@ -1,6 +1,6 @@
 # Deployment Guides
 
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-12-02
 **Status**: Active
 
 ---
@@ -78,11 +78,14 @@ Use [llm-provider-selector.md](llm-provider-selector.md) instead for current mul
 ### Troubleshooting
 
 #### [troubleshooting.md](troubleshooting.md)
-Troubleshooting deployment and runtime issues:
-- Common errors and solutions
-- Debugging techniques
-- Log analysis
-- Performance issues
+**✅ Refactored for End Users** - Troubleshooting runtime issues for deployed applications:
+- Quick reference table for common issues
+- Port conflicts and connection problems
+- API authentication and MCP server issues
+- Memory usage and performance
+- Data storage and persistence
+- Browser-based debugging tips
+- Security best practices
 
 ---
 

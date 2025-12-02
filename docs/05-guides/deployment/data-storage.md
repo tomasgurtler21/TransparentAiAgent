@@ -21,12 +21,11 @@
 
 ## Overview
 
-TransparentAiAgent stores user-specific data in the operating system's standard application data directory (AppData on Windows). This ensures:
+TransparentAiAgent stores user-specific data in the standard Windows application data directory (AppData). This ensures:
 
 - ✅ **Proper separation** between user data and application binaries
 - ✅ **Persistence** across application updates
 - ✅ **User-specific storage** in multi-user environments
-- ✅ **OS-appropriate locations** (Windows, macOS, Linux)
 - ✅ **Easy backup** of user data
 
 ---
@@ -35,13 +34,11 @@ TransparentAiAgent stores user-specific data in the operating system's standard 
 
 ### Root Data Directory
 
-All user data is stored under the TransparentAiAgent folder in the OS-specific application data directory:
+All user data is stored under the TransparentAiAgent folder in the Windows application data directory:
 
-| Operating System | Location |
-|-----------------|----------|
-| **Windows** | `%AppData%\TransparentAiAgent` <br> Example: `C:\Users\YourName\AppData\Roaming\TransparentAiAgent` |
-| **macOS** | `~/.config/TransparentAiAgent` <br> Example: `/Users/YourName/.config/TransparentAiAgent` |
-| **Linux** | `~/.config/TransparentAiAgent` <br> Example: `/home/yourname/.config/TransparentAiAgent` |
+**Location**: `%AppData%\TransparentAiAgent`
+
+**Example**: `C:\Users\YourName\AppData\Roaming\TransparentAiAgent`
 
 ### Directory Structure
 
@@ -139,8 +136,6 @@ All user data is stored under the TransparentAiAgent folder in the OS-specific a
 
 ## Finding Your Data
 
-### Windows
-
 **Option 1: Using Windows Explorer**
 1. Press `Win + R` to open Run dialog
 2. Type `%AppData%\TransparentAiAgent` and press Enter
@@ -156,26 +151,6 @@ All user data is stored under the TransparentAiAgent folder in the OS-specific a
   ```powershell
   echo $env:APPDATA\TransparentAiAgent | clip
   ```
-
-### macOS
-
-**Option 1: Using Terminal**
-```bash
-open ~/.config/TransparentAiAgent
-```
-
-**Option 2: Using Finder**
-1. Open Finder
-2. Press `Cmd + Shift + G` (Go to Folder)
-3. Type `~/.config/TransparentAiAgent` and press Enter
-
-### Linux
-
-**Using Terminal**
-```bash
-cd ~/.config/TransparentAiAgent
-ls -la
-```
 
 ---
 
@@ -224,7 +199,7 @@ To preserve your TransparentAiAgent data:
 2. **Conversation History**: `conversations/` folder
 3. **Long-Term Memory**: `memory/` folder
 
-### Backup Steps (Windows)
+### Backup Steps
 
 ```powershell
 # Create backup folder
@@ -234,36 +209,17 @@ mkdir C:\Backups\TransparentAiAgent
 xcopy "%AppData%\TransparentAiAgent" "C:\Backups\TransparentAiAgent" /E /I /Y
 ```
 
-### Backup Steps (macOS/Linux)
-
-```bash
-# Create backup folder
-mkdir -p ~/Backups/TransparentAiAgent
-
-# Copy user data
-cp -r ~/.config/TransparentAiAgent ~/Backups/TransparentAiAgent
-```
-
 ---
 
 ## Restoring Data
 
-### Restore from Backup (Windows)
+### Restore from Backup
 
 ```powershell
 # Close TransparentAiAgent if running
 
 # Restore data
 xcopy "C:\Backups\TransparentAiAgent" "%AppData%\TransparentAiAgent" /E /I /Y
-```
-
-### Restore from Backup (macOS/Linux)
-
-```bash
-# Close TransparentAiAgent if running
-
-# Restore data
-cp -r ~/Backups/TransparentAiAgent ~/.config/TransparentAiAgent
 ```
 
 ---
@@ -294,16 +250,9 @@ Your conversations, settings, and memory will be available on the new installati
 
 **Warning**: This deletes all conversations, memory, and settings!
 
-**Windows**:
 ```powershell
 # Close TransparentAiAgent first!
 Remove-Item -Recurse -Force "$env:APPDATA\TransparentAiAgent"
-```
-
-**macOS/Linux**:
-```bash
-# Close TransparentAiAgent first!
-rm -rf ~/.config/TransparentAiAgent
 ```
 
 On next launch, application will recreate default directories and settings.

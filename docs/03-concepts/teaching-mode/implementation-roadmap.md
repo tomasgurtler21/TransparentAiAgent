@@ -1617,7 +1617,6 @@ input:checked + .slider:before {
 - Smooth transitions for showing/hiding controls
 - Animation for context indicator highlighting
 - Better visual distinction for highlighted tools
-- Responsive design for mobile (optional)
 - Accessibility (ARIA labels, keyboard navigation)
 
 **Files to Update:**

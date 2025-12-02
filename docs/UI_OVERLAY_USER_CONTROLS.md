@@ -418,7 +418,6 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
 1. **Close Button**
    - [ ] Click X → Overlay closes
    - [ ] Hover X → Button highlights
-   - [ ] Button visible on mobile
 
 2. **Keyboard Shortcuts**
    - [ ] ESC closes overlay
@@ -428,7 +427,6 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
 3. **Nav Menu Toggle**
    - [ ] Click toggles overlay
    - [ ] Badge shows when visible
-   - [ ] Works on mobile (collapsed menu)
 
 4. **Backdrop (if enabled)**
    - [ ] Click outside closes overlay

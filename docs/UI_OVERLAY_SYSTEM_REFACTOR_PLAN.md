@@ -62,7 +62,6 @@ Render controllable UI components as **floating overlays/panels** in MainLayout:
 - [ ] Create overlay container system in MainLayout
 - [ ] Add CSS for overlay panel positioning and animations
 - [ ] Define z-index hierarchy for stacking
-- [ ] Add responsive breakpoints for mobile
 
 ### Phase 2: Move Components to Overlays
 - [ ] Move TransparencyViewer to MainLayout as overlay
@@ -78,7 +77,6 @@ Render controllable UI components as **floating overlays/panels** in MainLayout:
 ### Phase 4: Polish
 - [ ] Smooth slide-in/out animations
 - [ ] Handle overlay stacking (multiple visible)
-- [ ] Mobile responsiveness
 - [ ] Accessibility (focus management, ESC to close)
 
 ---
@@ -103,12 +101,6 @@ app.css:
 
 ToolDetailsModal.razor.css:
   .modal-backdrop: z-index: 1000  (existing modal)
-```
-
-**Responsive Breakpoints:**
-```css
-@media (max-width: 640.98px)  /* Mobile */
-@media (min-width: 641px)      /* Desktop */
 ```
 
 ### Existing Modal Pattern
@@ -164,8 +156,7 @@ ToolDetailsModal.razor.css:
 ```
 
 **Sidebar:**
-- Desktop: 250px wide, 100vh height, sticky
-- Mobile: Full width (flex-direction: column)
+- 250px wide, 100vh height, sticky
 
 ---
 
@@ -192,7 +183,7 @@ ToolDetailsModal.razor.css:
 
 **Overlay Characteristics:**
 - Position: Fixed right side
-- Width: 400px (desktop), 90vw (mobile)
+- Width: 400px
 - Height: 100vh
 - Background: Semi-transparent backdrop optional
 - Animation: Slide in/out (transform: translateX)
@@ -535,11 +526,7 @@ Add close button (optional):
    - Test with multiple panels visible
    - Verify z-index stacking works
 
-5. **Responsive Design**
-   - Test on mobile (< 641px)
-   - Verify overlay width adapts (90vw)
-
-6. **Accessibility**
+5. **Accessibility**
    - Test keyboard navigation (Tab, Esc)
    - Test screen reader announcements
 
@@ -805,11 +792,6 @@ For visualization, see these real-world examples:
 - Semi-transparent backdrop
 - Example: https://github.com (click any file in repository)
 
-### Mobile Pattern: **Gmail Compose**
-- Bottom overlay (desktop: corner, mobile: full-width)
-- Multiple overlays can stack
-- Minimize/maximize
-- Example: https://mail.google.com (click Compose)
 
 **Our Implementation = Slack Thread Panel + GitHub File Preview**
 
