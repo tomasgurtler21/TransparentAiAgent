@@ -214,13 +214,14 @@ public class OpenAIProvider : ILLMProvider
                 // Final chunk will be yielded after the loop with accumulated tool calls
                 if (!update.FinishReason.HasValue)
                 {
-                    var chunk = ConvertStreamingUpdate(update);
-
-                    // Filter out empty chunks to reduce unnecessary processing downstream
+                    // Filter out COMPLETELY empty chunks (no content updates AND no tool call updates)
                     // Note: Empty chunks are still logged above for transparency diagnostics
-                    // OpenAI sends ~58% empty chunks as keep-alive/heartbeat signals
-                    if (!string.IsNullOrEmpty(chunk.ContentDelta) || chunk.ToolCallDelta != null)
+                    // OpenAI sends ~58% completely empty chunks as keep-alive/heartbeat signals
+                    // IMPORTANT: We must yield chunks with ContentUpdate.Count > 0 even if Text is empty,
+                    // as these are signal chunks indicating text content is starting
+                    if (update.ContentUpdate.Count > 0 || update.ToolCallUpdates.Count > 0)
                     {
+                        var chunk = ConvertStreamingUpdate(update);
                         yield return chunk;
                     }
                 }
