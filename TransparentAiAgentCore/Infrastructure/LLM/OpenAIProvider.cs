@@ -215,7 +215,14 @@ public class OpenAIProvider : ILLMProvider
                 if (!update.FinishReason.HasValue)
                 {
                     var chunk = ConvertStreamingUpdate(update);
-                    yield return chunk;
+
+                    // Filter out empty chunks to reduce unnecessary processing downstream
+                    // Note: Empty chunks are still logged above for transparency diagnostics
+                    // OpenAI sends ~58% empty chunks as keep-alive/heartbeat signals
+                    if (!string.IsNullOrEmpty(chunk.ContentDelta) || chunk.ToolCallDelta != null)
+                    {
+                        yield return chunk;
+                    }
                 }
             }
 

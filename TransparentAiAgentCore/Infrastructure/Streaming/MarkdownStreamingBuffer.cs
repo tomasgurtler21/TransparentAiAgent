@@ -51,7 +51,10 @@ public class MarkdownStreamingBuffer
     private bool IsInIncompleteCodeBlock(string content)
     {
         // Count code fence markers (```)
-        var fencePattern = @"^```[a-z]*$";
+        // Pattern matches: ```language (with any case, special chars like c#/c++, and optional trailing whitespace)
+        // Old pattern @"^```[a-z]*$" was too strict - only matched lowercase letters
+        // New pattern matches: ```json, ```JSON, ```c#, ```python , ``` (with spaces), etc.
+        var fencePattern = @"^```[^\s]*\s*$";
         var lines = content.Split('\n');
         var fenceCount = 0;
 
@@ -66,7 +69,7 @@ public class MarkdownStreamingBuffer
         // If odd number of fences, we're inside a code block
         // Also check if the last line is an opening fence
         var lastLine = lines.LastOrDefault()?.Trim() ?? "";
-        var endsWithOpeningFence = Regex.IsMatch(lastLine, @"^```[a-z]*$");
+        var endsWithOpeningFence = Regex.IsMatch(lastLine, fencePattern);
 
         if (endsWithOpeningFence && fenceCount % 2 == 1)
         {
