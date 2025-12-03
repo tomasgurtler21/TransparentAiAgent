@@ -196,17 +196,43 @@ public class ConversationUIService : IConversationUIService
             var lastUpdate = DateTime.UtcNow;
             const int ThrottleMilliseconds = 30; // ~33 updates/second for smooth streaming
 
+            // 🔍 DIAGNOSTIC: Track chunk processing
+            int chunkNumber = 0;
+            int nullRenderableCount = 0;
+            int nonNullRenderableCount = 0;
+
             // Process streaming response
             await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(content)))
             {
+                chunkNumber++;
+
                 // Process ALL chunks, even with empty ContentDelta (signal chunks)
                 // Use buffer to get renderable content (buffer created when placeholder created)
                 var renderableContent = buffer?.AppendAndGetRenderable(chunk.ContentDelta ?? string.Empty);
+
+                // 🔍 DIAGNOSTIC: Log chunk processing details
+                var contentDeltaDisplay = chunk.ContentDelta == null ? "NULL" :
+                                         string.IsNullOrEmpty(chunk.ContentDelta) ? "EMPTY" :
+                                         chunk.ContentDelta.Length > 20 ? $"'{chunk.ContentDelta.Substring(0, 20)}...'" :
+                                         $"'{chunk.ContentDelta}'";
+                var renderableDisplay = renderableContent == null ? "NULL" :
+                                       renderableContent.Length > 30 ? $"'{renderableContent.Substring(0, 30)}...'" :
+                                       $"'{renderableContent}'";
+
+                if (renderableContent == null)
+                    nullRenderableCount++;
+                else
+                    nonNullRenderableCount++;
+
+                Console.WriteLine($"[STREAM DEBUG #{chunkNumber}] ContentDelta={contentDeltaDisplay}, Renderable={renderableDisplay}, NullCount={nullRenderableCount}, NonNullCount={nonNullRenderableCount}");
 
                 // Throttle UI updates (only if we have actual renderable content)
                 var now = DateTime.UtcNow;
                 if (renderableContent != null && (now - lastUpdate).TotalMilliseconds >= ThrottleMilliseconds)
                 {
+                    // 🔍 DIAGNOSTIC: Log UI update trigger
+                    Console.WriteLine($"[STREAM DEBUG #{chunkNumber}] ✅ UI UPDATE TRIGGERED - Elapsed: {(now - lastUpdate).TotalMilliseconds:F1}ms");
+
                     lock (_streamingLock)
                     {
                         // If we have content but no streaming message (e.g., after tool execution),
@@ -316,6 +342,9 @@ public class ConversationUIService : IConversationUIService
                     }
                 }
             }
+
+            // 🔍 DIAGNOSTIC: Log streaming completion summary
+            Console.WriteLine($"[STREAM DEBUG SUMMARY] Total chunks: {chunkNumber}, Null renderable: {nullRenderableCount}, Non-null renderable: {nonNullRenderableCount}, Ratio: {(chunkNumber > 0 ? (double)nullRenderableCount / chunkNumber * 100 : 0):F1}% null");
 
             // Refresh messages from conversation manager to sync state
             RefreshMessages();

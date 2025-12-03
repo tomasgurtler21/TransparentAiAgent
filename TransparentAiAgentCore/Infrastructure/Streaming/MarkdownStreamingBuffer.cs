@@ -27,7 +27,16 @@ public class MarkdownStreamingBuffer
         var content = _buffer.ToString();
 
         // ONLY hold content if we're in an incomplete code block
-        if (IsInIncompleteCodeBlock(content))
+        var isIncomplete = IsInIncompleteCodeBlock(content);
+
+        // 🔍 DIAGNOSTIC: Log buffering decisions
+        if (isIncomplete)
+        {
+            var contentDisplay = content.Length > 50 ? content.Substring(0, 50).Replace("\n", "\\n") + "..." : content.Replace("\n", "\\n");
+            Console.WriteLine($"[BUFFER DEBUG] 🛑 BUFFERING (incomplete code block detected) - Buffer size: {content.Length}, Content: '{contentDisplay}'");
+        }
+
+        if (isIncomplete)
         {
             return null;
         }
@@ -71,12 +80,20 @@ public class MarkdownStreamingBuffer
         var lastLine = lines.LastOrDefault()?.Trim() ?? "";
         var endsWithOpeningFence = Regex.IsMatch(lastLine, fencePattern);
 
+        // 🔍 DIAGNOSTIC: Log fence detection details
+        var isIncomplete = false;
         if (endsWithOpeningFence && fenceCount % 2 == 1)
         {
-            return true; // Still waiting for closing fence
+            Console.WriteLine($"[BUFFER DEBUG] Code fence detected - FenceCount: {fenceCount}, LastLine: '{lastLine}', EndsWithFence: true → INCOMPLETE");
+            isIncomplete = true; // Still waiting for closing fence
+        }
+        else if (fenceCount % 2 == 1)
+        {
+            Console.WriteLine($"[BUFFER DEBUG] Code fence detected - FenceCount: {fenceCount} (odd), LastLine: '{lastLine}' → INCOMPLETE");
+            isIncomplete = true;
         }
 
         // Check if we have an unclosed code block
-        return fenceCount % 2 == 1;
+        return isIncomplete;
     }
 }
