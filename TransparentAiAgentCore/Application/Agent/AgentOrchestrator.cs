@@ -310,13 +310,16 @@ public class AgentOrchestrator : IAgentOrchestrator
 
             await foreach (var chunk in _llmProvider.StreamRequestAsync(llmRequest, cancellationToken))
             {
-                // Accumulate text content
+                // Accumulate text content (only if non-empty)
                 if (!string.IsNullOrEmpty(chunk.ContentDelta))
                 {
                     contentBuilder.Append(chunk.ContentDelta);
-                    // Yield text content immediately for real-time streaming
-                    yield return new StreamingResponseChunk(chunk.ContentDelta, IsComplete: false, Status: StreamingStatus.Streaming);
                 }
+
+                // Yield ALL chunks (even with empty ContentDelta) to keep streaming pipeline alive
+                // Signal chunks with empty ContentDelta are important for initialization
+                // The UI layer will filter out empty content before display
+                yield return new StreamingResponseChunk(chunk.ContentDelta, IsComplete: false, Status: StreamingStatus.Streaming);
 
                 // Capture accumulated tool calls from final chunk
                 if (chunk.AccumulatedToolCalls != null && chunk.AccumulatedToolCalls.Count > 0)
