@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace TransparentAiAgentCore.Infrastructure.Streaming;
 
@@ -10,6 +11,12 @@ namespace TransparentAiAgentCore.Infrastructure.Streaming;
 public class MarkdownStreamingBuffer
 {
     private readonly StringBuilder _buffer = new();
+    private readonly ILogger<MarkdownStreamingBuffer>? _logger;
+
+    public MarkdownStreamingBuffer(ILogger<MarkdownStreamingBuffer>? logger = null)
+    {
+        _logger = logger;
+    }
 
     /// <summary>
     /// Appends new content and returns renderable content if not in incomplete code block
@@ -33,7 +40,8 @@ public class MarkdownStreamingBuffer
         if (isIncomplete)
         {
             var contentDisplay = content.Length > 50 ? content.Substring(0, 50).Replace("\n", "\\n") + "..." : content.Replace("\n", "\\n");
-            Console.WriteLine($"[BUFFER DEBUG] 🛑 BUFFERING (incomplete code block detected) - Buffer size: {content.Length}, Content: '{contentDisplay}'");
+            _logger?.LogWarning("[BUFFER DEBUG] 🛑 BUFFERING (incomplete code block detected) - Buffer size: {BufferSize}, Content: '{Content}'",
+                content.Length, contentDisplay);
         }
 
         if (isIncomplete)
@@ -84,12 +92,14 @@ public class MarkdownStreamingBuffer
         var isIncomplete = false;
         if (endsWithOpeningFence && fenceCount % 2 == 1)
         {
-            Console.WriteLine($"[BUFFER DEBUG] Code fence detected - FenceCount: {fenceCount}, LastLine: '{lastLine}', EndsWithFence: true → INCOMPLETE");
+            _logger?.LogWarning("[BUFFER DEBUG] Code fence detected - FenceCount: {FenceCount}, LastLine: '{LastLine}', EndsWithFence: true → INCOMPLETE",
+                fenceCount, lastLine);
             isIncomplete = true; // Still waiting for closing fence
         }
         else if (fenceCount % 2 == 1)
         {
-            Console.WriteLine($"[BUFFER DEBUG] Code fence detected - FenceCount: {fenceCount} (odd), LastLine: '{lastLine}' → INCOMPLETE");
+            _logger?.LogWarning("[BUFFER DEBUG] Code fence detected - FenceCount: {FenceCount} (odd), LastLine: '{LastLine}' → INCOMPLETE",
+                fenceCount, lastLine);
             isIncomplete = true;
         }
 

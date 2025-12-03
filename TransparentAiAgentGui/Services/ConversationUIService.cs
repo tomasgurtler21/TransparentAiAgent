@@ -192,7 +192,8 @@ public class ConversationUIService : IConversationUIService
             OnMessagesChanged();
 
             // ✅ FIX: Create buffer for the initial streaming placeholder
-            MarkdownStreamingBuffer? buffer = new MarkdownStreamingBuffer();
+            // Note: Buffer logging is optional - main diagnostics are in this service
+            MarkdownStreamingBuffer? buffer = new MarkdownStreamingBuffer(null);
             var lastUpdate = DateTime.UtcNow;
             const int ThrottleMilliseconds = 30; // ~33 updates/second for smooth streaming
 
@@ -224,14 +225,16 @@ public class ConversationUIService : IConversationUIService
                 else
                     nonNullRenderableCount++;
 
-                Console.WriteLine($"[STREAM DEBUG #{chunkNumber}] ContentDelta={contentDeltaDisplay}, Renderable={renderableDisplay}, NullCount={nullRenderableCount}, NonNullCount={nonNullRenderableCount}");
+                _logger?.LogInformation("[STREAM DEBUG #{ChunkNumber}] ContentDelta={ContentDelta}, Renderable={Renderable}, NullCount={NullCount}, NonNullCount={NonNullCount}",
+                    chunkNumber, contentDeltaDisplay, renderableDisplay, nullRenderableCount, nonNullRenderableCount);
 
                 // Throttle UI updates (only if we have actual renderable content)
                 var now = DateTime.UtcNow;
                 if (renderableContent != null && (now - lastUpdate).TotalMilliseconds >= ThrottleMilliseconds)
                 {
                     // 🔍 DIAGNOSTIC: Log UI update trigger
-                    Console.WriteLine($"[STREAM DEBUG #{chunkNumber}] ✅ UI UPDATE TRIGGERED - Elapsed: {(now - lastUpdate).TotalMilliseconds:F1}ms");
+                    _logger?.LogInformation("[STREAM DEBUG #{ChunkNumber}] ✅ UI UPDATE TRIGGERED - Elapsed: {Elapsed:F1}ms",
+                        chunkNumber, (now - lastUpdate).TotalMilliseconds);
 
                     lock (_streamingLock)
                     {
@@ -240,7 +243,7 @@ public class ConversationUIService : IConversationUIService
                         if (_currentStreamingMessage == null)
                         {
                             // ✅ FIX: Create a FRESH buffer for this new placeholder
-                            buffer = new MarkdownStreamingBuffer();
+                            buffer = new MarkdownStreamingBuffer(null);
 
                             var newStreamingMessage = new UIMessage
                             {
@@ -344,7 +347,9 @@ public class ConversationUIService : IConversationUIService
             }
 
             // 🔍 DIAGNOSTIC: Log streaming completion summary
-            Console.WriteLine($"[STREAM DEBUG SUMMARY] Total chunks: {chunkNumber}, Null renderable: {nullRenderableCount}, Non-null renderable: {nonNullRenderableCount}, Ratio: {(chunkNumber > 0 ? (double)nullRenderableCount / chunkNumber * 100 : 0):F1}% null");
+            var nullRatio = chunkNumber > 0 ? (double)nullRenderableCount / chunkNumber * 100 : 0;
+            _logger?.LogInformation("[STREAM DEBUG SUMMARY] Total chunks: {TotalChunks}, Null renderable: {NullCount}, Non-null renderable: {NonNullCount}, Ratio: {Ratio:F1}% null",
+                chunkNumber, nullRenderableCount, nonNullRenderableCount, nullRatio);
 
             // Refresh messages from conversation manager to sync state
             RefreshMessages();
