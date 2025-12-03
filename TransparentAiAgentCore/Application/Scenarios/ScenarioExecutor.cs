@@ -112,6 +112,20 @@ public class ScenarioExecutor : IScenarioExecutor
                 _logger.LogWarning("Failed to reset chat filters: {Error}", filterResult.Error);
             }
 
+            // Also hide the filter controls themselves (teaching mode default)
+            var visibilityResult = _uiControlService.UpdateFilterControlVisibility(false);
+            if (visibilityResult != null && !visibilityResult.Success)
+            {
+                _logger.LogWarning("Failed to hide filter controls: {Error}", visibilityResult.Error);
+            }
+
+            // Reset context indicators to teaching mode defaults (invisible, not highlighted)
+            var contextResult = _uiControlService.UpdateContextIndicators(visible: false, highlighted: false);
+            if (contextResult != null && !contextResult.Success)
+            {
+                _logger.LogWarning("Failed to reset context indicators: {Error}", contextResult.Error);
+            }
+
             _logger.LogInformation("Scenario STARTED: '{ScenarioName}' (ID: {ScenarioId}) with {StepCount} steps",
                 scenario.Name, scenario.Id, scenario.Steps.Count);
 

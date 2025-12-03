@@ -200,9 +200,9 @@ Four panels that slide in/out from the right when toggled (only one visible at a
 - **Scenario Selector**: Teaching scenarios browser (Teaching mode only)
 
 ## Additional UI Elements
-- **Memory Viewer**: Modal overlay for viewing/editing long-term memory (opens via View button)
+- **Memory Viewer**: Modal overlay for viewing/editing long-term memory, located above main chat area (opens via View button)
 - **Context Indicators**: Small badges showing context window status (can be toggled on/off)
-- **Message Filters**: Checkboxes to control visible message types (can be shown/hidden)
+- **Message Filters**: Checkboxes to control visible message types, located at top of main chat area (can be shown/hidden)
 
 **Key Point**: Most UI features start hidden to avoid overwhelming users. You can progressively reveal them using UI control tools as they become relevant to the conversation.";
     }
@@ -247,7 +247,7 @@ You have 7 tools to manipulate the interface and reveal features:
 
 ## 3. Configuration
 **What**: System settings, API keys, model selection, parameters
-**When**: User wants to customize behavior or troubleshoot
+**When**: User wants to customize configuration
 **Tools**: `ui_control_configuration`
 
 ## 4. Message Filtering
