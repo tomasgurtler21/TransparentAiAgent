@@ -10,6 +10,7 @@ This guide helps you diagnose and fix common issues when running TransparentAiAg
 
 | Issue | Quick Fix | Section |
 |-------|-----------|---------|
+| **App crashes on startup** | **Check crash logs, validate config** | **[Startup Crashes](#application-crashes-on-startup)** |
 | Port already in use | Kill process or use different port | [Port Conflicts](#issue-1-port-already-in-use) |
 | Can't connect in browser | Check server running, firewall | [Connection Issues](#issue-2-signalr-connection-failed) |
 | API authentication failed | Verify API key in appsettings.json | [API Authentication](#issue-3-api-authentication-failed) |
@@ -23,55 +24,143 @@ This guide helps you diagnose and fix common issues when running TransparentAiAg
 
 ---
 
+## Application Crashes on Startup
+
+**Symptom**: The application crashes immediately after starting, before the browser opens.
+
+### Crash Log Locations
+
+When the application crashes during startup, it attempts to write a detailed crash log to help diagnose the issue. The crash log is tried in two locations (in order):
+
+1. **Application directory**: `[AppFolder]/logs/crash_[timestamp].txt`
+   - Preferred location, used when the app has write permissions
+
+2. **User's AppData directory**: `%AppData%/TransparentAiAgent/logs/crash_[timestamp].txt`
+   - Fallback location if app directory is not writable
+   - Same location used for conversations and user settings (proven reliable)
+
+### Finding Crash Logs
+
+To locate crash logs:
+
+**Option 1: Check the console window**
+- When the app crashes, it displays where the crash log was written
+- Look for: "✓ A crash log has been written to: [path]"
+
+**Option 2: Manual search**
+- **Application directory**: Navigate to where you extracted the app, then open the `logs` folder
+- **AppData directory**: Press `Win+R`, type `%AppData%\TransparentAiAgent\logs`, press Enter
+
+### If No Crash Log is Created
+
+If crash logs cannot be written to any location, the full error details will be displayed in the console window. The console will:
+- Display the full error message
+- Show all attempted log file locations
+- Print the complete crash details to the screen
+- Wait for you to press a key before exiting (so you can read or copy the error)
+
+**To capture console output when no log file is created:**
+1. Run the app from Command Prompt: `TransparentAiAgentGui.exe`
+2. When it crashes, copy the text from the console window
+3. Paste into a text file for analysis or support
+
+### Common Startup Crash Causes
+
+1. **Invalid appsettings.json**
+   - Syntax errors in JSON
+   - Missing required fields
+   - Invalid configuration values
+   - **Fix**: Validate JSON at https://jsonlint.com
+
+2. **Port conflicts**
+   - Another application using the configured ports
+   - **Fix**: Change ports in `appsettings.json` (see [Issue 1](#issue-1-port-already-in-use))
+
+3. **Permission issues**
+   - Application can't read configuration files
+   - Application can't create required directories
+   - **Fix**: Run as administrator or move to a user-writable location
+
+4. **Missing dependencies**
+   - Required DLL files are missing
+   - Corrupted installation
+   - **Fix**: Re-extract from the original ZIP file
+
+5. **Invalid provider configuration**
+   - Malformed provider configuration
+   - Invalid API keys format
+   - **Fix**: Check LLM provider configuration in `appsettings.json`
+
+---
+
 ## Common Runtime Issues
 
 ### Issue 1: Port Already in Use
 
-**Good News**: As of the latest version, the application **automatically finds an available port** at startup. You should no longer encounter port conflict issues!
+**Symptom**: Application fails to start with an error message indicating the port is already in use.
 
-**How it works**:
-- The application requests an available port from the operating system
-- The OS assigns an available port automatically
-- The console will show the actual port being used (e.g., "Server is listening on http://localhost:54321")
-- Your browser will open automatically to the correct URL
+**Default Ports**:
+- HTTP: 5025
+- HTTPS: 7299
 
-**If you still see a port conflict error**:
+**Solution A**: Change the ports in appsettings.json
 
-This might happen if you're running an older version or using custom launch settings.
+If the default ports conflict with another application, you can configure different ports:
 
-**Solution A**: Update to the latest version
+1. Open `appsettings.json` in a text editor
+2. Add or modify the `Server` section:
 
-Ensure you're running the latest version of TransparentAiAgent which includes automatic port selection.
+```json
+{
+  "TransparentAiAgent": {
+    "Server": {
+      "HttpPort": 5026,    ← Choose available ports
+      "HttpsPort": 7300
+    },
+    "Agent": { ... },
+    "LLM": { ... }
+  }
+}
+```
 
-**Solution B**: Find and kill the conflicting process (for debugging)
+3. Save the file and restart the application
+4. The console will show: "Server configured to listen on: http://localhost:5026 and https://localhost:7300"
+5. Browser will automatically open to the new HTTPS URL
+
+**Solution B**: Find and kill the conflicting process
+
+If you need to free up the default ports:
 
 ```bash
-# Find process using a specific port
-netstat -ano | findstr :5000
+# Find process using port 7299 (default HTTPS)
+netstat -ano | findstr :7299
+
+# Find process using port 5025 (default HTTP)
+netstat -ano | findstr :5025
 
 # Note the PID (last column) and kill it
 taskkill /PID <PID> /F
 ```
 
-**Solution C**: Force a specific port (advanced users only)
+**Solution C**: Override ports via environment variable (advanced users only)
 
-If you need to use a specific port for testing or development:
+If you need to temporarily use different ports without modifying `appsettings.json`:
 
 **Windows Command Prompt**:
 ```cmd
-set ASPNETCORE_URLS=http://localhost:5050
+set ASPNETCORE_URLS=https://localhost:8443;http://localhost:8080
 TransparentAiAgentGui.exe
 ```
 
 **Windows PowerShell**:
 ```powershell
-$env:ASPNETCORE_URLS="http://localhost:5050"
+$env:ASPNETCORE_URLS="https://localhost:8443;http://localhost:8080"
 .\TransparentAiAgentGui.exe
 ```
 
-Then navigate to `http://localhost:5050` in your browser.
+Then navigate to `https://localhost:8443` in your browser.
 
-**Note**: With automatic port selection, these manual workarounds are rarely needed.
+**Note**: Environment variables override the `appsettings.json` configuration. For permanent changes, edit `appsettings.json` instead.
 
 ---
 

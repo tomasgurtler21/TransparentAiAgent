@@ -45,10 +45,6 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure dynamic port selection - let OS choose an available port
-    // Port 0 tells the OS to automatically assign an available port
-    builder.WebHost.UseUrls("http://localhost:0");
-
     // Configure JSON options for HTTP/API endpoints to use InvariantCulture
     builder.Services.ConfigureHttpJsonOptions(options =>
     {
@@ -127,6 +123,14 @@ try
     // Register the SAME ConfigurationService instance that we just loaded (not a new one!)
     builder.Services.AddSingleton<IConfigurationService>(configService);
     builder.Services.AddSingleton(appConfig);
+
+    // Configure server ports
+    var httpPort = appConfig.Server.HttpPort;
+    var httpsPort = appConfig.Server.HttpsPort;
+    builder.WebHost.UseUrls($"https://localhost:{httpsPort}", $"http://localhost:{httpPort}");
+    Console.WriteLine($"✓ Server configured to listen on:");
+    Console.WriteLine($"   HTTP:  http://localhost:{httpPort}");
+    Console.WriteLine($"   HTTPS: https://localhost:{httpsPort}");
 
     // Check if LLM configuration is valid
     bool isLLMConfigured = false;
@@ -625,17 +629,8 @@ try
     {
         try
         {
-            // Get the actual URL that the server is listening on
-            // The OS will have assigned an available port (since we used port 0)
-            var url = app.Urls.FirstOrDefault();
-
-            if (string.IsNullOrEmpty(url))
-            {
-                Console.WriteLine("⚠ Could not determine server URL - browser will not open automatically");
-                return;
-            }
-
-            Console.WriteLine($"✓ Server is listening on {url}");
+            // Use the configured HTTPS URL
+            var url = $"https://localhost:{appConfig.Server.HttpsPort}";
 
             // Open browser on Windows, macOS, or Linux
             var psi = new System.Diagnostics.ProcessStartInfo
@@ -746,11 +741,7 @@ try
 catch (Exception ex)
 {
     // Unhandled exception during startup - write crash log
-    var logsDir = Path.Combine(AppContext.BaseDirectory, "logs");
-    Directory.CreateDirectory(logsDir);
-
     var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
-    var crashLogPath = Path.Combine(logsDir, $"crash_{timestamp}.txt");
 
     var crashLog = $@"TRANSPARENT AI AGENT - CRASH LOG
 =====================================
@@ -771,14 +762,50 @@ Environment:
 - OS: {Environment.OSVersion}
 - .NET: {Environment.Version}
 - Working Directory: {Environment.CurrentDirectory}
+- Base Directory: {AppContext.BaseDirectory}
 
 Additional Details:
 {ex}
 =====================================
 ";
 
-    File.WriteAllText(crashLogPath, crashLog);
+    // Try multiple locations to write crash log (in order of preference)
+    string? successfulLogPath = null;
+    var logLocations = new[]
+    {
+        // 1. Application directory logs folder (preferred)
+        Path.Combine(AppContext.BaseDirectory, "logs", $"crash_{timestamp}.txt"),
 
+        // 2. User's AppData directory (fallback - same location used for conversations/settings)
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "TransparentAiAgent",
+            "logs",
+            $"crash_{timestamp}.txt")
+    };
+
+    foreach (var logPath in logLocations)
+    {
+        try
+        {
+            var logDir = Path.GetDirectoryName(logPath);
+            if (!string.IsNullOrEmpty(logDir))
+            {
+                Directory.CreateDirectory(logDir);
+            }
+
+            File.WriteAllText(logPath, crashLog);
+            successfulLogPath = logPath;
+            break; // Success! Stop trying other locations
+        }
+        catch
+        {
+            // This location failed, try next one
+            continue;
+        }
+    }
+
+    // Always display error to console, even if log writing failed
     Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine("═══════════════════════════════════════════════════════════");
     Console.WriteLine("FATAL ERROR: Application crashed during startup");
@@ -787,15 +814,54 @@ Additional Details:
     Console.WriteLine();
     Console.WriteLine($"Error: {ex.Message}");
     Console.WriteLine();
-    Console.WriteLine($"A crash log has been written to: {crashLogPath}");
+
+    if (successfulLogPath != null)
+    {
+        Console.WriteLine($"✓ A crash log has been written to:");
+        Console.WriteLine($"  {successfulLogPath}");
+    }
+    else
+    {
+        Console.WriteLine("⚠ WARNING: Could not write crash log to disk!");
+        Console.WriteLine("  Attempted locations:");
+        foreach (var location in logLocations)
+        {
+            Console.WriteLine($"    - {location}");
+        }
+        Console.WriteLine();
+        Console.WriteLine("Crash details:");
+        Console.WriteLine(crashLog);
+    }
+
     Console.WriteLine();
     Console.WriteLine("Common causes:");
     Console.WriteLine("  - Invalid JSON syntax in appsettings.json");
     Console.WriteLine("  - Missing or corrupted configuration files");
     Console.WriteLine("  - Permission issues accessing files or directories");
+    Console.WriteLine("  - Port already in use by another application");
     Console.WriteLine();
-    Console.WriteLine("Please check the crash log for detailed information.");
+
+    if (successfulLogPath != null)
+    {
+        Console.WriteLine("Please check the crash log for detailed information.");
+    }
+    else
+    {
+        Console.WriteLine("Please copy the crash details shown above for troubleshooting.");
+    }
+
     Console.WriteLine();
+    Console.WriteLine("Press any key to exit...");
+
+    try
+    {
+        Console.ReadKey(true);
+    }
+    catch
+    {
+        // Console might not be available in some scenarios
+        System.Threading.Thread.Sleep(10000); // Wait 10 seconds so user can read the error
+    }
 
     Environment.Exit(1);
 }

@@ -102,10 +102,10 @@ Make sure `ActiveProvider` matches one of your configured providers:
 
 1. Double-click `TransparentAiAgentGui.exe` to start the application
 2. A command prompt window will open showing startup logs
-3. Wait for the message showing which port the server is listening on (e.g., "Now listening on: http://localhost:54321")
-4. Your default web browser will automatically open to the correct URL
+3. Wait for the message "Server configured to listen on:" which shows the HTTP and HTTPS ports
+4. Your default web browser will automatically open to the HTTPS URL (default: https://localhost:7299)
 
-**Note:** The application automatically selects an available port at startup. The port number will be shown in the console window and your browser will open to the correct URL automatically.
+**Note:** By default, the application uses port 5025 for HTTP and 7299 for HTTPS. These ports can be changed in `appsettings.json` if needed (see Configuration Options below).
 
 ### 4. Verify Installation
 
@@ -144,6 +144,22 @@ data/
 ### Basic Settings
 
 Edit `appsettings.json` to customize:
+
+#### Server Ports
+
+```json
+"Server": {
+  "HttpPort": 5025,       ← HTTP port (default: 5025)
+  "HttpsPort": 7299       ← HTTPS port (default: 7299)
+}
+```
+
+**When to change ports:**
+- If the default ports are already in use by another application
+- If you want to run multiple instances of the application
+- If your organization requires specific port ranges
+
+**Note:** After changing ports, the browser will automatically open to the new HTTPS URL on startup.
 
 #### Agent Behavior
 
@@ -216,12 +232,17 @@ See [Configuration Guide](configuration-guide.md) for more details.
 **Issue:** Browser shows connection error
 
 **Solutions:**
-1. Check the console window - look for error messages and note the actual port being used
-2. Verify the application started successfully (look for "Now listening on..." message)
-3. Manually navigate to the URL shown in the console window
+1. Check the console window - look for error messages in the startup logs
+2. Verify the application started successfully (look for "Server configured to listen on:" message)
+3. Manually navigate to https://localhost:7299 (or the HTTPS port you configured)
 4. Check Windows Firewall settings
-
-**Note:** The application automatically selects an available port, so port conflicts should be rare. If the browser doesn't open automatically, check the console for the actual URL.
+5. If port conflict occurs (error message will mention port already in use), change the ports in `appsettings.json`:
+   ```json
+   "Server": {
+     "HttpPort": 5026,    ← Try different ports
+     "HttpsPort": 7300
+   }
+   ```
 
 ### "API key invalid" or LLM errors
 

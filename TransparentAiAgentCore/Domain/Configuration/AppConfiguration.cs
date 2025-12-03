@@ -6,6 +6,7 @@ public class AppConfiguration
 {
     public AgentConfiguration Agent { get; set; } = new();
     public LLMConfiguration LLM { get; set; } = new();
+    public ServerConfiguration Server { get; set; } = new();
 
     // Tools configuration is loaded from a separate tools.json file
     [JsonIgnore]
@@ -15,6 +16,7 @@ public class AppConfiguration
     {
         Agent.Validate();
         LLM.Validate();
+        Server.Validate();
         Tools.Validate();
     }
 }
