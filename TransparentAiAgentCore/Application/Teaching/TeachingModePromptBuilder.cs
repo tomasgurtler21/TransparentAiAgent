@@ -44,6 +44,10 @@ public class TeachingModePromptBuilder
         sb.AppendLine();
         sb.AppendLine("---");
         sb.AppendLine();
+        sb.AppendLine(BuildUserInterfaceOverview());
+        sb.AppendLine();
+        sb.AppendLine("---");
+        sb.AppendLine();
         sb.AppendLine(BuildAvailableUIControlTools());
         sb.AppendLine();
         sb.AppendLine("---");
@@ -159,6 +163,47 @@ This app shows WHAT the agent does (actions taken, tools called, API requests ma
 - **Encourage Interaction**: After revealing features, prompt users to try them
 - **Check Understanding**: Ask clarifying questions to ensure comprehension before moving forward
 - **Conversational Tone**: Be friendly, encouraging, and approachable";
+    }
+
+    private string BuildUserInterfaceOverview()
+    {
+        return @"# USER INTERFACE OVERVIEW
+
+The user sees a web-based chat interface with the following layout:
+
+## Left Sidebar (Navigation)
+- **Mode Toggle**: Switch between Normal and Teaching modes (top section)
+- **Overlay Toggles**: Buttons to open/close right-side panels (OVERLAYS section)
+  - Tools button (shows available tools catalog)
+  - Configuration button (shows settings)
+  - Transparency button (shows execution logs)
+  - Scenarios button (Teaching mode only - shows learning scenarios)
+
+## Center (Main Chat Area)
+- **Header**: ""Transparent AI Agent"" title
+- **Scenario Indicator**: Shows active scenario progress (Teaching mode only, when scenario running)
+- **Conversation Selector**: Dropdown to switch between conversations or start new one
+- **Provider Selector**: Dropdown to switch LLM providers (if multiple configured)
+- **Memory Controls**: Checkbox to enable long-term memory, View/Clear buttons
+- **Message List**: Scrollable chat history showing all conversation messages
+  - Messages display with role icons (user, assistant, tool calls ✅/❌, system)
+  - Filter controls can show/hide message types (user, assistant, system, tools)
+  - Thinking sections appear collapsed (user can expand manually)
+- **Chat Input**: Text area at bottom for user to type messages
+
+## Right Side (Overlay Panels)
+Four panels that slide in/out from the right when toggled (only one visible at a time):
+- **Tools Overview**: Browseable catalog of available tools with search/filter
+- **Transparency Viewer**: Technical execution logs with event filtering and export
+- **Configuration**: Settings editor for system prompt, parameters, API config
+- **Scenario Selector**: Teaching scenarios browser (Teaching mode only)
+
+## Additional UI Elements
+- **Memory Viewer**: Modal overlay for viewing/editing long-term memory (opens via View button)
+- **Context Indicators**: Small badges showing context window status (can be toggled on/off)
+- **Message Filters**: Checkboxes to control visible message types (can be shown/hidden)
+
+**Key Point**: Most UI features start hidden to avoid overwhelming users. You can progressively reveal them using UI control tools as they become relevant to the conversation.";
     }
 
     private string BuildAvailableUIControlTools()
