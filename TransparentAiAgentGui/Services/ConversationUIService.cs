@@ -199,55 +199,53 @@ public class ConversationUIService : IConversationUIService
             // Process streaming response
             await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(content)))
             {
-                if (!string.IsNullOrEmpty(chunk.ContentDelta))
+                // Process ALL chunks, even with empty ContentDelta (signal chunks)
+                // Use buffer to get renderable content (buffer created when placeholder created)
+                var renderableContent = buffer?.AppendAndGetRenderable(chunk.ContentDelta ?? string.Empty);
+
+                // Throttle UI updates (only if we have actual renderable content)
+                var now = DateTime.UtcNow;
+                if (renderableContent != null && (now - lastUpdate).TotalMilliseconds >= ThrottleMilliseconds)
                 {
-                    // Use buffer to get renderable content (buffer created when placeholder created)
-                    var renderableContent = buffer?.AppendAndGetRenderable(chunk.ContentDelta);
-
-                    // Throttle UI updates
-                    var now = DateTime.UtcNow;
-                    if (renderableContent != null && (now - lastUpdate).TotalMilliseconds >= ThrottleMilliseconds)
+                    lock (_streamingLock)
                     {
-                        lock (_streamingLock)
+                        // If we have content but no streaming message (e.g., after tool execution),
+                        // create a new streaming placeholder for the next LLM response
+                        if (_currentStreamingMessage == null)
                         {
-                            // If we have content but no streaming message (e.g., after tool execution),
-                            // create a new streaming placeholder for the next LLM response
-                            if (_currentStreamingMessage == null)
+                            // ✅ FIX: Create a FRESH buffer for this new placeholder
+                            buffer = new MarkdownStreamingBuffer();
+
+                            var newStreamingMessage = new UIMessage
                             {
-                                // ✅ FIX: Create a FRESH buffer for this new placeholder
-                                buffer = new MarkdownStreamingBuffer();
+                                Id = Guid.NewGuid(),
+                                Role = TransparentAiAgentCore.Domain.Enums.MessageRole.Assistant,
+                                Content = string.Empty,
+                                Timestamp = DateTime.UtcNow,
+                                ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext
+                            };
+                            _currentStreamingMessage = newStreamingMessage;
 
-                                var newStreamingMessage = new UIMessage
-                                {
-                                    Id = Guid.NewGuid(),
-                                    Role = TransparentAiAgentCore.Domain.Enums.MessageRole.Assistant,
-                                    Content = string.Empty,
-                                    Timestamp = DateTime.UtcNow,
-                                    ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext
-                                };
-                                _currentStreamingMessage = newStreamingMessage;
-
-                                lock (_messagesLock)
-                                {
-                                    _messages.Add(newStreamingMessage);
-                                }
-                                OnMessagesChanged();
-                            }
-
-                            if (_currentStreamingMessage != null)
+                            lock (_messagesLock)
                             {
-                                _currentStreamingMessage.Content += renderableContent;
-
-                                StreamingMessageUpdated?.Invoke(this, new StreamingMessageUpdate
-                                {
-                                    MessageId = _currentStreamingMessage.Id,
-                                    Content = _currentStreamingMessage.Content,
-                                    IsComplete = false
-                                });
+                                _messages.Add(newStreamingMessage);
                             }
+                            OnMessagesChanged();
                         }
-                        lastUpdate = now;
+
+                        if (_currentStreamingMessage != null)
+                        {
+                            _currentStreamingMessage.Content += renderableContent;
+
+                            StreamingMessageUpdated?.Invoke(this, new StreamingMessageUpdate
+                            {
+                                MessageId = _currentStreamingMessage.Id,
+                                Content = _currentStreamingMessage.Content,
+                                IsComplete = false
+                            });
+                        }
                     }
+                    lastUpdate = now;
                 }
 
                 // Handle status changes - refresh messages when tools are being executed
@@ -485,49 +483,46 @@ public class ConversationUIService : IConversationUIService
             }
         }
 
-        // Handle content deltas - update streaming placeholder
-        if (!string.IsNullOrEmpty(chunk.ContentDelta))
+        // Handle content deltas - update streaming placeholder (process ALL chunks)
+        var renderableContent = _scenarioStreamingBuffer?.AppendAndGetRenderable(chunk.ContentDelta ?? string.Empty);
+
+        if (renderableContent != null)
         {
-            var renderableContent = _scenarioStreamingBuffer?.AppendAndGetRenderable(chunk.ContentDelta);
-
-            if (renderableContent != null)
+            lock (_streamingLock)
             {
-                lock (_streamingLock)
+                // If no streaming message exists (e.g., after tool execution), create a new one
+                if (_currentStreamingMessage == null)
                 {
-                    // If no streaming message exists (e.g., after tool execution), create a new one
-                    if (_currentStreamingMessage == null)
+                    // ✅ Create fresh buffer for new placeholder (Bug 2 fix for scenarios)
+                    _scenarioStreamingBuffer = new MarkdownStreamingBuffer();
+
+                    var newStreamingMessage = new UIMessage
                     {
-                        // ✅ Create fresh buffer for new placeholder (Bug 2 fix for scenarios)
-                        _scenarioStreamingBuffer = new MarkdownStreamingBuffer();
+                        Id = Guid.NewGuid(),
+                        Role = TransparentAiAgentCore.Domain.Enums.MessageRole.Assistant,
+                        Content = string.Empty,
+                        Timestamp = DateTime.UtcNow,
+                        ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext
+                    };
+                    _currentStreamingMessage = newStreamingMessage;
 
-                        var newStreamingMessage = new UIMessage
-                        {
-                            Id = Guid.NewGuid(),
-                            Role = TransparentAiAgentCore.Domain.Enums.MessageRole.Assistant,
-                            Content = string.Empty,
-                            Timestamp = DateTime.UtcNow,
-                            ContextStatus = TransparentAiAgentCore.Domain.Enums.MessageContextStatus.InContext
-                        };
-                        _currentStreamingMessage = newStreamingMessage;
-
-                        lock (_messagesLock)
-                        {
-                            _messages.Add(newStreamingMessage);
-                        }
-                        OnMessagesChanged();
-                    }
-
-                    if (_currentStreamingMessage != null)
+                    lock (_messagesLock)
                     {
-                        _currentStreamingMessage.Content += renderableContent;
-
-                        StreamingMessageUpdated?.Invoke(this, new StreamingMessageUpdate
-                        {
-                            MessageId = _currentStreamingMessage.Id,
-                            Content = _currentStreamingMessage.Content,
-                            IsComplete = false
-                        });
+                        _messages.Add(newStreamingMessage);
                     }
+                    OnMessagesChanged();
+                }
+
+                if (_currentStreamingMessage != null)
+                {
+                    _currentStreamingMessage.Content += renderableContent;
+
+                    StreamingMessageUpdated?.Invoke(this, new StreamingMessageUpdate
+                    {
+                        MessageId = _currentStreamingMessage.Id,
+                        Content = _currentStreamingMessage.Content,
+                        IsComplete = false
+                    });
                 }
             }
         }
