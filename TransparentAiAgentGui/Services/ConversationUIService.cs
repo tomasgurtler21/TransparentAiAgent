@@ -363,7 +363,19 @@ public class ConversationUIService : IConversationUIService
 
     public async Task ClearConversationAsync()
     {
+        // Save the current system prompt before clearing
+        var messages = _conversationManager.GetAllMessages();
+        var systemMessage = messages.FirstOrDefault(m => m.Role == TransparentAiAgentCore.Domain.Enums.MessageRole.System);
+        var systemPrompt = systemMessage?.Content;
+
         _conversationManager.ResetConversation();
+
+        // Re-add the system prompt if it existed
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            _conversationManager.UpdateSystemPrompt(systemPrompt);
+        }
+
         lock (_messagesLock)
         {
             _messages.Clear();
@@ -372,6 +384,9 @@ public class ConversationUIService : IConversationUIService
         {
             _pendingAutoMessages.Clear();
         }
+
+        // Refresh UI to show the system message
+        RefreshMessages();
         OnMessagesChanged();
         await Task.CompletedTask;
     }
