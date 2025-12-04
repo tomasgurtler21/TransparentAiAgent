@@ -194,26 +194,46 @@ Edit `appsettings.json` to customize:
 }
 ```
 
-### Advanced: MCP Servers
+### Advanced: MCP Servers (External Tools)
 
-To enable Model Context Protocol (MCP) servers for additional tools:
+To enable Model Context Protocol (MCP) servers for additional tools, create/edit the `tools.json` file in the same directory as the executable.
+
+**Important:** MCP server configuration is in a **separate `tools.json` file**, not in `appsettings.json`.
+
+**Example tools.json:**
 
 ```json
-"MCP": {
+{
+  "EnableTools": true,
+  "ToolExecutionMode": "Sequential",
   "Servers": [
     {
       "Name": "todo-list",
       "Command": "npx",
       "Args": ["-y", "@anthropic/mcp-server-todo-list"],
       "Env": {}
+    },
+    {
+      "Name": "my-local-tool",
+      "Command": "C:\\Users\\YourName\\MCPServers\\my-tool.exe",
+      "Args": ["--port", "8080"],
+      "Env": {}
     }
   ],
   "AutoDiscoverTools": true,
-  "ToolExecutionTimeoutSeconds": 180
+  "ToolExecutionTimeoutSeconds": 180,
+  "MaxToolCallDepth": 10
 }
 ```
 
-See [Configuration Guide](configuration-guide.md) for more details.
+**Using Local Binary Files** (⭐ Surprisingly many people don't know this is possible!):
+- You can use **local .exe files or binaries** by providing the **full absolute path** in the `Command` field
+- On Windows, use double backslashes (`\\`) or forward slashes (`/`) in paths
+- Example: `"Command": "C:\\Tools\\my-mcp-server.exe"`
+
+**Note:** A `tools.Example.json` file is included with detailed comments and more examples. Copy it to `tools.json` and customize as needed.
+
+See [MCP Tools Documentation](../../04-components/tools/mcp/README.md) for more details.
 
 ## Troubleshooting
 
@@ -341,7 +361,7 @@ If you encounter issues:
 
 1. Check the console window for error messages
 2. Review the [Troubleshooting Guide](troubleshooting.md)
-3. Consult the [Configuration Guide](configuration-guide.md)
+3. Consult the [LLM Provider Selector Guide](llm-provider-selector.md) or [Troubleshooting Guide](troubleshooting.md)
 4. Check the [FAQ](../faq.md) (if available)
 5. Report issues on GitHub: [Project Issues](https://github.com/tomasgurtler21/TransparentAiAgent/issues)
 

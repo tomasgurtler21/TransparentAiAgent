@@ -63,8 +63,9 @@ public class BuiltInUIControlToolRegistry : IToolRegistry
             CreateGetStateTool(),
             CreateTransparencyViewerTool(),
             CreateToolsPanelTool(),
-            CreateContextIndicatorsTool(),
-            CreateConfigurationTool()
+            CreateContextIndicatorsTool()
+            // TEMPORARILY DISABLED: Configuration overlay tool not working well yet
+            // CreateConfigurationTool()
         };
 
         return tools.AsReadOnly();

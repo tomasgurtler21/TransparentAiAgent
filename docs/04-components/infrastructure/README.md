@@ -68,7 +68,7 @@ Manages persistent agent memory across conversation sessions.
 
 - [LLM Providers](../llm/README.md) - LLM integration infrastructure
 - [Tools](../tools/README.md) - Tool execution infrastructure
-- [Configuration Guide](../../05-guides/deployment/configuration-guide.md)
+- [Configuration Guide](../../05-guides/installation/llm-provider-selector.md)
 
 ---
 

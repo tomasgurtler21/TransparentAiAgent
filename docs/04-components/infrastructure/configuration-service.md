@@ -16,7 +16,7 @@
 
 **What does NOT belong here**:
 - ❌ Configuration models → See Domain/Configuration
-- ❌ Configuration guide → See `docs/05-guides/deployment/configuration-guide.md`
+- ❌ Configuration guide → See `docs/05-guides/installation/llm-provider-selector.md`
 
 ---
 
@@ -49,7 +49,7 @@ ConfigurationService manages application configuration loading from files, runti
 
 ## Related Documentation
 
-- [Configuration Guide](../../05-guides/deployment/configuration-guide.md)
+- [Configuration Guide](../../05-guides/installation/llm-provider-selector.md)
 - [AppConfiguration](../../02-architecture/overview.md#configuration)
 
 ---

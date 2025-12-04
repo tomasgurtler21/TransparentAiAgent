@@ -617,7 +617,7 @@ Not optimized for:
 - **Concept**: [Long-Term Memory](../../03-concepts/long-term-memory.md) - High-level overview
 - **Tools**: [Long-Term Memory Tools](../tools/builtin/long-term-memory-tools.md) - Built-in tools
 - **Guide**: [Using Long-Term Memory](../../05-guides/features/using-long-term-memory.md) - Usage guide
-- **Configuration**: [Configuration Guide](../../05-guides/deployment/configuration-guide.md#long-term-memory) - Setup details
+- **Configuration**: [Configuration Guide](../../05-guides/installation/llm-provider-selector.md#long-term-memory) - Setup details
 - **Design**: `LONG_TERM_MEMORY_DESIGN.md` (project root) - Design decisions
 - **Tests**: `TransparentAiAgentCore_Tests/Infrastructure/Memory/` - Test suite
 

@@ -40,6 +40,34 @@
         "DEBUG": "true",
         "INHERITED_VAR_TO_REMOVE": null
       }
+    },
+    {
+      "// Example": "Local binary/executable file (Windows .exe, Linux binary, etc.)",
+      "// IMPORTANT": "Use FULL ABSOLUTE PATH to the executable in the Command field",
+      "// Note": "On Windows, use double backslashes (\\\\) or forward slashes (/) in paths",
+      "Name": "local-tool",
+      "Command": "C:\\Users\\YourName\\MCPServers\\my-custom-tool.exe",
+      "Args": [
+        "--port",
+        "8080",
+        "--config",
+        "C:\\Users\\YourName\\MCPServers\\config.json"
+      ],
+      "Env": {
+        "// Description": "Environment variables for the local executable",
+        "LOG_LEVEL": "info",
+        "DATA_DIR": "C:\\Users\\YourName\\MCPServers\\data"
+      }
+    },
+    {
+      "// Example": "Python MCP server using full path to python.exe",
+      "// Tip": "Useful when you have multiple Python versions or virtual environments",
+      "Name": "python-tool",
+      "Command": "C:\\Python311\\python.exe",
+      "Args": [
+        "C:\\MCPServers\\my_mcp_server.py"
+      ],
+      "Env": {}
     }
   ],
 

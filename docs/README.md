@@ -113,7 +113,7 @@ Historical and session-specific docs
 
 **Configure the application**
 → [LLM Provider Selector Guide](05-guides/installation/llm-provider-selector.md) (current)
-→ [Configuration Guide](05-guides/installation/configuration-guide.md) (archived)
+→ [Configuration Guide](09-archive/configuration-guide.md) (archived - legacy single-provider setup)
 
 **Manage user data and storage**
 → [Data Storage Guide](05-guides/installation/data-storage.md)

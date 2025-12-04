@@ -409,11 +409,11 @@ public class ScenarioExecutor : IScenarioExecutor
         {
             _logger.LogError(ex, "Error in ExecuteAutoMessageStepAsync for scenario");
 
-            // ✅ FIX: Send error chunk to UI so it can clean up streaming state
+            // ✅ FIX: Send error chunk with actual error message to UI
             StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
                 CurrentScenario!,
                 CurrentStepIndex,
-                new StreamingResponseChunk(null, true, StreamingStatus.Error)));
+                new StreamingResponseChunk(ex.Message, true, StreamingStatus.Error)));
 
             throw; // Re-throw so scenario execution stops
         }
@@ -508,11 +508,11 @@ public class ScenarioExecutor : IScenarioExecutor
             {
                 _logger.LogError(ex, "Error in background orchestrator processing for scenario user message");
 
-                // ✅ FIX: Send error chunk to UI so it can clean up streaming state
+                // ✅ FIX: Send error chunk with actual error message to UI
                 StreamingUpdate?.Invoke(this, new ScenarioStreamingUpdateEventArgs(
                     capturedScenario,
                     capturedStepIndex,
-                    new StreamingResponseChunk(null, true, StreamingStatus.Error)));
+                    new StreamingResponseChunk(ex.Message, true, StreamingStatus.Error)));
             }
         }, cancellationToken);
 

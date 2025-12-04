@@ -8,6 +8,7 @@ using TransparentAiAgentCore.Application.Scenarios;
 using TransparentAiAgentCore.Domain.Memory;
 using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Domain.UIControl;
+using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentGui.Services;
 
 namespace TransparentAiAgentGui_Tests.Services;
@@ -22,6 +23,7 @@ public class ConversationUIServiceMemoryTests
     private Mock<IConversationManager> _mockConversationManager = null!;
     private Mock<IScenarioExecutor> _mockScenarioExecutor = null!;
     private Mock<IConversationHistoryManager> _mockHistoryManager = null!;
+    private Mock<ITransparencyService> _mockTransparencyService = null!;
     private Mock<ILongTermMemoryService> _mockMemoryService = null!;
     private Mock<IAppModeService> _mockAppModeService = null!;
     private LongTermMemoryConfiguration _memoryConfig = null!;
@@ -34,6 +36,7 @@ public class ConversationUIServiceMemoryTests
         _mockConversationManager = new Mock<IConversationManager>();
         _mockScenarioExecutor = new Mock<IScenarioExecutor>();
         _mockHistoryManager = new Mock<IConversationHistoryManager>();
+        _mockTransparencyService = new Mock<ITransparencyService>();
         _mockMemoryService = new Mock<ILongTermMemoryService>();
         _mockAppModeService = new Mock<IAppModeService>();
 
@@ -59,6 +62,7 @@ public class ConversationUIServiceMemoryTests
             _mockConversationManager.Object,
             _mockScenarioExecutor.Object,
             _mockHistoryManager.Object,
+            _mockTransparencyService.Object,
             _mockMemoryService.Object,
             _mockAppModeService.Object,
             _memoryConfig);
@@ -141,6 +145,7 @@ public class ConversationUIServiceMemoryTests
             _mockConversationManager.Object,
             _mockScenarioExecutor.Object,
             _mockHistoryManager.Object,
+            _mockTransparencyService.Object,
             _mockMemoryService.Object,
             _mockAppModeService.Object,
             _memoryConfig);
@@ -235,6 +240,7 @@ public class ConversationUIServiceMemoryTests
             _mockConversationManager.Object,
             _mockScenarioExecutor.Object,
             _mockHistoryManager.Object,
+            _mockTransparencyService.Object,
             _mockMemoryService.Object,
             _mockAppModeService.Object,
             _memoryConfig);

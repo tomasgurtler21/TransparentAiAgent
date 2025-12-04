@@ -139,7 +139,7 @@ Represents a complete response from an LLM provider.
 
 No direct configuration. Providers are selected via `LLMConfiguration` in application config.
 
-See: `docs/05-guides/deployment/configuration-guide.md`
+See: `docs/05-guides/installation/llm-provider-selector.md`
 
 ## Testing Strategy
 

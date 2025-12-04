@@ -16,7 +16,7 @@
 
 **What does NOT belong here**:
 - ❌ OAuth setup → See `docs/06-reference/providers/azure-openai/authentication.md`
-- ❌ Configuration → See `docs/05-guides/deployment/configuration-guide.md`
+- ❌ Configuration → See `docs/05-guides/installation/llm-provider-selector.md`
 
 ---
 
@@ -49,7 +49,7 @@ LLM providers use IAuthenticationProvider to get credentials at initialization.
 ## Related Documentation
 
 - [Azure OpenAI Auth](../../06-reference/providers/azure-openai/authentication.md)
-- [Configuration Guide](../../05-guides/deployment/configuration-guide.md)
+- [Configuration Guide](../../05-guides/installation/llm-provider-selector.md)
 
 ---
 

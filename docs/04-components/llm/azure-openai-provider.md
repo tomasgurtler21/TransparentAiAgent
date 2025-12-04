@@ -269,7 +269,7 @@ LLMResponse response = await provider.SendRequestAsync(request);
 - [Provider Abstraction](provider-abstraction.md) - ILLMProvider interface
 - [Anthropic Provider](anthropic-provider.md) - Alternative implementation
 - [Azure OpenAI Auth Guide](../../06-reference/providers/azure-openai/authentication.md) - OAuth setup
-- [Configuration Guide](../../05-guides/deployment/configuration-guide.md) - Setup instructions
+- [Configuration Guide](../../05-guides/installation/llm-provider-selector.md) - Setup instructions
 
 ---
 

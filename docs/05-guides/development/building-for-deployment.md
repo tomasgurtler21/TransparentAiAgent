@@ -153,6 +153,6 @@ After building the deployment package:
 4. **Write release notes** - Document what's new and any breaking changes
 
 See also:
-- [Installation Guide](installation-guide.md) - How to install and configure
+- [Installation Guide](../installation/installation-guide.md) - How to install and configure
 - [Folder Structure](folder-structure.md) - Understanding the deployment layout
-- [Configuration Guide](configuration-guide.md) - Configuring LLM providers
+- [LLM Provider Selector Guide](../installation/llm-provider-selector.md) - Configuring LLM providers

@@ -75,7 +75,8 @@ public class UIControlToolExecutor : IToolExecutor
                 "ui_control_transparency_viewer" => ExecuteTransparencyViewerTool(_uiControlService, argsDoc),
                 "ui_control_tools_panel" => ExecuteToolsPanelTool(_uiControlService, argsDoc),
                 "ui_control_context_indicators" => ExecuteContextIndicatorsTool(_uiControlService, argsDoc),
-                "ui_control_configuration" => ExecuteConfigurationTool(_uiControlService, argsDoc),
+                // TEMPORARILY DISABLED: Configuration overlay tool not working well yet
+                "ui_control_configuration" => Result<UIState>.Fail("Configuration overlay tool is temporarily disabled"),
                 _ => Result<UIState>.Fail($"Unknown tool: {tool.Name}")
             };
 

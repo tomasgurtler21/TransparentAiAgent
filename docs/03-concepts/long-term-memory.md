@@ -20,7 +20,7 @@
 - ❌ Component-specific implementation details (→ belongs in [Long-Term Memory Service](../04-components/infrastructure/long-term-memory-service.md))
 - ❌ Step-by-step how-to guides (→ belongs in [Using Long-Term Memory](../05-guides/features/using-long-term-memory.md))
 - ❌ Code snippets (→ belongs in component docs)
-- ❌ Configuration details (→ belongs in [Configuration Guide](../05-guides/deployment/configuration-guide.md))
+- ❌ Configuration details (→ belongs in [Configuration Guide](../05-guides/installation/llm-provider-selector.md))
 
 ---
 
@@ -323,7 +323,7 @@ Long-term memory can be configured in `appsettings.json`:
 }
 ```
 
-See [Configuration Guide](../05-guides/deployment/configuration-guide.md) for details.
+See [Configuration Guide](../05-guides/installation/llm-provider-selector.md) for details.
 
 ## Limitations
 
@@ -383,7 +383,7 @@ Long-term memory is successful when:
 - **Component**: [Long-Term Memory Service](../04-components/infrastructure/long-term-memory-service.md) - Technical implementation
 - **Tools**: [Long-Term Memory Tools](../04-components/tools/builtin/long-term-memory-tools.md) - Built-in tools
 - **Guide**: [Using Long-Term Memory](../05-guides/features/using-long-term-memory.md) - Step-by-step usage guide
-- **Configuration**: [Configuration Guide](../05-guides/deployment/configuration-guide.md#long-term-memory) - Setup and configuration
+- **Configuration**: [Configuration Guide](../05-guides/installation/llm-provider-selector.md#long-term-memory) - Setup and configuration
 - **Design**: `LONG_TERM_MEMORY_DESIGN.md` (project root) - Design decisions
 - **Implementation**: `LONG_TERM_MEMORY_IMPLEMENTATION_PLAN.md` (project root) - Implementation details
 

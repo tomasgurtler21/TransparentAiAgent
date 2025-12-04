@@ -50,8 +50,8 @@
 - Reasoning models configuration
 - Troubleshooting provider configuration
 
-#### [configuration-guide.md](configuration-guide.md)
-**⚠️ Archived** - Legacy single-provider configuration guide.
+#### [configuration-guide.md](../../09-archive/configuration-guide.md)
+**⚠️ Archived** - Legacy single-provider configuration guide (moved to archive).
 
 **Use `llm-provider-selector.md` instead** for current multi-provider configuration.
 

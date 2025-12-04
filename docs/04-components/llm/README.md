@@ -400,7 +400,7 @@ Real API calls tested separately with valid credentials.
 
 - **Guides**:
   - [LLM Provider Selector Guide](../../05-guides/deployment/llm-provider-selector.md) - Multi-provider configuration
-  - [Configuration Guide](../../05-guides/deployment/configuration-guide.md) - General configuration
+  - [Configuration Guide](../../05-guides/installation/llm-provider-selector.md) - General configuration
 
 - **Reference**:
   - [Anthropic API Reference](../../06-reference/providers/anthropic/README.md)

@@ -141,8 +141,10 @@
             IsLoading = true;
             ErrorMessage = null;
 
-            // Current conversation auto-saves (already designed)
-            // Just clear the current conversation
+            // Trigger memory update prompt if enabled (same as "End Conversation")
+            await ConversationService.EndConversationAsync();
+
+            // Clear the current conversation
             await ConversationService.ClearConversationAsync();
 
             // Reset state

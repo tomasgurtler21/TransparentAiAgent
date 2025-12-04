@@ -18,7 +18,7 @@
 **What does NOT belong here**:
 - ❌ Technical implementation details (→ [Long-Term Memory Service](../../04-components/infrastructure/long-term-memory-service.md))
 - ❌ Conceptual overview (→ [Long-Term Memory Concept](../../03-concepts/long-term-memory.md))
-- ❌ Configuration details (→ [Configuration Guide](../deployment/configuration-guide.md))
+- ❌ Configuration details (→ [Configuration Guide](../installation/llm-provider-selector.md))
 
 ---
 
@@ -607,7 +607,7 @@ If multiple people use the same instance:
 - **Concept**: [Long-Term Memory](../../03-concepts/long-term-memory.md) - Understanding the feature
 - **Component**: [Long-Term Memory Service](../../04-components/infrastructure/long-term-memory-service.md) - Technical details
 - **Tools**: [Long-Term Memory Tools](../../04-components/tools/builtin/long-term-memory-tools.md) - How tools work
-- **Configuration**: [Configuration Guide](../deployment/configuration-guide.md#long-term-memory) - Setup and settings
+- **Configuration**: [Configuration Guide](../installation/llm-provider-selector.md#long-term-memory) - Setup and settings
 
 ---
 

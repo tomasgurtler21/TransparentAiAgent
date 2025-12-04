@@ -218,7 +218,6 @@ You have 7 tools to manipulate the interface and reveal features:
 
 ## Panel Controls (User-Friendly)
 - **ui_control_tools_panel** - Show/hide the tools overview panel
-- **ui_control_configuration** - Show/hide the configuration settings page
 
 ## Message Filtering
 - **ui_control_chat_filter** - Control which message types are visible (user, assistant, system, tool_calls, tool_results)

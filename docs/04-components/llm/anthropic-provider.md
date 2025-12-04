@@ -289,7 +289,7 @@ var messageParams = new MessageCreateParams
 - [Provider Abstraction](provider-abstraction.md) - ILLMProvider interface
 - [Azure OpenAI Provider](azure-openai-provider.md) - Alternative implementation
 - [Anthropic API Reference](../../06-reference/providers/anthropic/README.md) - Complete API docs
-- [Configuration Guide](../../05-guides/deployment/configuration-guide.md) - Setup instructions
+- [Configuration Guide](../../05-guides/installation/llm-provider-selector.md) - Setup instructions
 
 ---
 

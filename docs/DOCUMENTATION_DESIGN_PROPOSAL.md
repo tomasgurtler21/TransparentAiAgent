@@ -993,7 +993,7 @@ graph TD
 | `AZURE_OPENAI_AUTHENTICATION.md` | `06-reference/providers/azure-openai/authentication.md` | Move |
 | `OAUTH_IMPLEMENTATION_SUMMARY.md` | `09-archive/implementation-notes/oauth-implementation-notes.md` | Archive |
 | `DEPLOYMENT_TROUBLESHOOTING.md` | `05-guides/deployment/troubleshooting.md` | Move |
-| `CONFIGURATION_SETUP.md` | `05-guides/deployment/configuration-guide.md` | Move |
+| `CONFIGURATION_SETUP.md` | `05-guides/installation/llm-provider-selector.md` | Move |
 | `SESSION_SUMMARY.md` | `09-archive/sessions/2025-11-03-session-summary.md` | Archive with date |
 | `STARTUP_FIX_SUMMARY.md` | `09-archive/implementation-notes/startup-fix-summary.md` | Archive |
 | `anthropic/*.md` | `06-reference/providers/anthropic/*.md` | Keep structure, just move |

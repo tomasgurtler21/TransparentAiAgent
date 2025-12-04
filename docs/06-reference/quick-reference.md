@@ -147,7 +147,7 @@ Streaming Handler (buffer, format)
    ```
 
 3. **Configuration Manager**:
-   - Load from `appsettings.json` + `agent-config.json`
+   - Load from `appsettings.json` (LLM providers) + `tools.json` (MCP servers)
    - Layered configuration
    - Configuration models
 

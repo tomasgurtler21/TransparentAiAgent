@@ -8,6 +8,7 @@ using TransparentAiAgentCore.Application.Scenarios;
 using TransparentAiAgentCore.Domain.ConversationHistory;
 using TransparentAiAgentCore.Domain.Enums;
 using TransparentAiAgentCore.Domain.Models;
+using TransparentAiAgentCore.Infrastructure.Transparency;
 using TransparentAiAgentGui.Services;
 
 namespace TransparentAiAgentGui_Tests.Services;
@@ -19,6 +20,7 @@ public class ConversationUIServiceTests
     private Mock<IConversationManager> _mockConversationManager = null!;
     private Mock<IScenarioExecutor> _mockScenarioExecutor = null!;
     private Mock<IConversationHistoryManager> _mockHistoryManager = null!;
+    private Mock<ITransparencyService> _mockTransparencyService = null!;
     private Mock<ILogger<ConversationUIService>> _mockLogger = null!;
     private ConversationUIService _service = null!;
 
@@ -29,6 +31,7 @@ public class ConversationUIServiceTests
         _mockConversationManager = new Mock<IConversationManager>();
         _mockScenarioExecutor = new Mock<IScenarioExecutor>();
         _mockHistoryManager = new Mock<IConversationHistoryManager>();
+        _mockTransparencyService = new Mock<ITransparencyService>();
         _mockLogger = new Mock<ILogger<ConversationUIService>>();
 
         // Setup default return for GetAllMessages
@@ -42,6 +45,7 @@ public class ConversationUIServiceTests
             _mockConversationManager.Object,
             _mockScenarioExecutor.Object,
             _mockHistoryManager.Object,
+            _mockTransparencyService.Object,
             logger: _mockLogger.Object);
     }
 
@@ -53,7 +57,7 @@ public class ConversationUIServiceTests
 
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(null!, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object, logger: _mockLogger.Object));
+            new ConversationUIService(null!, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object, _mockTransparencyService.Object, logger: _mockLogger.Object));
     }
 
     [TestMethod]
@@ -61,7 +65,7 @@ public class ConversationUIServiceTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(_mockOrchestrator.Object, null!, _mockScenarioExecutor.Object, _mockHistoryManager.Object, logger: _mockLogger.Object));
+            new ConversationUIService(_mockOrchestrator.Object, null!, _mockScenarioExecutor.Object, _mockHistoryManager.Object, _mockTransparencyService.Object, logger: _mockLogger.Object));
     }
 
     [TestMethod]
@@ -69,7 +73,7 @@ public class ConversationUIServiceTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentNullException>(() =>
-            new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, null!, logger: _mockLogger.Object));
+            new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, null!, _mockTransparencyService.Object, logger: _mockLogger.Object));
     }
 
     [TestMethod]
@@ -160,7 +164,7 @@ public class ConversationUIServiceTests
             .Returns(messages.AsReadOnly());
 
         // Create new service to pick up the message
-        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object, _mockTransparencyService.Object);
         Assert.AreEqual(1, service.Messages.Count); // Verify message was loaded
 
         var eventRaised = false;
@@ -196,7 +200,7 @@ public class ConversationUIServiceTests
             .Returns(messages.AsReadOnly());
 
         // Act
-        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object, _mockTransparencyService.Object);
 
         // Assert
         Assert.AreEqual(2, service.Messages.Count);
@@ -220,7 +224,7 @@ public class ConversationUIServiceTests
             .Returns(existingMessages.AsReadOnly());
 
         // Create service with existing messages
-        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object);
+        var service = new ConversationUIService(_mockOrchestrator.Object, _mockConversationManager.Object, _mockScenarioExecutor.Object, _mockHistoryManager.Object, _mockTransparencyService.Object);
         Assert.AreEqual(1, service.Messages.Count); // Verify old message is there
 
         // Setup conversation to load

@@ -1,6 +1,6 @@
 # MCP Tools
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-12-04
 **Status**: Active
 **Phase**: Phase 5
 **Layer**: Infrastructure
@@ -72,24 +72,90 @@ MCPToolExecutor (executes MCP tools)
 
 ## Configuration
 
-### appsettings.json
+### tools.json
+
+MCP server configuration is stored in a separate `tools.json` file (not in `appsettings.json`).
 
 ```json
 {
-  "MCP": {
-    "Servers": [
-      {
-        "Name": "filesystem",
-        "Command": "node",
-        "Args": ["path/to/mcp-server.js"],
-        "Env": {}
+  "EnableTools": true,
+  "ToolExecutionMode": "Sequential",
+  "Servers": [
+    {
+      "Name": "todo-list",
+      "Command": "npx",
+      "Args": ["-y", "@anthropic/mcp-server-todo-list"],
+      "Env": {}
+    },
+    {
+      "Name": "filesystem",
+      "Command": "node",
+      "Args": ["path/to/mcp-server.js"],
+      "Env": {
+        "API_KEY": "your-api-key-here"
       }
-    ]
+    }
+  ],
+  "AutoDiscoverTools": true,
+  "ToolExecutionTimeoutSeconds": 180,
+  "MaxToolCallDepth": 10
+}
+```
+
+**Configuration Options**:
+- `EnableTools`: Enable/disable tool calling (default: true)
+- `ToolExecutionMode`: `Sequential` or `Parallel` execution
+- `Servers`: Array of MCP server configurations
+  - `Name`: Unique server identifier
+  - `Command`: Executable to start the server (e.g., `npx`, `node`, `python`, or **full path to .exe**)
+  - `Args`: Command-line arguments
+  - `Env`: Environment variables (augments inherited environment, set to `null` to remove)
+- `AutoDiscoverTools`: Auto-discover tools on startup (default: true)
+- `ToolExecutionTimeoutSeconds`: Maximum execution time (default: 180)
+- `MaxToolCallDepth`: Max nested tool calls (default: 10, range: 1-50)
+
+---
+
+### Common Server Examples
+
+**Using npx (Node package)**:
+```json
+{
+  "Name": "todo-list",
+  "Command": "npx",
+  "Args": ["-y", "@anthropic/mcp-server-todo-list"],
+  "Env": {}
+}
+```
+
+**Using local binary/executable** (⭐ Many users don't know this is possible!):
+```json
+{
+  "Name": "my-custom-tool",
+  "Command": "C:\\Users\\YourName\\MCPServers\\my-tool.exe",
+  "Args": ["--port", "8080"],
+  "Env": {
+    "LOG_LEVEL": "info"
   }
 }
 ```
 
-**See**: `docs/05-guides/deployment/configuration-guide.md`
+**Important for local binaries**:
+- ✅ Use **full absolute path** in `Command` field
+- ✅ On Windows, use double backslashes (`\\`) or forward slashes (`/`) in paths
+- ✅ Works with `.exe`, Linux binaries, or any executable
+
+**Using Python with full path** (useful for virtual environments):
+```json
+{
+  "Name": "python-server",
+  "Command": "C:\\Python311\\python.exe",
+  "Args": ["C:\\MCPServers\\my_server.py"],
+  "Env": {}
+}
+```
+
+**See**: `tools.Example.json` for more detailed examples and comments
 
 ---
 
