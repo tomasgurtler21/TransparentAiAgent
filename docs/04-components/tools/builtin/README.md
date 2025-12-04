@@ -1,8 +1,7 @@
 # Built-in Tools
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-12-04
 **Status**: Active
-**Phase**: Phase 6-8
 **Layer**: Infrastructure
 
 ---
@@ -47,7 +46,7 @@ Tool that allows the agent to query curated knowledge entries for teaching guida
 **Tools**:
 - `knowledge_library_query` - Query knowledge entry by ID
 
-**Status**: ✅ Implemented (Phase 9)
+**Status**: ✅ Implemented
 
 ---
 
@@ -65,7 +64,7 @@ Tools that enable the agent to read and update persistent memory across conversa
 - `long_term_memory_read` - Read current mode's memory
 - `long_term_memory_update` - Update current mode's memory
 
-**Status**: ✅ Implemented (Phase 10)
+**Status**: ✅ Implemented
 
 ---
 

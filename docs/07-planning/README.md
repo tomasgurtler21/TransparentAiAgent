@@ -1,7 +1,7 @@
 # Planning Documentation
 
-**Last Updated**: 2025-11-08
-**Status**: Active
+**Last Updated**: 2025-12-04
+**Status**: Beta Testing
 
 ---
 
@@ -31,33 +31,17 @@ Project requirements and goals:
 - Success criteria
 
 ### [roadmap.md](roadmap.md)
-Implementation roadmap and timeline:
-- 9 implementation phases
-- Phase dependencies
-- Completed phases (1-8)
-- Current phase (9)
-
-### [phases/](phases/)
-Detailed phase-specific documentation (to be created as needed):
-- Phase 1: Foundation
-- Phase 2: LLM Integration
-- Phase 3: Agent Core
-- Phase 4: Basic UI
-- Phase 5: MCP Integration
-- Phase 6: Enhanced UI
-- Phase 7: Configuration UI
-- Phase 8: Anthropic Provider
-- Phase 9: Teaching Mode
+Future development priorities and planned enhancements
 
 ---
 
 ## Current Status
 
-**Completed**: Phases 1-8
-**In Progress**: Phase 9 - Interactive Teaching Mode
-**Next**: Phase 10 - Polish & Refinement
+**Beta Testing** 🧪
 
-See [roadmap.md](roadmap.md) for detailed status.
+Core features are complete and the framework is entering first public beta testing. Focus is on gathering user feedback, fixing bugs, and refining the experience.
+
+See [roadmap.md](roadmap.md) for planned enhancements.
 
 ---
 
@@ -65,6 +49,6 @@ See [roadmap.md](roadmap.md) for detailed status.
 
 - [Architecture](../02-architecture/README.md) - System design
 - [Components](../04-components/README.md) - Component details
-- [Teaching Mode Plans](../03-concepts/teaching-mode/implementation-roadmap.md)
+- [Teaching Mode](../03-concepts/teaching-mode/) - Interactive teaching mode documentation
 
 ---

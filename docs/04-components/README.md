@@ -1,6 +1,6 @@
 # Component Overview
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-12-04
 **Status**: Active - Complete Catalog
 
 This document provides a high-level overview of all major components in the TransparentAiAgent system.
@@ -53,17 +53,20 @@ Coordinate agent behavior and conversation flow.
 
 ### 2. [LLM Integration Components](llm/)
 **Layer**: Domain + Infrastructure
-**Files**: 5 component docs
+**Files**: 6 component docs
 
 Provider-agnostic LLM abstraction with multiple implementations.
 
 - **[Provider Abstraction](llm/provider-abstraction.md)** - ILLMProvider interface + domain models
+- **[LLM Provider Manager](llm/llm-provider-manager.md)** - Dynamic provider switching and lifecycle management
 - **[Anthropic Provider](llm/anthropic-provider.md)** - Claude API implementation
 - **[Azure OpenAI Provider](llm/azure-openai-provider.md)** - Azure OpenAI with OAuth support
+- **[OpenAI Provider](llm/openai-provider.md)** - OpenAI API implementation
 - **[Streaming Utilities](llm/streaming.md)** - Markdown buffering for streaming
 
 **Key Features**:
-- Swappable providers via configuration
+- Dynamic provider switching at runtime without restart
+- Multiple providers: Anthropic Claude, Azure OpenAI, OpenAI
 - Streaming and non-streaming support
 - Tool calling abstraction
 - Multiple auth modes (API key, OAuth)
@@ -72,12 +75,13 @@ Provider-agnostic LLM abstraction with multiple implementations.
 
 ### 3. [Tool System](tools/)
 **Layer**: Domain + Application + Infrastructure
-**Files**: 11 component docs (MCP: 5, Built-in: 2, Application: 1, Overview: 3)
+**Files**: 15+ component docs (MCP: 5, Built-in: 4, Scenario Mock: 1, Application: 2, Overview: 3+)
 
-Source-agnostic tool system with MCP and built-in implementations.
+Source-agnostic tool system with MCP, built-in, and scenario mock implementations.
 
 **Application Layer**:
 - **[Tool Manager](tools/tool-manager.md)** - Routes tool calls, logs to transparency
+- **[Tool Schema Validator](tools/tool-schema-validator.md)** - Validates tool arguments for safety
 
 **MCP Tools** ([mcp/](tools/mcp/)):
 - **[MCP Client Wrapper](tools/mcp/mcp-client-wrapper.md)** - MCP SDK wrapper
@@ -87,11 +91,18 @@ Source-agnostic tool system with MCP and built-in implementations.
 
 **Built-in Tools** ([builtin/](tools/builtin/)):
 - **[UI Control Tools](tools/builtin/ui-control-tools.md)** - Dynamic UI manipulation (7 tools)
+- **[Knowledge Library Tool](tools/builtin/knowledge-library-tool.md)** - Access curated teaching concepts
+- **[Long-Term Memory Tools](tools/builtin/long-term-memory-tools.md)** - Persistent agent memory across sessions
+
+**Scenario Mock Tools** ([scenariomock/](tools/scenariomock/)):
+- **[Scenario Mock Tools](tools/scenariomock/README.md)** - Temporary mock tools for teaching scenarios
 
 **Key Features**:
 - Composite pattern for multiple tool sources
 - Tool routing by SourceType
+- Schema validation before execution
 - Teaching Mode enablement via UI control
+- Deterministic teaching scenarios via mock tools
 
 **Cross-Reference**: See `docs/03-concepts/teaching-mode/` for Teaching Mode concept
 
@@ -99,7 +110,7 @@ Source-agnostic tool system with MCP and built-in implementations.
 
 ### 4. [Infrastructure Components](infrastructure/)
 **Layer**: Infrastructure
-**Files**: 5 component docs
+**Files**: 6 component docs
 
 Cross-cutting concerns and external integrations.
 
@@ -107,12 +118,14 @@ Cross-cutting concerns and external integrations.
 - **[Authentication](infrastructure/authentication.md)** - API credentials provider
 - **[Transparency Service](infrastructure/transparency-service.md)** - Event logging
 - **[Serialization Service](infrastructure/serialization-service.md)** - JSON handling
+- **[Long-Term Memory Service](infrastructure/long-term-memory-service.md)** - Persistent agent memory across sessions
 
 **Key Features**:
 - Centralized configuration management
 - Multiple auth modes
 - Real-time transparency events
 - Standardized JSON serialization
+- Mode-aware persistent memory storage
 
 ---
 
@@ -215,10 +228,10 @@ Continue conversation with results
 
 ## Statistics
 
-**Total Documentation Files**: ~30 component docs
+**Total Documentation Files**: ~35+ component docs
 **Layers**: 4 (Domain, Application, Infrastructure, Presentation)
 **Component Groups**: 5 major categories
-**Files Documented**: 106 source files analyzed
+**Files Documented**: 120+ source files analyzed
 
 ---
 
@@ -226,9 +239,9 @@ Continue conversation with results
 
 **By Layer**:
 - [Core (Application)](core/) - 3 docs
-- [LLM](llm/) - 5 docs
-- [Tools](tools/) - 11 docs
-- [Infrastructure](infrastructure/) - 5 docs
+- [LLM](llm/) - 6 docs
+- [Tools](tools/) - 15+ docs
+- [Infrastructure](infrastructure/) - 6 docs
 - [UI](ui/) - 3 docs
 
 **By Feature**:

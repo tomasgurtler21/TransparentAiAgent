@@ -1,6 +1,6 @@
 # Reference Documentation
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-12-04
 **Status**: Active
 
 ---
@@ -33,6 +33,7 @@ This directory contains technical reference documentation for APIs, providers, a
 LLM provider API and SDK documentation:
 - **[Anthropic](providers/anthropic/)** - Complete Claude API reference (7 docs)
 - **[Azure OpenAI](providers/azure-openai/)** - Authentication and API reference
+- **[OpenAI](providers/openai/)** - OpenAI API library analysis and reference
 
 ### [blazor/](blazor/)
 Blazor framework reference:

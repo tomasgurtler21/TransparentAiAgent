@@ -1,8 +1,7 @@
 # Tool System
 
-**Last Updated**: 2025-11-27
+**Last Updated**: 2025-12-04
 **Status**: Active
-**Phase**: Phase 5-8 (Core), Phase 10b (Scenario Mock Tools)
 **Layer**: Domain + Application + Infrastructure
 
 ---
@@ -57,7 +56,6 @@ Coordinates tool execution. Routes LLM tool calls to appropriate executors based
 
 ### [Tool Schema Validator](tool-schema-validator.md)
 **Layer**: Infrastructure
-**Phase**: Phase 9b (Tool Execution Safety)
 
 Validates tool arguments against JSON Schema before execution to prevent unsafe tool calls.
 
@@ -102,7 +100,6 @@ Tools implemented directly in the agent codebase.
 
 ### [Scenario Mock Tools](scenariomock/README.md)
 **Layer**: Infrastructure
-**Phase**: Phase 10b (Advanced Teaching Scenarios)
 
 Temporary mock tools registered during teaching scenarios with predefined responses.
 
@@ -146,7 +143,7 @@ Temporary mock tools registered during teaching scenarios with predefined respon
    b. Lookup tool in registry
    c. Match executor by SourceType
    d. Log tool call to transparency
-   e. **Validate arguments against schema (Phase 9b)**
+   e. **Validate arguments against schema**
       - If validation fails → Return error to LLM
    f. Execute via executor
    g. Log result to transparency
