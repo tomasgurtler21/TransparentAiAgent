@@ -357,3 +357,60 @@ article {
     padding-left: 2rem !important;
     padding-right: 1.5rem !important;
 }
+
+/* ========================================
+   Markdown Content Heading Overrides
+   ======================================== */
+/* Override Bootstrap's huge responsive heading sizes within markdown content */
+.markdown-content h1 {
+    font-size: 1.4em !important;
+    border-bottom: 1px solid var(--border-primary);
+    padding-bottom: 6px;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-content h2 {
+    font-size: 1.25em !important;
+    border-bottom: 1px solid var(--border-primary);
+    padding-bottom: 6px;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-content h3 {
+    font-size: 1.1em !important;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-content h4 {
+    font-size: 1em !important;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-content h5 {
+    font-size: 0.9em !important;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-content h6 {
+    font-size: 0.85em !important;
+    color: var(--text-secondary);
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}

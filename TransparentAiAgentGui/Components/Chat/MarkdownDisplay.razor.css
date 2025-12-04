@@ -3,46 +3,7 @@
     color: var(--text-primary);
 }
 
-.markdown-content h1,
-.markdown-content h2,
-.markdown-content h3,
-.markdown-content h4,
-.markdown-content h5,
-.markdown-content h6 {
-    margin-top: 24px;
-    margin-bottom: 16px;
-    font-weight: 600;
-    line-height: 1.25;
-}
-
-.markdown-content h1 {
-    font-size: 2em;
-    border-bottom: 1px solid var(--border-primary);
-    padding-bottom: 8px;
-}
-
-.markdown-content h2 {
-    font-size: 1.5em;
-    border-bottom: 1px solid var(--border-primary);
-    padding-bottom: 8px;
-}
-
-.markdown-content h3 {
-    font-size: 1.25em;
-}
-
-.markdown-content h4 {
-    font-size: 1em;
-}
-
-.markdown-content h5 {
-    font-size: 0.875em;
-}
-
-.markdown-content h6 {
-    font-size: 0.85em;
-    color: var(--text-secondary);
-}
+/* Heading styles moved to global app.css to work with dynamically generated markdown HTML */
 
 .markdown-content p {
     margin-top: 0;
