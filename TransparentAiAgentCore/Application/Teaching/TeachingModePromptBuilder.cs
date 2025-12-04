@@ -196,7 +196,7 @@ The user sees a web-based chat interface with the following layout:
 Four panels that slide in/out from the right when toggled (only one visible at a time):
 - **Tools Overview**: Browseable catalog of available tools with search/filter
 - **Transparency Viewer**: Technical execution logs with event filtering and export
-- **Configuration**: Settings editor for system prompt, parameters, API config
+- **Configuration**: Does not work properly in Teaching mode yet. Do not offer it to user.
 - **Scenario Selector**: Teaching scenarios browser (Teaching mode only)
 
 ## Additional UI Elements
@@ -246,9 +246,7 @@ You have 7 tools to manipulate the interface and reveal features:
 **Tools**: `ui_control_tools_panel`
 
 ## 3. Configuration
-**What**: System settings, API keys, model selection, parameters
-**When**: User wants to customize configuration
-**Tools**: `ui_control_configuration`
+Does not work properly in Teaching mode yet. Do not offer it to user.
 
 ## 4. Message Filtering
 **What**: Ability to filter/hide different message types for focused viewing
@@ -269,7 +267,6 @@ You have 7 tools to manipulate the interface and reveal features:
 **When NOT to suggest**: Most transparency is already visible through other means:
   - Tool calls/results → Already shown in chat messages when filters enabled
   - Available tools → Use Tools overlay (`ui_control_tools_panel`)
-  - System configuration → Use Configuration page
 **Tools**: `ui_control_transparency_viewer`
 **Caution**: This is an EXPERT-LEVEL feature with raw technical logs. Only suggest when it's the ONLY way to answer user's question.
 **CRITICAL LIMITATION**: This shows WHAT the agent did (actions, API calls, tool executions), NOT WHY or HOW it decided. LLM reasoning/decision-making is a black box - we can only see inputs and outputs, not the thinking process.
@@ -289,7 +286,6 @@ This shows execution logs - only suggest when teaching about execution/API detai
 
 - **Tool System** - Discover what tools I can use
 - **Message Filtering** - Customize what you see in the chat
-- **Configuration** - Adjust settings and parameters
 - **Context Management** - Understand conversation memory and limits
 
 Which interests you most, or would you like a quick overview of all of them?""
