@@ -1,0 +1,109 @@
+{
+  "id": "tool-schema-validation-errors",
+  "version": "1.0",
+  "nameKey": "scenarios.tool-schema-validation-errors.name",
+  "name": "Tool Schema Validation Errors",
+  "descriptionKey": "scenarios.tool-schema-validation-errors.description",
+  "description": "Demonstrate what happens when tool schemas are incorrect or tool parameters invalid",
+  "category": "tools",
+  "difficulty": "expert",
+  "estimatedDurationSeconds": 220,
+  "steps": [
+    {
+      "type": "ui_control",
+      "tool": "ui_control_chat_filter",
+      "arguments": {
+        "show_tool_calls": true,
+        "show_tool_results": true
+      }
+    },
+    {
+      "type": "register_mock_tool",
+      "mock_tool_name": "create_user",
+      "mock_tool_description": "Creates a new user account",
+      "mock_tool_parameters_schema": "{\"type\":\"object\",\"properties\":{\"username\":{\"type\":\"string\",\"description\":\"Username for the account\"},\"email\":{\"type\":\"string\",\"format\":\"email\",\"description\":\"User's email address\"},\"age\":{\"type\":\"integer\",\"minimum\":18,\"description\":\"User's age (must be 18 or older)\"}},\"required\":[\"username\", \"age\"]}",
+      "mock_tool_response_map": {
+        "{\"username\":\"JohnDoe123\",\"email\":\"john@example.com\",\"age\":20}": {
+          "is_success": false,
+          "error_message": "Validation error: username must be lowercase alphanumeric with underscores only (no uppercase letters)"
+        },
+        "{\"username\":\"johndoe123\",\"email\":\"john@example.com\",\"age\":20}": {
+          "is_success": true,
+          "content": "User created successfully: johndoe123 (john@example.com)"
+        },
+        "{\"username\":\"alice_2024\",\"age\":20}": {
+          "is_success": true,
+          "content": "User created successfully: alice_2024 (no email provided)"
+        },
+        "{\"username\":\"charlie\",\"age\":16}": {
+          "is_success": false,
+          "error_message": "Validation error: age must be at least 18"
+        },
+        "{\"username\":\"charlie\",\"age\":25}": {
+          "is_success": true,
+          "content": "User created successfully: charlie (age: 25)"
+        },
+        "*": {
+          "is_success": false,
+          "error_message": "Invalid parameters provided to create_user"
+        }
+      }
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.tool-schema-validation-errors.create-user-johndoe.content",
+      "content": "Create a user with username JohnDoe123, age 20 and email john@example.com",
+      "annotationKey": "scenarios.tool-schema-validation-errors.create-user-johndoe.annotation",
+      "annotation": "Tool input schema:\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"username\": {\n      \"type\": \"string\",\n      \"description\": \"Username for the account\"\n    },\n    \"email\": {\n      \"type\": \"string\",\n      \"format\": \"email\",\n      \"description\": \"User's email address\"\n    },\n    \"age\": {\n      \"type\": \"integer\",\n      \"minimum\": 18,\n      \"description\": \"User's age (must be 18 or older)\"\n    }\n  },\n  \"required\": [\"username\", \"age\"]\n}\n\nThe agent will try to create a user with uppercase letters in the username.",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_tool_response"
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.tool-schema-validation-errors.pause-uppercase-error.content",
+      "content": "See the validation error? The agent used 'JohnDoe123' with uppercase letters, but the tool requires lowercase alphanumeric only.\n\nTool schemas enforce constraints. The agent must adjust parameters to meet the requirements. Also tool should specify Name input requirements directly in tool input schema to prevent invalid calls (like it does for Age)."
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.tool-schema-validation-errors.create-alice.content",
+      "content": "Create user alice_2024, age 20, no email",
+      "annotationKey": "scenarios.tool-schema-validation-errors.create-alice.annotation",
+      "annotation": "Tool input schema:\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"username\": {\n      \"type\": \"string\",\n      \"description\": \"Username for the account\"\n    },\n    \"email\": {\n      \"type\": \"string\",\n      \"format\": \"email\",\n      \"description\": \"User's email address\"\n    },\n    \"age\": {\n      \"type\": \"integer\",\n      \"minimum\": 18,\n      \"description\": \"User's age (must be 18 or older)\"\n    }\n  },\n  \"required\": [\"username\", \"age\"]\n}\n\nNote: email is NOT in the required array, so the agent can create a user without it.",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_tool_response"
+    },
+    {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.tool-schema-validation-errors.pause-optional-param.content",
+      "content": "Success! The user was created without an email.\n\nThis demonstrates an important concept: when a parameter is NOT in the 'required' array, the tool accepts calls without it. The 'required' field in the schema defines which parameters are mandatory."
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "contentKey": "scenarios.tool-schema-validation-errors.create-bob-no-age.content",
+      "content": "Create user bob_smith with email bob@example.com, age unknown",
+      "annotationKey": "scenarios.tool-schema-validation-errors.create-bob-no-age.annotation",
+      "annotation": "Tool input schema:\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"username\": {\n      \"type\": \"string\",\n      \"description\": \"Username for the account\"\n    },\n    \"email\": {\n      \"type\": \"string\",\n      \"format\": \"email\",\n      \"description\": \"User's email address\"\n    },\n    \"age\": {\n      \"type\": \"integer\",\n      \"minimum\": 18,\n      \"description\": \"User's age (must be 18 or older)\"\n    }\n  },\n  \"required\": [\"username\", \"age\"]\n}\n\nThe agent should refuse to call the tool without age, or ask the user for it.",
+      "delay": 500
+    },
+    {
+      "type": "wait_for_response"
+    },
+    {
+      "type": "scenario_user_message",
+      "content": "Explain to me the difference between required and optional parameters."
+    },
+    {
+      "type": "wait_for_response"
+    }
+  ]
+}

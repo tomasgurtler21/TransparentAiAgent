@@ -192,49 +192,21 @@ public class ConversationUIService : IConversationUIService
             OnMessagesChanged();
 
             // ✅ FIX: Create buffer for the initial streaming placeholder
-            // Note: Buffer logging is optional - main diagnostics are in this service
-            MarkdownStreamingBuffer? buffer = new MarkdownStreamingBuffer(null);
+            MarkdownStreamingBuffer? buffer = new MarkdownStreamingBuffer();
             var lastUpdate = DateTime.UtcNow;
             const int ThrottleMilliseconds = 30; // ~33 updates/second for smooth streaming
-
-            // 🔍 DIAGNOSTIC: Track chunk processing
-            int chunkNumber = 0;
-            int nullRenderableCount = 0;
-            int nonNullRenderableCount = 0;
 
             // Process streaming response
             await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(content)))
             {
-                chunkNumber++;
-
                 // Process ALL chunks, even with empty ContentDelta (signal chunks)
                 // Use buffer to get renderable content (buffer created when placeholder created)
                 var renderableContent = buffer?.AppendAndGetRenderable(chunk.ContentDelta ?? string.Empty);
-
-                // 🔍 DIAGNOSTIC: Log chunk processing details
-                var contentDeltaDisplay = chunk.ContentDelta == null ? "NULL" :
-                                         string.IsNullOrEmpty(chunk.ContentDelta) ? "EMPTY" :
-                                         chunk.ContentDelta.Length > 20 ? $"'{chunk.ContentDelta.Substring(0, 20)}...'" :
-                                         $"'{chunk.ContentDelta}'";
-                var renderableDisplay = renderableContent == null ? "NULL" :
-                                       renderableContent.Length > 30 ? $"'{renderableContent.Substring(0, 30)}...'" :
-                                       $"'{renderableContent}'";
-
-                if (renderableContent == null)
-                    nullRenderableCount++;
-                else
-                    nonNullRenderableCount++;
-
-                _logger?.LogInformation("[STREAM DEBUG #{ChunkNumber}] ContentDelta={ContentDelta}, Renderable={Renderable}, NullCount={NullCount}, NonNullCount={NonNullCount}",
-                    chunkNumber, contentDeltaDisplay, renderableDisplay, nullRenderableCount, nonNullRenderableCount);
 
                 // Throttle UI updates (only if we have actual renderable content)
                 var now = DateTime.UtcNow;
                 if (renderableContent != null && (now - lastUpdate).TotalMilliseconds >= ThrottleMilliseconds)
                 {
-                    // 🔍 DIAGNOSTIC: Log UI update trigger
-                    _logger?.LogInformation("[STREAM DEBUG #{ChunkNumber}] ✅ UI UPDATE TRIGGERED - Elapsed: {Elapsed:F1}ms",
-                        chunkNumber, (now - lastUpdate).TotalMilliseconds);
 
                     lock (_streamingLock)
                     {
@@ -243,7 +215,7 @@ public class ConversationUIService : IConversationUIService
                         if (_currentStreamingMessage == null)
                         {
                             // ✅ FIX: Create a FRESH buffer for this new placeholder
-                            buffer = new MarkdownStreamingBuffer(null);
+                            buffer = new MarkdownStreamingBuffer();
 
                             var newStreamingMessage = new UIMessage
                             {
@@ -345,11 +317,6 @@ public class ConversationUIService : IConversationUIService
                     }
                 }
             }
-
-            // 🔍 DIAGNOSTIC: Log streaming completion summary
-            var nullRatio = chunkNumber > 0 ? (double)nullRenderableCount / chunkNumber * 100 : 0;
-            _logger?.LogInformation("[STREAM DEBUG SUMMARY] Total chunks: {TotalChunks}, Null renderable: {NullCount}, Non-null renderable: {NonNullCount}, Ratio: {Ratio:F1}% null",
-                chunkNumber, nullRenderableCount, nonNullRenderableCount, nullRatio);
 
             // Refresh messages from conversation manager to sync state
             RefreshMessages();

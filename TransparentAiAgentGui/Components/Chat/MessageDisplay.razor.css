@@ -118,6 +118,7 @@
 .annotation-text {
     flex: 1;
     font-style: italic;
+    white-space: pre-wrap;
 }
 
 /* Context status indicator styling */
