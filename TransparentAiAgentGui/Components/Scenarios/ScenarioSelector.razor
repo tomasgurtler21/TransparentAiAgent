@@ -47,9 +47,10 @@
 
                 <select class="form-select form-select-sm mt-2" @bind="selectedDifficulty" @bind:after="FilterScenarios">
                     <option value="">All Difficulties</option>
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
+                    @foreach (var difficulty in difficulties)
+                    {
+                        <option value="@difficulty">@difficulty</option>
+                    }
                 </select>
             </div>
 
@@ -92,6 +93,7 @@
     private List<ScenarioDefinition> scenarios = new();
     private List<ScenarioDefinition> filteredScenarios = new();
     private List<string> categories = new();
+    private List<string> difficulties = new();
     private List<LanguageMetadata> availableLanguages = new();
     private string selectedCategory = "";
     private string selectedDifficulty = "";
@@ -142,6 +144,13 @@
             .Select(s => s.Category!)
             .Distinct()
             .OrderBy(c => c)
+            .ToList();
+
+        difficulties = scenarios
+            .Where(s => !string.IsNullOrEmpty(s.Difficulty))
+            .Select(s => s.Difficulty!)
+            .Distinct()
+            .OrderBy(d => d)
             .ToList();
 
         FilterScenarios();
