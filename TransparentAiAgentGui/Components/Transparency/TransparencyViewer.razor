@@ -141,7 +141,7 @@
     protected override void OnInitialized()
     {
         // Load existing events
-        Events = TransparencyService.GetRecentEvents(1000).ToList();
+        Events = TransparencyService.GetRecentEvents(10000).ToList();
 
         // Subscribe to new events
         TransparencyService.EventLogged += OnEventLogged;
@@ -164,8 +164,8 @@
     {
         Events.Add(e);
 
-        // Limit to 1000 events to prevent memory issues
-        if (Events.Count > 1000)
+        // Limit to 10000 events to prevent memory issues
+        if (Events.Count > 10000)
         {
             Events.RemoveAt(0);
         }
@@ -235,12 +235,15 @@
     {
         try
         {
-            // Export the viewer's current event list (limited to 1000)
+            // Export ALL events from TransparencyService (not just the UI's limited list)
+            var allEvents = TransparencyService.GetEvents().ToList();
+
             var export = new
             {
                 exportedAt = DateTime.UtcNow,
-                totalEventsInViewer = Events.Count,
-                events = Events
+                totalEventsExported = allEvents.Count,
+                eventsInViewer = Events.Count,
+                events = allEvents
             };
 
             var json = System.Text.Json.JsonSerializer.Serialize(export, new System.Text.Json.JsonSerializerOptions

@@ -22,8 +22,6 @@ This document tracks known issues and limitations in the TransparentAiAgent proj
 - To stop scenario, stop button must be clicked twice
 - Real tools might conflict with mock tools. Real tools should be removed and blocked during scenario execution.
 
-## Chat
-- Markdown headers are way too big.
 ---
 
 ## Future Issues

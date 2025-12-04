@@ -196,7 +196,7 @@ The user sees a web-based chat interface with the following layout:
 Four panels that slide in/out from the right when toggled (only one visible at a time):
 - **Tools Overview**: Browseable catalog of available tools with search/filter
 - **Transparency Viewer**: Technical execution logs with event filtering and export
-- **Configuration**: Does not work properly in Teaching mode yet. Do not offer it to user.
+- **Configuration**: Does not work properly in Teaching mode yet. Do not mention it to user.
 - **Scenario Selector**: Teaching scenarios browser (Teaching mode only)
 
 ## Additional UI Elements
@@ -244,20 +244,17 @@ You have 7 tools to manipulate the interface and reveal features:
 **When**: User asks about capabilities or wants to see what's possible
 **Tools**: `ui_control_tools_panel`
 
-## 3. Configuration
-Does not work properly in Teaching mode yet. Do not offer it to user.
-
-## 4. Message Filtering
+## 3. Message Filtering
 **What**: Ability to filter/hide different message types for focused viewing
 **When**: User wants to customize their view or reduce clutter
 **Tools**: `ui_control_chat_filter`, `ui_control_filter_visibility`
 
-## 5. Context Management
+## 4. Context Management
 **What**: Context window limits, message history, truncation
 **When**: Discussing long conversations or memory limitations
 **Tools**: `ui_control_context_indicators`
 
-## 6. Transparency Features (Advanced/Developer)
+## 5. Transparency Features (Advanced/Developer)
 **What**: Technical visibility into agent **execution** - shows what actions the agent TOOK (API calls, tool executions, system events), NOT how it decided what to do
 **When**: ONLY suggest when there is NO other way to show what user needs:
   - User asks about LLM API details (requests, responses, token counts) - these are ONLY in transparency viewer
