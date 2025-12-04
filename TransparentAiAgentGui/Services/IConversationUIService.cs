@@ -61,6 +61,11 @@ public interface IConversationUIService
     event EventHandler? MemoryStateChanged;
 
     /// <summary>
+    /// Raised when an error occurs (regular chat or scenario execution)
+    /// </summary>
+    event EventHandler<string>? ErrorOccurred;
+
+    /// <summary>
     /// Gets whether long-term memory is currently enabled
     /// </summary>
     bool IsMemoryEnabled { get; }

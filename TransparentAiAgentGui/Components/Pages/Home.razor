@@ -16,6 +16,7 @@
 @inject ILongTermMemoryService MemoryService
 @inject IUserSettingsService UserSettingsService
 @inject IJSRuntime JSRuntime
+@inject global::TransparentAiAgentCore.Infrastructure.Transparency.ITransparencyService TransparencyService
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -99,6 +100,7 @@
         ConversationService.ProcessingStateChanged += OnProcessingStateChanged;
         ConversationService.StreamingMessageUpdated += OnStreamingMessageUpdated;
         ConversationService.MemoryStateChanged += OnMemoryStateChanged;
+        ConversationService.ErrorOccurred += OnErrorOccurred;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -150,6 +152,12 @@
         catch (Exception ex)
         {
             errorMessage = $"Error: {ex.Message}";
+
+            // Log error to transparency service
+            TransparencyService.LogEvent(new global::TransparentAiAgentCore.Domain.Transparency.TransparencyEvent(
+                global::TransparentAiAgentCore.Domain.Transparency.TransparencyEventType.Error,
+                $"Chat error: {ex.Message}",
+                "UI Error"));
         }
     }
 
@@ -235,11 +243,22 @@
         });
     }
 
+    private void OnErrorOccurred(object? sender, string error)
+    {
+        // Display error from ConversationUIService (e.g., scenario failures)
+        InvokeAsync(() =>
+        {
+            errorMessage = $"Error: {error}";
+            StateHasChanged();
+        });
+    }
+
     public void Dispose()
     {
         ConversationService.MessagesChanged -= OnMessagesChanged;
         ConversationService.ProcessingStateChanged -= OnProcessingStateChanged;
         ConversationService.StreamingMessageUpdated -= OnStreamingMessageUpdated;
         ConversationService.MemoryStateChanged -= OnMemoryStateChanged;
+        ConversationService.ErrorOccurred -= OnErrorOccurred;
     }
 }

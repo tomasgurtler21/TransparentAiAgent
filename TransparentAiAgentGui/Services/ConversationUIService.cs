@@ -7,6 +7,8 @@ using TransparentAiAgentCore.Domain.Models;
 using TransparentAiAgentCore.Domain.Memory;
 using TransparentAiAgentCore.Domain.UIControl;
 using TransparentAiAgentCore.Infrastructure.Streaming;
+using TransparentAiAgentCore.Infrastructure.Transparency;
+using TransparentAiAgentCore.Domain.Transparency;
 using TransparentAiAgentGui.Models;
 using Microsoft.Extensions.Logging;
 
@@ -21,6 +23,7 @@ public class ConversationUIService : IConversationUIService
     private readonly ILongTermMemoryService? _memoryService;
     private readonly IAppModeService? _appModeService;
     private readonly LongTermMemoryConfiguration? _memoryConfig;
+    private readonly ITransparencyService _transparencyService;
     private readonly ILogger<ConversationUIService>? _logger;
     private readonly List<UIMessage> _messages = new();
     private bool _isProcessing;
@@ -55,12 +58,14 @@ public class ConversationUIService : IConversationUIService
     public event EventHandler<bool>? ProcessingStateChanged;
     public event EventHandler<StreamingMessageUpdate>? StreamingMessageUpdated;
     public event EventHandler? MemoryStateChanged;
+    public event EventHandler<string>? ErrorOccurred;
 
     public ConversationUIService(
         IAgentOrchestrator orchestrator,
         IConversationManager conversationManager,
         IScenarioExecutor scenarioExecutor,
         IConversationHistoryManager historyManager,
+        ITransparencyService transparencyService,
         ILongTermMemoryService? memoryService = null,
         IAppModeService? appModeService = null,
         LongTermMemoryConfiguration? memoryConfig = null,
@@ -70,6 +75,7 @@ public class ConversationUIService : IConversationUIService
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _scenarioExecutor = scenarioExecutor ?? throw new ArgumentNullException(nameof(scenarioExecutor));
         _historyManager = historyManager ?? throw new ArgumentNullException(nameof(historyManager));
+        _transparencyService = transparencyService ?? throw new ArgumentNullException(nameof(transparencyService));
         _memoryService = memoryService;
         _appModeService = appModeService;
         _memoryConfig = memoryConfig;
@@ -83,6 +89,9 @@ public class ConversationUIService : IConversationUIService
 
         // Subscribe to scenario streaming events for real-time UI updates
         _scenarioExecutor.StreamingUpdate += OnScenarioStreamingUpdate;
+
+        // Subscribe to scenario failure events for error handling
+        _scenarioExecutor.ScenarioFailed += OnScenarioFailed;
 
         // Subscribe to mode changes for memory loading
         if (_appModeService != null)
@@ -446,6 +455,22 @@ public class ConversationUIService : IConversationUIService
         }
     }
 
+    private void OnScenarioFailed(object? sender, ScenarioExecutionEventArgs e)
+    {
+        // Log the scenario failure to transparency service
+        var errorMessage = $"Scenario execution failed: {e.ErrorMessage ?? "Unknown error"}";
+        _transparencyService.LogEvent(new TransparencyEvent(
+            TransparencyEventType.Error,
+            errorMessage,
+            $"Scenario: {e.Scenario.Name}"));
+
+        // Notify UI to display error
+        ErrorOccurred?.Invoke(this, errorMessage);
+
+        _logger?.LogError("Scenario '{ScenarioName}' failed: {ErrorMessage}",
+            e.Scenario.Name, e.ErrorMessage);
+    }
+
     private void OnScenarioStreamingUpdate(object? sender, ScenarioStreamingUpdateEventArgs e)
     {
         var chunk = e.Chunk;
@@ -561,6 +586,21 @@ public class ConversationUIService : IConversationUIService
 
             SetProcessing(false);
             RefreshMessages();
+
+            // Extract actual error message from chunk (passed via ContentDelta)
+            var errorMessage = !string.IsNullOrEmpty(chunk.ContentDelta)
+                ? chunk.ContentDelta
+                : "Unknown error occurred during scenario execution";
+
+            // Log error to transparency service with actual error details
+            _transparencyService.LogEvent(new TransparencyEvent(
+                TransparencyEventType.Error,
+                $"Scenario streaming error: {errorMessage}",
+                "Scenario Execution"));
+
+            // Notify UI with actual error message
+            ErrorOccurred?.Invoke(this, errorMessage);
+
             return; // Don't process completion logic
         }
 
