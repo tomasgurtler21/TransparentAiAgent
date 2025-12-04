@@ -21,6 +21,7 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
     private readonly AppConfiguration _appConfiguration;
     private readonly TeachingModePromptBuilder _promptBuilder;
     private readonly ILongTermMemoryService _memoryService;
+    private readonly IUserSettingsService _userSettingsService;
     private readonly ILogger<AppModeService> _logger;
     private readonly object _modeLock = new object();
 
@@ -35,6 +36,7 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
         AppConfiguration appConfiguration,
         TeachingModePromptBuilder promptBuilder,
         ILongTermMemoryService memoryService,
+        IUserSettingsService userSettingsService,
         ILogger<AppModeService> logger)
     {
         _uiControlService = uiControlService ?? throw new ArgumentNullException(nameof(uiControlService));
@@ -43,6 +45,7 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
         _appConfiguration = appConfiguration ?? throw new ArgumentNullException(nameof(appConfiguration));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
         _memoryService = memoryService ?? throw new ArgumentNullException(nameof(memoryService));
+        _userSettingsService = userSettingsService ?? throw new ArgumentNullException(nameof(userSettingsService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _logger.LogInformation("AppModeService created (Scoped)");
@@ -123,19 +126,28 @@ public class AppModeService : global::TransparentAiAgentCore.Domain.UIControl.IA
         // Use hardcoded teaching mode prompt (not user-configurable for security)
         // Built dynamically by TeachingModePromptBuilder including knowledge library section
 
-        // Read long-term memory for teaching mode (if available)
+        // Read long-term memory for teaching mode (only if enabled)
         string? longTermMemory = null;
-        try
+        var enableMemory = _userSettingsService.GetCurrentSettings()?.EnableMemory ?? false;
+
+        if (enableMemory)
         {
-            longTermMemory = await _memoryService.ReadMemoryAsync(AppMode.Teaching);
-            if (!string.IsNullOrWhiteSpace(longTermMemory))
+            try
             {
-                _logger.LogInformation("Loaded long-term memory for teaching mode ({Length} characters)", longTermMemory.Length);
+                longTermMemory = await _memoryService.ReadMemoryAsync(AppMode.Teaching);
+                if (!string.IsNullOrWhiteSpace(longTermMemory))
+                {
+                    _logger.LogInformation("Loaded long-term memory for teaching mode ({Length} characters)", longTermMemory.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load long-term memory for teaching mode, continuing without it");
             }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogWarning(ex, "Failed to load long-term memory for teaching mode, continuing without it");
+            _logger.LogDebug("Long-term memory is disabled, not loading memory for teaching mode");
         }
 
         return _promptBuilder.BuildCompletePrompt(longTermMemory);

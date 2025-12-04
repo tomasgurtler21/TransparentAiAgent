@@ -447,8 +447,9 @@ public class ConversationUIServiceTests
             new StreamingResponseChunk(null, true, StreamingStatus.Completed)
         };
 
+        // Use AsyncEnumerableWithDelay to space chunks by 35ms to allow throttling (30ms threshold) to pass
         _mockOrchestrator.Setup(x => x.ProcessUserInputStreamingAsync(It.IsAny<UserMessage>(), It.IsAny<CancellationToken>()))
-            .Returns(AsyncEnumerable(streamingChunks));
+            .Returns(AsyncEnumerableWithDelay(streamingChunks, 35));
 
         // Setup conversation manager to return appropriate messages
         var messages = new List<IMessage>
@@ -508,6 +509,16 @@ public class ConversationUIServiceTests
         foreach (var item in items)
         {
             await Task.Yield();
+            yield return item;
+        }
+    }
+
+    // Helper method to create async enumerable with delays between items (for throttling tests)
+    private static async IAsyncEnumerable<T> AsyncEnumerableWithDelay<T>(IEnumerable<T> items, int delayMs)
+    {
+        foreach (var item in items)
+        {
+            await Task.Delay(delayMs);
             yield return item;
         }
     }

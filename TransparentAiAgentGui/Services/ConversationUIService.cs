@@ -208,6 +208,12 @@ public class ConversationUIService : IConversationUIService
             // Process streaming response
             await foreach (var chunk in _orchestrator.ProcessUserInputStreamingAsync(new DirectUserMessage(content)))
             {
+                // If we have content but no buffer (e.g., after tool execution), create a new buffer
+                if (!string.IsNullOrEmpty(chunk.ContentDelta) && buffer == null)
+                {
+                    buffer = new MarkdownStreamingBuffer();
+                }
+
                 // Process ALL chunks, even with empty ContentDelta (signal chunks)
                 // Use buffer to get renderable content (buffer created when placeholder created)
                 var renderableContent = buffer?.AppendAndGetRenderable(chunk.ContentDelta ?? string.Empty);
