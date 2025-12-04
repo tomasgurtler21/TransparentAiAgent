@@ -49,10 +49,25 @@ public class MCPTool : ITool
     {
         get
         {
-            // Note: McpClientTool extends AIFunction which may have the schema in Metadata
-            // For now, return empty schema - will be populated during actual tool execution
-            // TODO: Extract actual schema from McpClientTool when API is clarified
-            return "{}";
+            // Extract the input schema from McpClientTool.JsonSchema property
+            // JsonSchema is a JsonElement containing the tool's parameter schema
+            try
+            {
+                var jsonSchema = _mcpClientTool.JsonSchema;
+                if (jsonSchema.ValueKind == System.Text.Json.JsonValueKind.Undefined ||
+                    jsonSchema.ValueKind == System.Text.Json.JsonValueKind.Null)
+                {
+                    return "{}";
+                }
+
+                // Serialize the JsonElement to a string
+                return JsonSerializer.Serialize(jsonSchema);
+            }
+            catch
+            {
+                // If there's any issue accessing the schema, return empty schema
+                return "{}";
+            }
         }
     }
 

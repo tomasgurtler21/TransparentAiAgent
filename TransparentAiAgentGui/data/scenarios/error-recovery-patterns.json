@@ -53,7 +53,7 @@
     {
       "type": "pause_for_user",
       "contentKey": "scenarios.error-recovery-patterns.pause-explain-error.content",
-      "content": "The agent tried 'completed' (a logical choice), but the tool expects 'done' instead.\n\nLook at the tool error message - it tells the agent exactly what values are valid. Good reasoning LLM should be able to correct itself."
+      "content": "Look at tool call arguments - the agent tried 'completed' (a logical choice), but the tool expects 'done' instead.\n\nLook at the tool error message - it tells the agent exactly what values are valid. Good reasoning LLM should be able to correct itself."
     },
     {
       "type": "wait_for_response"

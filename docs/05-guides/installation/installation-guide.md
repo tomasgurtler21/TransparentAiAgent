@@ -29,9 +29,13 @@ TransparentAiAgent/
 ├── TransparentAiAgentGui.exe        # Main executable
 ├── appsettings.json                  # Configuration file (edit this!)
 ├── wwwroot/                          # Web assets
-├── data/                             # Application data
+├── data/                             # Bundled content (knowledge, scenarios)
+│   ├── knowledge/                   # Knowledge library entries
+│   └── scenarios/                   # Teaching mode scenarios
 └── [DLL files...]
 ```
+
+**Note**: Your conversation history and memory will be stored in `%AppData%\TransparentAiAgent\`, not in the application folder.
 
 ### 2. Configure API Keys
 
@@ -118,26 +122,44 @@ Once the application loads in your browser:
 
 ## Folder Structure
 
-After first run, the `data/` folder will contain:
+TransparentAiAgent uses two separate locations for data:
+
+### Application Folder (`data/`)
+
+Bundled content included with the application:
 
 ```
 data/
 ├── knowledge/          # Knowledge library entries (bundled with app)
-├── scenarios/          # Teaching mode scenarios (bundled with app)
+└── scenarios/          # Teaching mode scenarios (bundled with app)
+```
+
+### User Data Folder (`%AppData%\TransparentAiAgent\`)
+
+User-specific data created at runtime:
+
+```
+%AppData%\TransparentAiAgent\
+├── user-settings.json  # User preferences (context size, memory settings)
 ├── conversations/      # Your conversation history (created at runtime)
 └── memory/             # Long-term memory files (created when used)
 ```
 
+**Location**: On Windows, this is typically `C:\Users\YourName\AppData\Roaming\TransparentAiAgent\`
+
+**Access**: Press `Win + R`, type `%AppData%\TransparentAiAgent`, and press Enter
+
 ### Important Folders
 
-| Folder | Purpose | Created When |
-|--------|---------|--------------|
-| `conversations/` | Stores all your chat conversations as JSON files | First conversation started |
-| `memory/` | Agent's long-term memory storage | Long-term memory feature first used |
-| `knowledge/` | Built-in knowledge entries (can add your own) | Bundled with app |
-| `scenarios/` | Teaching mode scenarios | Bundled with app |
+| Folder | Location | Purpose | Created When |
+|--------|----------|---------|--------------|
+| `knowledge/` | App folder | Built-in knowledge entries | Bundled with app |
+| `scenarios/` | App folder | Teaching mode scenarios | Bundled with app |
+| `conversations/` | AppData | Your chat conversations (JSON files) | First conversation started |
+| `memory/` | AppData | Agent's long-term memory | Long-term memory feature first used |
+| `user-settings.json` | AppData | User preferences | First run |
 
-**Backup Recommendation:** Periodically backup the `data/` folder to preserve your conversations and memory.
+**Backup Recommendation:** Periodically backup the `%AppData%\TransparentAiAgent\` folder to preserve your conversations, memory, and settings. See [Data Storage Guide](data-storage.md) for details.
 
 ## Configuration Options
 
@@ -187,12 +209,13 @@ Edit `appsettings.json` to customize:
 ```json
 "LongTermMemory": {
   "Enabled": true,                              ← Enable/disable memory
-  "StorageDirectory": "data/memory",            ← Where to store
   "MaxCharacters": 10000,                       ← Max memory size
   "AutoLoadOnStart": true,                      ← Load on startup
   "PromptUpdateOnEnd": true                     ← Update when conversation ends
 }
 ```
+
+**Note**: Long-term memory is automatically stored in `%AppData%\TransparentAiAgent\memory\`
 
 ### Advanced: MCP Servers (External Tools)
 
@@ -243,7 +266,7 @@ See [MCP Tools Documentation](../../04-components/tools/mcp/README.md) for more 
 
 **Solutions:**
 1. Check Windows Event Viewer for error details
-2. Ensure the folder has write permissions (for data/ folder creation)
+2. Ensure the application has write permissions to create folders in `%AppData%`
 3. Try running as Administrator (right-click → Run as administrator)
 4. Check antivirus software isn't blocking the executable
 
@@ -291,16 +314,17 @@ See [MCP Tools Documentation](../../04-components/tools/mcp/README.md) for more 
 **Issue:** "Access denied" when saving conversations or memory.
 
 **Solutions:**
-1. Ensure the application has write permissions to the `data/` folder
-2. Don't install in protected folders like `C:\Program Files\` unless running as admin
-3. Recommended: Install in your user folder (`C:\Users\YourName\Apps\`)
+1. Ensure the application has write permissions to `%AppData%\TransparentAiAgent\`
+2. Check that your Windows user account has permission to write to the AppData folder
+3. If issues persist, try running the application as Administrator once to create the necessary folders
 
 ## Uninstallation
 
 To remove TransparentAiAgent:
 
 1. **Backup data** (if you want to keep conversations):
-   - Copy the entire `data/` folder to a safe location
+   - Copy the entire `%AppData%\TransparentAiAgent\` folder to a safe location
+   - Press `Win + R`, type `%AppData%\TransparentAiAgent`, and press Enter to open the folder
 
 2. **Close the application**:
    - Close the browser tab
@@ -309,26 +333,27 @@ To remove TransparentAiAgent:
 3. **Delete the installation folder**:
    - Simply delete the folder where you extracted the application
 
-4. **Optional: Clean up browser data**:
+4. **Delete user data** (optional):
+   - Delete `%AppData%\TransparentAiAgent\` to remove all conversations and settings
+
+5. **Optional: Clean up browser data**:
    - Clear browser cache/cookies for `localhost` (if desired)
 
-No registry entries or system files are created outside the application folder.
+No registry entries are created. User data remains in AppData unless manually deleted.
 
 ## Upgrading
 
 To upgrade to a new version:
 
-1. **Backup your data folder**:
-   ```
-   Copy data/ → data_backup/
+1. **Backup your user data** (optional but recommended):
+   ```powershell
+   # Press Win + R, type cmd, and run:
+   xcopy "%AppData%\TransparentAiAgent" "C:\Backup\TransparentAiAgent" /E /I /Y
    ```
 
-2. **Download new version** and extract to a temporary location
+2. **Close the current version**
 
-3. **Copy your data folder** from old installation:
-   ```
-   Copy old_installation/data/ → new_installation/data/
-   ```
+3. **Download new version** and extract to replace the old installation folder
 
 4. **Copy your configuration**:
    ```
@@ -336,9 +361,11 @@ To upgrade to a new version:
    ```
    (Or reconfigure API keys in the new appsettings.json)
 
-5. **Test the new version**
+5. **Run the new version** - Your conversations and memory in AppData will be automatically preserved
 
-6. **Delete old installation** once confirmed working
+6. **Delete old installation folder** once confirmed working
+
+**Note**: User data (conversations, memory, settings) is stored in `%AppData%\TransparentAiAgent\` and persists across upgrades automatically. You only need to update the application folder and transfer your `appsettings.json` configuration.
 
 ## Security Best Practices
 
@@ -351,7 +378,7 @@ To upgrade to a new version:
    - All LLM API calls use HTTPS
 
 3. **Data privacy**:
-   - Conversations are stored locally in `data/conversations/`
+   - Conversations are stored locally in `%AppData%\TransparentAiAgent\conversations\`
    - No data is sent anywhere except to your configured LLM provider
    - Your data never leaves your machine except via LLM API calls
 

@@ -745,6 +745,9 @@ public class ConversationUIService : IConversationUIService
         {
             await LoadMemoryIntoConversationAsync();
         }
+
+        // Refresh UI to reflect updated system prompt for the new mode
+        RefreshMessages();
     }
 
     private async Task LoadMemoryIntoConversationAsync()

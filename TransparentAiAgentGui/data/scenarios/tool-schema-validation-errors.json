@@ -99,6 +99,11 @@
       "type": "wait_for_response"
     },
     {
+      "type": "pause_for_user",
+      "contentKey": "scenarios.tool-schema-validation-errors.pause-agent-asks-required.content",
+      "content": "Agent knew in advance that tool call would fail, so it adjusted and tried to get the required parameter - it asked the user. (In case it did not ask, used model is quite bad)"
+    },
+    {
       "type": "scenario_user_message",
       "content": "Explain to me the difference between required and optional parameters."
     },
